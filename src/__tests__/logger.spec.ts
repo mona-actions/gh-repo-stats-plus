@@ -1,7 +1,12 @@
 import * as winston from 'winston';
 import { mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
-import { createLogger, logProcessingSummary, logBatchProcessing, logInitialization } from '../logger.js';
+import {
+  createLogger,
+  logProcessingSummary,
+  logBatchProcessing,
+  logInitialization,
+} from '../logger.js';
 import { ProcessingSummary } from '../types.js';
 import { createMockLogger } from './test-utils.js';
 
@@ -25,7 +30,7 @@ jest.mock('winston', () => {
 
   const mockTransport = jest.fn();
   const mockOnError = jest.fn();
-  
+
   const mockLogger = {
     debug: jest.fn(),
     info: jest.fn(),
@@ -85,7 +90,7 @@ describe('Logger Module', () => {
       expect(winston.transports.File).toHaveBeenCalledWith(
         expect.objectContaining({
           filename: expect.stringContaining(logFileName),
-        })
+        }),
       );
     });
 
@@ -97,7 +102,9 @@ describe('Logger Module', () => {
       await createLogger(false);
 
       // Assert
-      expect(mkdir).toHaveBeenCalledWith(expect.any(String), { recursive: true });
+      expect(mkdir).toHaveBeenCalledWith(expect.any(String), {
+        recursive: true,
+      });
     });
 
     it('should handle errors in logger setup', async () => {
@@ -108,7 +115,9 @@ describe('Logger Module', () => {
 
       // Act & Assert
       await expect(createLogger(false)).rejects.toThrow();
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Failed to setup logger'));
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to setup logger'),
+      );
     });
   });
 
@@ -130,13 +139,27 @@ describe('Logger Module', () => {
 
       // Assert
       expect(mockLogger.info).toHaveBeenCalledWith('Processing Summary:');
-      expect(mockLogger.info).toHaveBeenCalledWith('✓ Initially processed: 10 files');
-      expect(mockLogger.info).toHaveBeenCalledWith('✓ Successfully retried: 5 files');
-      expect(mockLogger.info).toHaveBeenCalledWith('✓ Total successfully processed: 15 files');
-      expect(mockLogger.info).toHaveBeenCalledWith('✗ Failed to process: 2 files that were attempted to be retried');
-      expect(mockLogger.warn).toHaveBeenCalledWith('⚠ Unprocessed files remaining: 3');
-      expect(mockLogger.debug).toHaveBeenCalledWith('Total processing attempts: 20');
-      expect(mockLogger.info).toHaveBeenCalledWith('Completed repo-stats-queue processing');
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        '✓ Initially processed: 10 files',
+      );
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        '✓ Successfully retried: 5 files',
+      );
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        '✓ Total successfully processed: 15 files',
+      );
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        '✗ Failed to process: 2 files that were attempted to be retried',
+      );
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        '⚠ Unprocessed files remaining: 3',
+      );
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        'Total processing attempts: 20',
+      );
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Completed repo-stats-queue processing',
+      );
     });
 
     it('should not log retried info if totalRetried is 0', () => {
@@ -155,7 +178,9 @@ describe('Logger Module', () => {
       logProcessingSummary(summary, mockLogger);
 
       // Assert
-      expect(mockLogger.info).not.toHaveBeenCalledWith(expect.stringContaining('Successfully retried:'));
+      expect(mockLogger.info).not.toHaveBeenCalledWith(
+        expect.stringContaining('Successfully retried:'),
+      );
     });
 
     it('should not log unprocessed warning if remainingUnprocessed is 0', () => {
@@ -188,7 +213,9 @@ describe('Logger Module', () => {
       logBatchProcessing.starting(fileCount, mockLogger);
 
       // Assert
-      expect(mockLogger.info).toHaveBeenCalledWith(`Starting batch processing with ${fileCount} files`);
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        `Starting batch processing with ${fileCount} files`,
+      );
     });
 
     it('should log no files found', () => {
@@ -199,7 +226,9 @@ describe('Logger Module', () => {
       logBatchProcessing.noFiles(mockLogger);
 
       // Assert
-      expect(mockLogger.info).toHaveBeenCalledWith('No batch files found for processing');
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'No batch files found for processing',
+      );
     });
 
     it('should log processing attempt', () => {
@@ -212,7 +241,9 @@ describe('Logger Module', () => {
       logBatchProcessing.attempt(current, max, mockLogger);
 
       // Assert
-      expect(mockLogger.info).toHaveBeenCalledWith(`Processing attempt ${current} of ${max}`);
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        `Processing attempt ${current} of ${max}`,
+      );
     });
 
     it('should log all files processed successfully', () => {
@@ -223,7 +254,9 @@ describe('Logger Module', () => {
       logBatchProcessing.allSuccess(mockLogger);
 
       // Assert
-      expect(mockLogger.info).toHaveBeenCalledWith('✓ All files processed successfully');
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        '✓ All files processed successfully',
+      );
     });
 
     it('should log max retries reached', () => {
@@ -236,7 +269,9 @@ describe('Logger Module', () => {
       logBatchProcessing.maxRetries(max, remaining, mockLogger);
 
       // Assert
-      expect(mockLogger.warn).toHaveBeenCalledWith(`⚠ Maximum retry attempts (${max}) reached. ${remaining} files remain unprocessed`);
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        `⚠ Maximum retry attempts (${max}) reached. ${remaining} files remain unprocessed`,
+      );
     });
 
     it('should log files scheduled for retry', () => {
@@ -248,7 +283,9 @@ describe('Logger Module', () => {
       logBatchProcessing.scheduled(count, mockLogger);
 
       // Assert
-      expect(mockLogger.info).toHaveBeenCalledWith(`⟳ ${count} files scheduled for retry in next attempt`);
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        `⟳ ${count} files scheduled for retry in next attempt`,
+      );
     });
 
     it('should log total repositories processed', () => {
@@ -260,7 +297,9 @@ describe('Logger Module', () => {
       logBatchProcessing.total(count, mockLogger);
 
       // Assert
-      expect(mockLogger.info).toHaveBeenCalledWith(`Total repositories processed: ${count}`);
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        `Total repositories processed: ${count}`,
+      );
     });
   });
 
@@ -277,11 +316,17 @@ describe('Logger Module', () => {
       logInitialization.directories(mockLogger);
 
       // Assert
-      expect(mockLogger.info).toHaveBeenCalledWith('Initializing repo-stats-queue application...');
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Initializing repo-stats-queue application...',
+      );
       expect(mockLogger.debug).toHaveBeenCalledWith('Creating auth config...');
-      expect(mockLogger.debug).toHaveBeenCalledWith('Initializing octokit client...');
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        'Initializing octokit client...',
+      );
       expect(mockLogger.debug).toHaveBeenCalledWith('Generating app token...');
-      expect(mockLogger.debug).toHaveBeenCalledWith('Setting up output directories...');
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        'Setting up output directories...',
+      );
     });
   });
 });

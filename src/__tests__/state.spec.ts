@@ -43,16 +43,18 @@ describe('State Management', () => {
     it('should not resume from last state if completedSuccessfully is true', () => {
       // Mock that the file exists
       (fs.existsSync as jest.Mock).mockReturnValue(true);
-      
+
       // Mock file content with completed state
-      (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify({
-        completedSuccessfully: true,
-        processedRepos: ['repo1', 'repo2'],
-        currentCursor: 'cursor1',
-        lastSuccessfulCursor: 'cursor1',
-        lastProcessedRepo: 'repo2',
-        lastSuccessTimestamp: '2025-03-19T12:00:00Z',
-      }));
+      (fs.readFileSync as jest.Mock).mockReturnValue(
+        JSON.stringify({
+          completedSuccessfully: true,
+          processedRepos: ['repo1', 'repo2'],
+          currentCursor: 'cursor1',
+          lastSuccessfulCursor: 'cursor1',
+          lastProcessedRepo: 'repo2',
+          lastSuccessTimestamp: '2025-03-19T12:00:00Z',
+        }),
+      );
 
       const { processedState, resumeFromLastState } = initializeState({
         resumeFromLastSave: true,
@@ -70,14 +72,14 @@ describe('State Management', () => {
         outputFileName: null,
       });
       expect(mockLogger.info).toHaveBeenCalledWith(
-        'All repositories were previously processed successfully. Nothing to resume.'
+        'All repositories were previously processed successfully. Nothing to resume.',
       );
     });
 
     it('should resume from last state when resumeFromLastSave is true', () => {
       // Mock that the file exists
       (fs.existsSync as jest.Mock).mockReturnValue(true);
-      
+
       // Mock file content with incomplete state
       const mockLastState = {
         completedSuccessfully: false,
@@ -88,8 +90,10 @@ describe('State Management', () => {
         lastSuccessTimestamp: '2025-03-19T12:00:00Z',
         outputFileName: null,
       };
-      
-      (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockLastState));
+
+      (fs.readFileSync as jest.Mock).mockReturnValue(
+        JSON.stringify(mockLastState),
+      );
 
       const { processedState, resumeFromLastState } = initializeState({
         resumeFromLastSave: true,
@@ -97,7 +101,7 @@ describe('State Management', () => {
       });
 
       expect(resumeFromLastState).toBe(true);
-      
+
       // Instead of comparing the entire object, check key properties
       expect(processedState.currentCursor).toBe('cursor1');
       expect(processedState.processedRepos).toEqual(['repo1', 'repo2']);
@@ -105,16 +109,16 @@ describe('State Management', () => {
       expect(processedState.lastProcessedRepo).toBe('repo2');
       expect(processedState.lastUpdated).toBe('2025-03-19T12:00:00Z');
       expect(processedState.completedSuccessfully).toBe(false);
-      
+
       expect(mockLogger.info).toHaveBeenCalledWith(
-        'Resuming from last state that was last updated: 2025-03-19T12:00:00Z'
+        'Resuming from last state that was last updated: 2025-03-19T12:00:00Z',
       );
     });
 
     it('should handle invalid state file gracefully', () => {
       // Mock that the file exists
       (fs.existsSync as jest.Mock).mockReturnValue(true);
-      
+
       // Mock an error when reading the file - need to do it this way to avoid failing the test
       (fs.readFileSync as jest.Mock).mockImplementation(() => {
         const error = new Error('Invalid JSON');
@@ -140,14 +144,14 @@ describe('State Management', () => {
         outputFileName: null,
       });
       expect(mockLogger.error).toHaveBeenCalledWith(
-        'Failed to load last state: Invalid JSON'
+        'Failed to load last state: Invalid JSON',
       );
     });
 
     it('should handle missing processedRepos in state file', () => {
       // Mock that the file exists
       (fs.existsSync as jest.Mock).mockReturnValue(true);
-      
+
       // Mock file content with missing processedRepos
       const mockLastState = {
         completedSuccessfully: false,
@@ -156,8 +160,10 @@ describe('State Management', () => {
         lastProcessedRepo: 'repo2',
         lastSuccessTimestamp: '2025-03-19T12:00:00Z',
       };
-      
-      (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockLastState));
+
+      (fs.readFileSync as jest.Mock).mockReturnValue(
+        JSON.stringify(mockLastState),
+      );
 
       const { processedState, resumeFromLastState } = initializeState({
         resumeFromLastSave: true,
@@ -167,7 +173,7 @@ describe('State Management', () => {
       expect(resumeFromLastState).toBe(true);
       expect(processedState.processedRepos).toEqual([]);
       expect(mockLogger.warn).toHaveBeenCalledWith(
-        'Invalid state file: processedRepos is missing or not an array'
+        'Invalid state file: processedRepos is missing or not an array',
       );
     });
   });
@@ -185,7 +191,7 @@ describe('State Management', () => {
       };
 
       const newCursor = 'cursor2';
-      
+
       withMockedDate(new Date('2025-03-20T15:00:00Z'), () => {
         updateState({
           state: mockState,
@@ -197,11 +203,11 @@ describe('State Management', () => {
       expect(mockState.currentCursor).toBe(newCursor);
       expect(mockState.lastUpdated).toBe('2025-03-20T15:00:00.000Z');
       expect(fs.writeFileSync).toHaveBeenCalledWith(
-        'last_known_state.json', 
-        expect.any(String)
+        'last_known_state.json',
+        expect.any(String),
       );
       expect(mockLogger.debug).toHaveBeenCalledWith(
-        `Updated cursor to: ${newCursor} for repo: undefined`
+        `Updated cursor to: ${newCursor} for repo: undefined`,
       );
     });
 
@@ -298,7 +304,7 @@ describe('State Management', () => {
       });
 
       expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to save last state')
+        expect.stringContaining('Failed to save last state'),
       );
     });
 
@@ -323,7 +329,7 @@ describe('State Management', () => {
       });
 
       expect(mockLogger.debug).not.toHaveBeenCalledWith(
-        expect.stringContaining(`Updated cursor to: ${currentCursor}`)
+        expect.stringContaining(`Updated cursor to: ${currentCursor}`),
       );
     });
   });

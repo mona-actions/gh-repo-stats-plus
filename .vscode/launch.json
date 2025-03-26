@@ -32,12 +32,7 @@
       "request": "launch",
       "name": "Jest Current File",
       "program": "${workspaceFolder}/node_modules/.bin/jest",
-      "args": [
-        "${fileBasename}",
-        "--verbose",
-        "--config",
-        "jest.config.ts"
-      ],
+      "args": ["${fileBasename}", "--verbose", "--config", "jest.config.ts"],
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "disableOptimisticBPs": true,
@@ -49,11 +44,7 @@
       "request": "launch",
       "name": "Jest All Tests",
       "program": "${workspaceFolder}/node_modules/.bin/jest",
-      "args": [
-        "--verbose",
-        "--config",
-        "jest.config.ts"
-      ],
+      "args": ["--verbose", "--config", "jest.config.ts"],
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "disableOptimisticBPs": true,

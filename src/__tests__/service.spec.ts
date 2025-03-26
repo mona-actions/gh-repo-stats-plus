@@ -11,7 +11,7 @@ describe('OctokitClient', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // Create a more flexible mock structure using plain objects
     mockOctokit = {
       rest: {
@@ -26,7 +26,7 @@ describe('OctokitClient', () => {
       },
       request: jest.fn(),
     };
-    
+
     // Add paginate to graphql mock
     mockOctokit.graphql.paginate = {
       iterator: jest.fn(),
@@ -84,7 +84,7 @@ describe('OctokitClient', () => {
         { name: 'repo1', id: 1 },
         { name: 'repo2', id: 2 },
       ];
-      
+
       // Setup paginate iterator to return mock repos
       mockOctokit.paginate.iterator.mockReturnValue({
         async *[Symbol.asyncIterator]() {
@@ -110,7 +110,7 @@ describe('OctokitClient', () => {
           headers: {
             'X-GitHub-Api-Version': '2022-11-28',
           },
-        }
+        },
       );
     });
 
@@ -136,7 +136,7 @@ describe('OctokitClient', () => {
       // Arrange
       const page1 = [{ name: 'repo1', id: 1 }];
       const page2 = [{ name: 'repo2', id: 2 }];
-      
+
       mockOctokit.paginate.iterator.mockReturnValue({
         async *[Symbol.asyncIterator]() {
           yield { data: page1 };
@@ -162,13 +162,13 @@ describe('OctokitClient', () => {
         { name: 'repo1', owner: { login: 'testorg' }, diskUsage: 1000 },
         { name: 'repo2', owner: { login: 'testorg' }, diskUsage: 2000 },
       ];
-      
+
       const mockPageInfo = {
         endCursor: 'cursor123',
         hasNextPage: false,
         startCursor: 'start123',
       };
-      
+
       mockOctokit.graphql.paginate.iterator.mockReturnValue({
         async *[Symbol.asyncIterator]() {
           yield {
@@ -198,7 +198,7 @@ describe('OctokitClient', () => {
           login: 'testorg',
           pageSize: 10,
           cursor: null,
-        }
+        },
       );
     });
 
@@ -233,7 +233,7 @@ describe('OctokitClient', () => {
           login: 'testorg',
           pageSize: 10,
           cursor,
-        }
+        },
       );
     });
   });
@@ -254,7 +254,7 @@ describe('OctokitClient', () => {
           },
         },
       };
-      
+
       mockOctokit.graphql.mockResolvedValue(mockRepoResponse);
 
       // Act
@@ -269,14 +269,11 @@ describe('OctokitClient', () => {
           startCursor: null,
         },
       });
-      expect(mockOctokit.graphql).toHaveBeenCalledWith(
-        expect.any(String),
-        {
-          owner: 'testorg',
-          name: 'testrepo',
-          pageSize: 10,
-        }
-      );
+      expect(mockOctokit.graphql).toHaveBeenCalledWith(expect.any(String), {
+        owner: 'testorg',
+        name: 'testrepo',
+        pageSize: 10,
+      });
     });
 
     it('should handle GraphQL errors', async () => {
@@ -285,8 +282,9 @@ describe('OctokitClient', () => {
       mockOctokit.graphql.mockRejectedValue(new Error(errorMessage));
 
       // Act & Assert
-      await expect(client.getRepoStats('testorg', 'nonexistent', 10))
-        .rejects.toThrow(errorMessage);
+      await expect(
+        client.getRepoStats('testorg', 'nonexistent', 10),
+      ).rejects.toThrow(errorMessage);
     });
   });
 
@@ -297,7 +295,7 @@ describe('OctokitClient', () => {
         { comments: { totalCount: 5 }, timeline: { totalCount: 10 } },
         { comments: { totalCount: 2 }, timeline: { totalCount: 7 } },
       ];
-      
+
       mockOctokit.graphql.paginate.iterator.mockReturnValue({
         async *[Symbol.asyncIterator]() {
           yield {
@@ -313,7 +311,11 @@ describe('OctokitClient', () => {
 
       // Act
       const result = [];
-      for await (const issue of client.getRepoIssues('testorg', 'testrepo', 10)) {
+      for await (const issue of client.getRepoIssues(
+        'testorg',
+        'testrepo',
+        10,
+      )) {
         result.push(issue);
       }
 
@@ -326,7 +328,7 @@ describe('OctokitClient', () => {
           repo: 'testrepo',
           pageSize: 10,
           cursor: null,
-        }
+        },
       );
     });
   });
@@ -335,22 +337,22 @@ describe('OctokitClient', () => {
     it('should yield pull requests from paginated results', async () => {
       // Arrange
       const mockPRs = [
-        { 
-          number: 1, 
-          comments: { totalCount: 5 }, 
+        {
+          number: 1,
+          comments: { totalCount: 5 },
           commits: { totalCount: 3 },
           timeline: { totalCount: 10 },
           reviews: { totalCount: 2, nodes: [] },
         },
-        { 
-          number: 2, 
-          comments: { totalCount: 7 }, 
+        {
+          number: 2,
+          comments: { totalCount: 7 },
           commits: { totalCount: 5 },
           timeline: { totalCount: 15 },
           reviews: { totalCount: 3, nodes: [] },
         },
       ];
-      
+
       mockOctokit.graphql.paginate.iterator.mockReturnValue({
         async *[Symbol.asyncIterator]() {
           yield {
@@ -366,7 +368,11 @@ describe('OctokitClient', () => {
 
       // Act
       const result = [];
-      for await (const pr of client.getRepoPullRequests('testorg', 'testrepo', 10)) {
+      for await (const pr of client.getRepoPullRequests(
+        'testorg',
+        'testrepo',
+        10,
+      )) {
         result.push(pr);
       }
 
@@ -379,7 +385,7 @@ describe('OctokitClient', () => {
           repo: 'testrepo',
           pageSize: 10,
           cursor: null,
-        }
+        },
       );
     });
   });
@@ -397,7 +403,7 @@ describe('OctokitClient', () => {
         headers: {},
         status: 200,
         url: 'https://api.github.com/rate_limit',
-        retryCount: 0
+        retryCount: 0,
       });
 
       // Act
@@ -422,7 +428,7 @@ describe('OctokitClient', () => {
         headers: {},
         status: 200,
         url: 'https://api.github.com/rate_limit',
-        retryCount: 0
+        retryCount: 0,
       });
 
       jest.spyOn(global, 'setTimeout').mockImplementation((cb: any) => {
@@ -436,7 +442,9 @@ describe('OctokitClient', () => {
       // Assert
       expect(result.graphQLRemaining).toBe(0);
       expect(result.messageType).toBe('warning');
-      expect(result.message).toContain('We have run out of GraphQL calls and need to sleep');
+      expect(result.message).toContain(
+        'We have run out of GraphQL calls and need to sleep',
+      );
     });
 
     it('should handle rate limit APIs being disabled', async () => {
@@ -448,7 +456,7 @@ describe('OctokitClient', () => {
         headers: {},
         status: 200,
         url: 'https://api.github.com/rate_limit',
-        retryCount: 0
+        retryCount: 0,
       });
 
       // Act
@@ -484,25 +492,29 @@ describe('OctokitClient', () => {
         headers: {},
         status: 200,
         url: 'https://api.github.com/rate_limit',
-        retryCount: 0
+        retryCount: 0,
       });
 
       // Mock setTimeout to skip waiting
-      const mockSetTimeout = jest.spyOn(global, 'setTimeout').mockImplementation((cb: any) => {
-        cb();
-        return {} as any;
-      });
+      const mockSetTimeout = jest
+        .spyOn(global, 'setTimeout')
+        .mockImplementation((cb: any) => {
+          cb();
+          return {} as any;
+        });
 
       // Act
       await client.checkRateLimits(1, 1); // 1ms sleep, 1 max retry
-      
+
       // We need to call it a second time to exceed max retries
       mockSetTimeout.mockClear();
       const finalResult = await client.checkRateLimits(1, 1);
 
       // Assert
       expect(finalResult.messageType).toBe('warning');
-      expect(finalResult.message).toContain('We have run out of GraphQL calls and need to sleep');
+      expect(finalResult.message).toContain(
+        'We have run out of GraphQL calls and need to sleep',
+      );
     });
   });
 });

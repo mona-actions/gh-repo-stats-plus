@@ -5,7 +5,7 @@
 /**
  * Executes a function with a mocked Date object
  * Restores the original Date after execution to prevent test pollution
- * 
+ *
  * @param mockDate The date to use during test execution
  * @param testFn The function to execute with the mocked date
  */
@@ -22,7 +22,7 @@ export function withMockedDate(mockDate: Date, testFn: () => void): void {
         return mockDate.getTime();
       }
     } as any;
-    
+
     // Execute the test function with our mocked Date
     testFn();
   } finally {
@@ -33,7 +33,7 @@ export function withMockedDate(mockDate: Date, testFn: () => void): void {
 
 /**
  * Creates a simple mock logger object that can be used in tests
- * 
+ *
  * @returns A mock logger with jest spy functions
  */
 export function createMockLogger() {
