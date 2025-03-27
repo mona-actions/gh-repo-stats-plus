@@ -10,23 +10,23 @@ repo-stats-ts builds upon the solid foundation of the original gh-repo-stats pro
 
 This TypeScript rewrite offers several advantages:
 
-1. **Streaming Processing with Async Generators**: Writes results incrementally as they're processed rather than collecting everything up front, resulting in better memory management and reliability.
-
-2. **State Persistence**: Saves processing state to a `last_known_state.json` file after each successful repository, storing the current cursor position and processed repositories.
-
-3. **Resume Capability**: Can resume operations from the last saved state in case of interruptions or failures.
-
-4. **Smart Duplicate Avoidance**: Skips already processed repositories when resuming to prevent duplicates and save processing time.
-
-5. **Advanced Retry Logic**: Implements exponential backoff strategy for retries to gracefully handle rate limits and transient errors.
-
-6. **Octokit SDK Integration**: Built on GitHub's official Octokit.js SDK, providing:
+1. **Octokit SDK Integration**: Built on GitHub's official Octokit.js SDK, providing:
 
    - Token renewal
    - Built-in retries
    - Rate limit handling
    - Pagination
    - GraphQL and REST API support
+     
+2. **Streaming Processing with Async Generators**: Writes results incrementally as they're processed rather than collecting everything up front, resulting in better memory management and reliability.
+
+3. **State Persistence**: Saves processing state to a `last_known_state.json` file after each successful repository, storing the current cursor position and processed repositories.
+
+4. **Resume Capability**: Can resume operations from the last saved state in case of interruptions or failures.
+
+5. **Smart Duplicate Avoidance**: Skips already processed repositories when resuming to prevent duplicates and save processing time.
+
+6. **Advanced Retry Logic**: Implements exponential backoff strategy for retries to gracefully handle rate limits and transient errors.
 
 7. **Enhanced Debugging**: Easier to debug and maintain with modern TypeScript development tools like VS Code.
 
