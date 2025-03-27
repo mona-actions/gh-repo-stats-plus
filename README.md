@@ -158,20 +158,6 @@ npm start missing-repos -- -f your-repo-stats-file.csv
 
 The debugger will automatically use environment variables from your `.env` file.
 
-## Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/scottluskcis/repo-stats-ts.git
-cd repo-stats-ts
-
-# Install dependencies
-npm install
-
-# Build the project
-npm run build
-```
-
 ## Commands
 
 ### Repo Stats Command
