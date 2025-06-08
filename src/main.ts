@@ -754,7 +754,7 @@ function mapToRepoStatsResult(
     Commit_Comment_Count: repo.commitComments.totalCount,
     Milestone_Count: repo.milestones.totalCount,
     PR_Count: repo.pullRequests.totalCount,
-    Project_Count: repo.projects.totalCount,
+    Project_Count: repo.projectsV2.totalCount,
     Branch_Count: repo.branches.totalCount,
     Release_Count: repo.releases.totalCount,
     Issue_Count: issueStats.totalIssuesCount,
@@ -790,7 +790,7 @@ function calculateRecordCount(
     issueStats.issueEventCount +
     prStats.issueEventCount +
     repo.releases.totalCount +
-    repo.projects.totalCount
+    repo.projectsV2.totalCount
   );
 }
 
