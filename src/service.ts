@@ -108,7 +108,7 @@ export class OctokitClient {
               owner {
                 login
               }
-              projects {
+              projectsV2 {
                 totalCount
               }
               pullRequests(first: $pageSize) {
@@ -223,7 +223,7 @@ export class OctokitClient {
           owner {
             login
           }
-          projects {
+          projectsV2 {
             totalCount
           }
           pullRequests(first: $pageSize) {

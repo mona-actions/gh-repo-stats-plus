@@ -137,7 +137,7 @@ export interface RepositoryStats {
   milestones: TotalCount;
   name: string;
   owner: RepositoryOwner;
-  projects: TotalCount;
+  projectsV2: TotalCount;
   pullRequests: PullRequestsConnection;
   pushedAt: string;
   releases: TotalCount;
