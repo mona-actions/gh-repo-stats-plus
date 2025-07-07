@@ -108,6 +108,15 @@ gh repo-stats-plus repo-stats --organization my-org --output-dir reports
 ```
 
 ### Resume Long-Running Collection
+The debugger will automatically use environment variables from your `.env` file.
+
+## Commands
+
+### Repo Stats Command
+
+Gathers repository statistics for a single organization or multiple organizations:
+
+**Single Organization:**
 
 ```bash
 gh repo-stats-plus repo-stats --organization my-org --resume-from-last-save
@@ -140,7 +149,93 @@ gh repo-stats-plus missing-repos \
 gh repo-stats-plus repo-stats --organization my-org --auto-process-missing
 ```
 
-## Development
+The application will automatically detect any already processed repositories, resume from the last position in the API pagination, and continue adding results to the existing CSV file.
+
+## Permissions
+
+The permissions needed by repo-stats-ts depends on the authentication method:
+
+### For Personal Access Token (PAT):
+
+- `repo`: Full control of private repositories
+- `read:org`: Read organization membership
+- `read:user`: Read user information
+
+### For GitHub App:
+
+The app requires `Read-only` permissions to the following:
+
+- Repository Administration
+- Repository Contents
+- Repository Issues
+- Repository Metadata
+- Repository Projects
+- Repository Pull requests
+- Organization Members
+
+## Output
+
+The tool generates:
+
+1. A CSV file with repository statistics
+2. A `last_known_state.json` file with the current processing state
+3. Log files in the `logs/` directory
+
+### CSV Output Columns
+
+The CSV output includes detailed information about each repository:
+
+- `Org_Name`: Organization login
+- `Repo_Name`: Repository name
+- `Is_Empty`: Whether the repository is empty
+- `Last_Push`: Date/time when a push was last made
+- `Last_Update`: Date/time when an update was last made
+- `isFork`: Whether the repository is a fork
+- `isArchived`: Whether the repository is archived
+- `Repo_Size_mb`: Size of the repository in megabytes
+- `Record_Count`: Total number of database records this repository represents
+- `Collaborator_Count`: Number of users who have contributed to this repository
+- `Protected_Branch_Count`: Number of branch protection rules on this repository
+- `PR_Review_Count`: Number of pull request reviews
+- `Milestone_Count`: Number of issue milestones
+- `Issue_Count`: Number of issues
+- `PR_Count`: Number of pull requests
+- `PR_Review_Comment_Count`: Number of pull request review comments
+- `Commit_Comment_Count`: Number of commit comments
+- `Issue_Comment_Count`: Number of issue comments
+- `Issue_Event_Count`: Number of issue events
+- `Release_Count`: Number of releases
+- `Project_Count`: Number of projects
+- `Branch_Count`: Number of branches
+- `Tag_Count`: Number of tags
+- `Discussion_Count`: Number of discussions
+- `Has_Wiki`: Whether the repository has wiki feature enabled
+- `Full_URL`: Repository URL
+- `Migration_Issue`: Indicates whether the repository might have problems during migration due to:
+  - 60,000 or more objects being imported
+  - 1.5 GB or larger size on disk
+- `Created`: Date/time when the repository was created
+
+## Advanced Usage Examples
+
+### Process Multiple Organizations
+
+```bash
+# Create a file with organizations to process
+echo "microsoft
+google
+facebook
+github
+netflix" > my-orgs.txt
+
+# Process all organizations
+npm start repo-stats -- --org-list my-orgs.txt -t <github-token>
+
+# Process with custom delays and error handling
+npm start repo-stats -- --org-list my-orgs.txt -t <github-token> --delay-between-orgs 10 --continue-on-error
+```
+
+### Resume from a Previous Run
 
 ```bash
 git clone https://github.com/mona-actions/gh-repo-stats-plus.git

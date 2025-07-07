@@ -7,20 +7,28 @@ import {
 import { Arguments } from '../types.js';
 import VERSION from '../version.js';
 
-import { run } from '../main.js';
+import { run, runMultiOrg } from '../main.js';
 
 const repoStatsCommand = new commander.Command();
 const { Option } = commander;
 
 repoStatsCommand
   .name('repo-stats')
-  .description('Gathers repo-stats for all repositories in an organization')
+  .description(
+    'Gathers repo-stats for all repositories in an organization or multiple organizations',
+  )
   .version(VERSION)
   .addOption(
     new Option(
       '-o, --org-name <org>',
       'The name of the organization to process',
     ).env('ORG_NAME'),
+  )
+  .addOption(
+    new Option(
+      '--org-list <file>',
+      'Path to file containing list of organizations to process (one org per line)',
+    ).env('ORG_LIST'),
   )
   .addOption(
     new Option('-t, --access-token <token>', 'GitHub access token').env(
@@ -159,11 +167,45 @@ repoStatsCommand
       .default('false')
       .argParser(parseBooleanOption),
   )
+  .addOption(
+    new Option(
+      '--delay-between-orgs <seconds>',
+      'Delay between processing organizations in seconds (for multi-org mode)',
+    )
+      .env('DELAY_BETWEEN_ORGS')
+      .default('5')
+      .argParser(parseIntOption),
+  )
+  .addOption(
+    new Option(
+      '--continue-on-error',
+      'Continue processing other organizations if one fails (for multi-org mode)',
+    ).env('CONTINUE_ON_ERROR'),
+  )
   .action(async (options: Arguments) => {
     console.log('Version:', VERSION);
 
+    // Validate that either org-name or org-list is provided
+    if (!options.orgName && !options.orgList) {
+      console.error('Error: Either --org-name or --org-list must be provided');
+      process.exit(1);
+    }
+
+    if (options.orgName && options.orgList) {
+      console.error('Error: Cannot specify both --org-name and --org-list');
+      process.exit(1);
+    }
+
     console.log('Starting repo-stats...');
-    await run(options);
+
+    if (options.orgList) {
+      // Multi-org processing
+      await runMultiOrg(options);
+    } else {
+      // Single org processing
+      await run(options);
+    }
+
     console.log('Repo-stats completed.');
   });
 
