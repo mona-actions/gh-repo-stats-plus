@@ -14,7 +14,11 @@ import {
 } from './types.js';
 import { createLogger, logInitialization } from './logger.js';
 import { createAuthConfig } from './auth.js';
-import { initializeState, updateState } from './state.js';
+import {
+  initializeState,
+  updateState,
+  clearCompletedOrgState,
+} from './state.js';
 import { appendFileSync, existsSync, writeFileSync } from 'fs';
 import { withRetry, RetryConfig } from './retry.js';
 import {
@@ -35,7 +39,7 @@ const _init = async (
   processedState: ProcessedPageState;
   retryConfig: RetryConfig;
 }> => {
-  const logFileName = `${opts.orgName}-repo-stats-${
+  const logFileName = `${opts.orgName!}-repo-stats-${
     new Date().toISOString().split('T')[0]
   }.log`;
   const logger = await createLogger(opts.verbose, logFileName);
@@ -57,6 +61,7 @@ const _init = async (
   const { processedState, resumeFromLastState } = initializeState({
     resumeFromLastSave: opts.resumeFromLastSave || false,
     logger,
+    orgName: opts.orgName,
   });
 
   let fileName = '';
@@ -64,13 +69,13 @@ const _init = async (
     fileName = processedState.outputFileName || '';
     logger.info(`Resuming from last state. Using existing file: ${fileName}`);
   } else {
-    fileName = generateRepoStatsFileName(opts.orgName);
+    fileName = generateRepoStatsFileName(opts.orgName!);
 
     initializeCsvFile(fileName, logger);
     logger.info(`Results will be saved to file: ${fileName}`);
 
     processedState.outputFileName = fileName;
-    updateState({ state: processedState, logger });
+    updateState({ state: processedState, logger, orgName: opts.orgName });
   }
 
   const retryConfig: RetryConfig = {
@@ -136,7 +141,7 @@ export async function run(opts: Arguments): Promise<void> {
           `Processing completed successfully: ${processedState.completedSuccessfully}`,
       );
 
-      updateState({ state: processedState, logger });
+      updateState({ state: processedState, logger, orgName: opts.orgName });
 
       // Check for and process missing repositories if enabled
       if (opts.autoProcessMissing && result.isComplete) {
@@ -167,9 +172,190 @@ export async function run(opts: Arguments): Promise<void> {
           `Error: ${state.error?.message}\n` +
           `Elapsed time so far: ${formatElapsedTime(startTime, new Date())}`,
       );
-      updateState({ state: processedState, logger });
+      updateState({ state: processedState, logger, orgName: opts.orgName });
     },
   );
+}
+
+export async function runMultiOrg(opts: Arguments): Promise<void> {
+  const { orgList, delayBetweenOrgs = 5, continueOnError = false } = opts;
+
+  if (!orgList) {
+    throw new Error(
+      'Organization list file path is required for multi-org processing',
+    );
+  }
+
+  // Validate that the org list file exists
+  if (!existsSync(orgList)) {
+    throw new Error(`Organization list file not found: ${orgList}`);
+  }
+
+  // Read and parse the organization list
+  const orgListContent = readFileSync(orgList, 'utf-8')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line !== '' && !line.startsWith('#')); // Filter empty lines and comments
+
+  if (orgListContent.length === 0) {
+    throw new Error(`No organizations found in file: ${orgList}`);
+  }
+
+  // Create a summary logger for the multi-org process
+  const summaryLogger = await createLogger(
+    opts.verbose || false,
+    `multi-org-summary-${new Date().toISOString().split('T')[0]}.log`,
+  );
+
+  summaryLogger.info(
+    `Starting processing of ${orgListContent.length} organizations`,
+  );
+  summaryLogger.info(`Organizations to process: ${orgListContent.join(', ')}`);
+
+  const results: Array<{
+    org: string;
+    success: boolean;
+    error?: string;
+    startTime: Date;
+    endTime?: Date;
+  }> = [];
+
+  let totalProcessed = 0;
+  let totalSuccessful = 0;
+  let totalFailed = 0;
+
+  for (const [index, orgName] of orgListContent.entries()) {
+    const orgStartTime = new Date();
+    summaryLogger.info(
+      `[${index + 1}/${
+        orgListContent.length
+      }] Starting processing for organization: ${orgName}`,
+    );
+
+    try {
+      // Create organization-specific options
+      const orgOptions: Arguments = {
+        ...opts,
+        orgName: orgName.trim(),
+        orgList: undefined, // Clear orgList to prevent infinite recursion
+      };
+
+      // Process the organization
+      await run(orgOptions);
+
+      const orgEndTime = new Date();
+      const duration = (orgEndTime.getTime() - orgStartTime.getTime()) / 1000;
+
+      results.push({
+        org: orgName,
+        success: true,
+        startTime: orgStartTime,
+        endTime: orgEndTime,
+      });
+
+      totalSuccessful++;
+      summaryLogger.info(
+        `[${index + 1}/${
+          orgListContent.length
+        }] Successfully completed processing for organization: ${orgName} (${duration}s)`,
+      );
+
+      // Add delay between organizations (except for the last one)
+      if (index < orgListContent.length - 1 && delayBetweenOrgs > 0) {
+        summaryLogger.info(
+          `Waiting ${delayBetweenOrgs} seconds before processing next organization...`,
+        );
+        await new Promise((resolve) =>
+          setTimeout(resolve, delayBetweenOrgs * 1000),
+        );
+      }
+    } catch (error) {
+      const orgEndTime = new Date();
+      const duration = (orgEndTime.getTime() - orgStartTime.getTime()) / 1000;
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
+      results.push({
+        org: orgName,
+        success: false,
+        error: errorMessage,
+        startTime: orgStartTime,
+        endTime: orgEndTime,
+      });
+
+      totalFailed++;
+      summaryLogger.error(
+        `[${index + 1}/${
+          orgListContent.length
+        }] Failed to process organization: ${orgName} (${duration}s) - Error: ${errorMessage}`,
+      );
+
+      if (!continueOnError) {
+        summaryLogger.error(
+          'Stopping processing due to error (use --continue-on-error to continue)',
+        );
+        throw error;
+      } else {
+        summaryLogger.warn(
+          'Continuing with next organization due to --continue-on-error flag',
+        );
+
+        // Still add delay even after error (except for the last one)
+        if (index < orgListContent.length - 1 && delayBetweenOrgs > 0) {
+          summaryLogger.info(
+            `Waiting ${delayBetweenOrgs} seconds before processing next organization...`,
+          );
+          await new Promise((resolve) =>
+            setTimeout(resolve, delayBetweenOrgs * 1000),
+          );
+        }
+      }
+    }
+
+    totalProcessed++;
+  }
+
+  // Log final summary
+  summaryLogger.info('\n' + '='.repeat(80));
+  summaryLogger.info('MULTI-ORG PROCESSING SUMMARY');
+  summaryLogger.info('='.repeat(80));
+  summaryLogger.info(`Total organizations processed: ${totalProcessed}`);
+  summaryLogger.info(`Successful: ${totalSuccessful}`);
+  summaryLogger.info(`Failed: ${totalFailed}`);
+  summaryLogger.info(
+    `Success rate: ${((totalSuccessful / totalProcessed) * 100).toFixed(1)}%`,
+  );
+  summaryLogger.info('\nDetailed Results:');
+
+  for (const result of results) {
+    const duration = result.endTime
+      ? (
+          (result.endTime.getTime() - result.startTime.getTime()) /
+          1000
+        ).toFixed(1)
+      : 'N/A';
+    const status = result.success ? '✅ SUCCESS' : '❌ FAILED';
+    const errorInfo = result.error ? ` - ${result.error}` : '';
+
+    summaryLogger.info(`  ${result.org}: ${status} (${duration}s)${errorInfo}`);
+  }
+
+  summaryLogger.info('='.repeat(80));
+
+  // Clean up completed organization states after all processing is done
+  summaryLogger.info('Cleaning up completed organization states...');
+  for (const result of results) {
+    if (result.success) {
+      clearCompletedOrgState(result.org, summaryLogger);
+    }
+  }
+
+  // If there were failures and we continued, inform about them
+  if (totalFailed > 0 && continueOnError) {
+    summaryLogger.warn(
+      `⚠️  ${totalFailed} organization(s) failed processing. Check individual logs for details.`,
+    );
+  }
 }
 
 async function processMissingRepositories({
@@ -206,13 +392,11 @@ async function processMissingRepositories({
   );
 
   // Create temporary file with missing repos
-  const missingReposFile = `${
-    opts.orgName
-  }-missing-repos-${new Date().getTime()}.txt`;
+  const missingReposFile = `${opts.orgName!}-missing-repos-${new Date().getTime()}.txt`;
   writeFileSync(
     missingReposFile,
     missingReposResult.missingRepos
-      .map((repo) => `${opts.orgName}/${repo}`)
+      .map((repo) => `${opts.orgName!}/${repo}`)
       .join('\n'),
   );
   logger.info(`Created temporary file with missing repos: ${missingReposFile}`);
@@ -348,12 +532,14 @@ async function* processRepoStats({
   logger,
   extraPageSize,
   processedState,
+  orgName,
 }: {
   reposIterator: AsyncGenerator<RepositoryStats, void, unknown>;
   client: OctokitClient;
   logger: Logger;
   extraPageSize: number;
   processedState: ProcessedPageState;
+  orgName?: string;
 }): AsyncGenerator<RepoStatsResult> {
   for await (const repo of reposIterator) {
     if (repo.pageInfo?.endCursor) {
@@ -361,6 +547,7 @@ async function* processRepoStats({
         state: processedState,
         newCursor: repo.pageInfo.endCursor,
         logger,
+        orgName,
       });
     }
 
@@ -412,6 +599,7 @@ async function handleRepoProcessingSuccess({
     repoName: result.Repo_Name,
     lastSuccessfulCursor: currentCursor,
     logger,
+    orgName: opts.orgName,
   });
 
   // Check rate limits after configured interval
@@ -541,7 +729,7 @@ async function processRepositories({
   logger.info(`Using start cursor: ${startCursor}`);
 
   const reposIterator = client.getOrgRepoStats(
-    opts.orgName,
+    opts.orgName!,
     opts.pageSize || 10,
     startCursor,
   );
@@ -556,6 +744,7 @@ async function processRepositories({
       logger,
       extraPageSize: opts.extraPageSize || 50,
       processedState,
+      orgName: opts.orgName,
     })) {
       try {
         if (processedState.processedRepos.includes(result.Repo_Name)) {
@@ -988,7 +1177,7 @@ export async function checkForMissingRepos({
   missingRepos: string[];
 }> {
   const { logger, client } = await _init(opts);
-  const org = opts.orgName.toLowerCase();
+  const org = opts.orgName!.toLowerCase();
   const per_page = opts.pageSize || 10;
 
   logger.debug(`Checking for missing repositories in organization: ${org}`);
