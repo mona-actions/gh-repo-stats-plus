@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # Check if Node.js is available
-if ! command -v node &> /dev/null; then
+if ! command -v node >/dev/null 2>&1; then
     echo "Error: Node.js is required but not installed."
     echo "Please install Node.js and try again."
     exit 1
