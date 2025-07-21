@@ -72,12 +72,10 @@ for PLATFORM in "${PLATFORMS[@]}"; do
     echo "Building for ${OS}/${ARCH} (pkg: ${PKG_TARGET})..."
     
     # Use pkg to create standalone executable
-    npx pkg dist/index.js \
+    if npx pkg dist/index.js \
         --targets "$PKG_TARGET" \
         --output "dist/${OUTPUT_NAME}" \
-        --compress GZip
-        
-    if [ $? -eq 0 ]; then
+        --compress GZip; then
         echo "✓ Created: dist/${OUTPUT_NAME}"
     else
         echo "✗ Failed to create: dist/${OUTPUT_NAME}"
