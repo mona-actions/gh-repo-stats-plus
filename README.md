@@ -1,6 +1,160 @@
 # gh-repo-stats-plus
 
-A TypeScript implementation for gathering GitHub repository statistics, including issues, pull requests, and more metrics to aid in repository analysis and migration planning. This project is a port of [mona-actions/gh-repo-stats](https://github.com/mona-actions/gh-repo-stats) from Bash to TypeScript, with significant enhancements and new features.
+A GitHub CLI extension for gathering comprehensive repository statistics from GitHub organizations. This TypeScript implementation builds on [mona-actions/gh-repo-stats](https://github.com/mona-actions/gh-repo-stats), adding modern features and performance improvements for enterprise-scale repository analysis and migration planning.
+
+This extension uses the **interpreted extension approach** as described in the [GitHub CLI Extensions documentation](https://docs.github.com/en/github-cli/github-cli/creating-github-cli-extensions#creating-an-interpreted-extension-manually), providing a lightweight and cross-platform solution that runs on any system with Node.js.
+
+## Prerequisites
+
+- **GitHub CLI**: [Install the GitHub CLI](https://cli.github.com/) (version 2.0 or later)
+- **Node.js**: Version 16 or later ([Download Node.js](https://nodejs.org/))
+- **npm**: Comes with Node.js (used for dependency management)
+
+## Installation
+
+Install this extension using the GitHub CLI:
+
+```bash
+gh extension install mona-actions/gh-repo-stats-plus
+```
+
+### Alternative Installation Methods
+
+**Install from a specific release:**
+
+```bash
+gh extension install mona-actions/gh-repo-stats-plus --pin v1.0.0
+```
+
+**Install for development (from source):**
+
+```bash
+git clone https://github.com/mona-actions/gh-repo-stats-plus.git
+cd gh-repo-stats-plus
+gh extension install .
+```
+
+## Usage
+
+After installation, you can use the extension with the `gh` command:
+
+```bash
+# View help and available commands
+gh repo-stats-plus --help
+
+# Gather repository statistics for an organization
+gh repo-stats-plus repo-stats --organization my-org
+
+# Find repositories missing from a CSV file
+gh repo-stats-plus missing-repos --organization my-org --file my-repos.csv
+```
+
+### Authentication
+
+The extension uses your existing GitHub CLI authentication. If you haven't authenticated yet:
+
+```bash
+gh auth login
+```
+
+### Command Examples
+
+**Gather comprehensive repository statistics:**
+
+```bash
+gh repo-stats-plus repo-stats --organization myorg --output-format json
+```
+
+**Check for missing repositories:**
+
+```bash
+gh repo-stats-plus missing-repos --organization myorg --file expected-repos.csv
+```
+
+## Upgrading
+
+To upgrade to the latest version:
+
+```bash
+gh extension upgrade repo-stats-plus
+```
+
+To upgrade to a specific version:
+
+```bash
+gh extension upgrade repo-stats-plus --pin v2.0.0
+```
+
+## Uninstalling
+
+To remove the extension:
+
+```bash
+gh extension remove repo-stats-plus
+```
+
+## Troubleshooting
+
+### Extension not found
+
+If you get a "command not found" error:
+
+1. Verify the extension is installed: `gh extension list`
+2. Reinstall if needed: `gh extension install mona-actions/gh-repo-stats-plus`
+
+### Node.js not found
+
+The extension requires Node.js. Install it from [nodejs.org](https://nodejs.org/) and ensure it's in your PATH.
+
+### Permission errors
+
+If you encounter permission errors during installation, you may need to:
+
+1. Update your GitHub CLI: `gh extension upgrade gh`
+2. Check your GitHub authentication: `gh auth status`
+
+## Development
+
+This extension is built using:
+
+- **TypeScript** for type safety and modern JavaScript features
+- **Rollup** for efficient bundling
+- **GitHub Octokit SDK** for robust GitHub API integration
+- **Commander.js** for CLI argument parsing
+- **Winston** for structured logging
+
+## Architecture & Approach
+
+This extension follows the **interpreted extension pattern** as recommended by GitHub CLI documentation. This approach provides several advantages:
+
+### Interpreted vs. Precompiled Extensions
+
+- **✅ Interpreted Extension (This Extension)**
+
+  - Lightweight distribution (source code only)
+  - Cross-platform compatibility (works wherever Node.js works)
+  - Simple installation and upgrades
+  - Fast development cycle
+  - No compilation required for users
+
+- **❌ Precompiled Extensions**
+  - Large binary files (50+ MB per platform)
+  - Complex build pipelines
+  - Platform-specific distributions
+  - Slower development cycles
+
+### Technical Implementation
+
+The extension is built using modern TypeScript patterns with:
+
+- **Async Generators** for streaming large datasets
+- **Retry Logic** with exponential backoff
+- **Rate Limit Handling** via GitHub Octokit SDK
+- **State Persistence** for resumable operations
+- **Comprehensive Logging** with Winston
+- **Type Safety** throughout the codebase
+
+For more details about GitHub CLI extension development, see the [official documentation](https://docs.github.com/en/github-cli/github-cli/creating-github-cli-extensions).
 
 ## Overview
 
