@@ -226,6 +226,62 @@ src/
 └── version.ts         # Version information
 ```
 
+## Release Process
+
+The GitHub CLI extension follows a pre-built distribution model where built artifacts are committed to the repository for easier installation.
+
+### Preparing for Release
+
+Use the automated release preparation script:
+
+```bash
+npm run prepare-release
+```
+
+This script will:
+
+1. Install dependencies
+2. Run tests
+3. Run linter
+4. Build the extension
+5. Verify the build output
+6. Make files executable
+
+### Manual Release Steps
+
+If you need to prepare a release manually:
+
+```bash
+# 1. Ensure code is ready
+npm install
+npm test
+npm run lint
+
+# 2. Build the extension
+npm run build
+
+# 3. Ensure built files are executable
+chmod +x dist/index.js
+
+# 4. Add built files to git (they're included in releases)
+git add dist/
+git commit -m "Update built extension for release"
+
+# 5. Create and push a release tag
+git tag v1.x.x
+git push origin v1.x.x
+
+# 6. Create GitHub release
+gh release create v1.x.x --generate-notes
+```
+
+### Important Notes
+
+- **Built files are committed**: Unlike typical Node.js projects, the `dist/` folder is committed to the repository
+- **No build process for users**: Users installing via `gh extension install` get pre-built files
+- **Version management**: Update the version in `package.json` before release
+- **Testing installations**: Test with `gh extension install owner/repo-name` before public release
+
 ## Contributing
 
 1. Fork the repository
