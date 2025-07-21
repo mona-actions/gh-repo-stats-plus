@@ -23,8 +23,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
-        run: npm run bundle
+      - name: Run tests
+        run: npm test
+
+      - name: Build and validate
+        run: |
+          npm run bundle
+          # Verify built files exist
+          if [ ! -f "dist/index.js" ]; then
+            echo "Error: Built file dist/index.js not found"
+            exit 1
+          fi
+          # Make executable
+          chmod +x dist/index.js
+          # Test that it runs
+          ./gh-repo-stats-plus --help
 
       - name: Create Release
         env:

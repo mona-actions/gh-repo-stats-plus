@@ -61,6 +61,7 @@ The extension is built using modern TypeScript patterns with:
 - **State Persistence** for resumable operations
 - **Comprehensive Logging** with Winston
 - **Type Safety** throughout the codebase
+- **Pre-built Distribution** for easy installation without build dependencies
 
 ## Documentation
 

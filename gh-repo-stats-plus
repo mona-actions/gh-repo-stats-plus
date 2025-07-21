@@ -17,15 +17,16 @@ fi
 
 # Check if the bundled script exists
 if [ ! -f "$SCRIPT_DIR/dist/index.js" ]; then
-    echo "Error: Extension not built. Building now..."
-    if command -v npm &> /dev/null; then
-        npm install --production
-        npm run build
-    else
-        echo "Error: npm is required to build the extension."
-        echo "Please install npm and run 'npm install && npm run build' in the extension directory."
-        exit 1
-    fi
+    echo "Error: Extension bundle not found at $SCRIPT_DIR/dist/index.js"
+    echo "This appears to be a development installation or the extension was not properly built."
+    echo ""
+    echo "If you're installing from source, please run:"
+    echo "  cd $SCRIPT_DIR"
+    echo "  npm install"
+    echo "  npm run build"
+    echo ""
+    echo "If you installed via 'gh extension install', please report this as a bug."
+    exit 1
 fi
 
 # Execute the Node.js script with all arguments passed through
