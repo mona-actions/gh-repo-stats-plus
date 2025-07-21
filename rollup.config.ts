@@ -8,15 +8,18 @@ import json from '@rollup/plugin-json';
 const config = {
   input: 'src/index.ts',
   output: {
-    esModule: true,
     file: 'dist/index.js',
-    format: 'es',
+    format: 'es', // ES modules for Node.js
     sourcemap: true,
+    banner: '#!/usr/bin/env node',
   },
   plugins: [
-    json(), // Add this plugin first
+    json(),
     typescript(),
-    nodeResolve({ preferBuiltins: true }),
+    nodeResolve({
+      preferBuiltins: true,
+      exportConditions: ['node'],
+    }),
     commonjs(),
   ],
   // Mark node_modules as external to avoid bundling them
@@ -28,10 +31,9 @@ const config = {
     '@octokit/graphql',
     '@octokit/plugin-paginate-graphql',
     '@octokit/plugin-throttling',
-    'execa',
-    'shell-quote',
+    'commander',
     '@fast-csv/parse',
-    'csv-stringify',
+    'csv-parse',
     'undici',
   ],
 };

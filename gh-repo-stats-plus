@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+set -e
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Change to the extension directory
+cd "$SCRIPT_DIR"
+
+# Check if Node.js is available
+if ! command -v node >/dev/null 2>&1; then
+    echo "Error: Node.js is required but not installed."
+    echo "Please install Node.js and try again."
+    exit 1
+fi
+
+# Check if the bundled script exists
+if [ ! -f "$SCRIPT_DIR/dist/index.js" ]; then
+    echo "Error: Extension not built. Building now..."
+    if command -v npm &> /dev/null; then
+        npm install --production
+        npm run build
+    else
+        echo "Error: npm is required to build the extension."
+        echo "Please install npm and run 'npm install && npm run build' in the extension directory."
+        exit 1
+    fi
+fi
+
+# Execute the Node.js script with all arguments passed through
+exec node "$SCRIPT_DIR/dist/index.js" "$@"

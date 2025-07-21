@@ -9,15 +9,23 @@
     "package": "npx rollup --config rollup.config.ts --configPlugin @rollup/plugin-typescript",
     "package:watch": "npm run package -- --watch",
     "test": "NODE_OPTIONS=--experimental-vm-modules NODE_NO_WARNINGS=1 npx jest",
-    "lint:fix": "eslint \"**/*.ts\" --fix"
+    "lint:fix": "eslint \"**/*.ts\" --fix",
+    "build": "npm run bundle"
   },
-  "name": "repo-stats-queue",
-  "version": "0.0.1",
-  "main": "index.js",
-  "keywords": [],
+  "name": "gh-repo-stats-plus",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "description": "GitHub CLI extension for gathering comprehensive repository statistics from GitHub organizations",
+  "keywords": [
+    "github",
+    "cli",
+    "extension",
+    "statistics",
+    "repository",
+    "analysis"
+  ],
   "author": "",
-  "license": "ISC",
-  "description": "",
+  "license": "MIT",
   "type": "module",
   "devDependencies": {
     "@octokit/openapi-types": "^24.0.0",

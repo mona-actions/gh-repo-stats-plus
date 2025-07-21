@@ -33,3 +33,4 @@ output/
 
 # Ignore test coverage reports
 coverage/
+.DS_Store

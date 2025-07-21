@@ -1,4 +1,36 @@
 # .copilotignore
+
+# Environment and secrets
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+keys/
+secrets/
+
+# Tool output and sensitive data
+logs/
+*.log
+*.csv
+last_known_state.json
+*.queue.txt
+*.local
+
+# Build artifacts and dependencies
+node_modules/
+dist/
+coverage/
+.nyc_output/
+
+# OS and IDE files
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+
+# Git and version control 
 *.pem
 *.local
 *.queue.txt
