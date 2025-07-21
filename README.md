@@ -1,10 +1,10 @@
-# repo-stats-ts
+# gh-repo-stats-plus
 
 A TypeScript implementation for gathering GitHub repository statistics, including issues, pull requests, and more metrics to aid in repository analysis and migration planning. This project is a port of [mona-actions/gh-repo-stats](https://github.com/mona-actions/gh-repo-stats) from Bash to TypeScript, with significant enhancements and new features.
 
 ## Overview
 
-repo-stats-ts builds upon the solid foundation of the original gh-repo-stats project, reimplementing it in TypeScript to unlock additional capabilities and modern development patterns. While preserving the core functionality of collecting comprehensive statistics about repositories within a GitHub organization, this implementation introduces features like streaming processing, state persistence, and enhanced error handling to support larger organizations and more complex scenarios.
+gh-repo-stats-plus builds upon the solid foundation of the original gh-repo-stats project, reimplementing it in TypeScript to unlock additional capabilities and modern development patterns. While preserving the core functionality of collecting comprehensive statistics about repositories within a GitHub organization, this implementation introduces features like streaming processing, state persistence, and enhanced error handling to support larger organizations and more complex scenarios.
 
 ## Key Features
 
@@ -17,7 +17,7 @@ This TypeScript rewrite offers several advantages:
    - Rate limit handling
    - Pagination
    - GraphQL and REST API support
-     
+
 2. **Streaming Processing with Async Generators**: Writes results incrementally as they're processed rather than collecting everything up front, resulting in better memory management and reliability.
 
 3. **State Persistence**: Saves processing state to a `last_known_state.json` file after each successful repository, storing the current cursor position and processed repositories.
@@ -39,8 +39,8 @@ This TypeScript rewrite offers several advantages:
 1. Clone this repository
 
    ```bash
-   git clone https://github.com/scottluskcis/repo-stats-ts.git
-   cd repo-stats-ts
+   git clone https://github.com/mona-actions/gh-repo-stats-plus.git
+   cd gh-repo-stats-plus
    ```
 
 2. Set up environment variables
@@ -230,7 +230,7 @@ The tool supports multiple authentication methods:
 
 ## State Management
 
-The repo-stats-ts application implements a state management system that tries to help ensure data accuracy when handling large GitHub organizations:
+The gh-repo-stats-plus application implements a state management system that tries to help ensure data accuracy when handling large GitHub organizations:
 
 ### Last Known State
 
@@ -254,6 +254,7 @@ When running with the `--resume-from-last-save` flag, the application:
 4. Uses the same output file to append new results
 
 This feature is particularly valuable when:
+
 - Processing large organizations with thousands of repositories
 - Recovering from network interruptions or API rate limits
 - Continuing work after system maintenance or restarts
@@ -272,7 +273,7 @@ The application will automatically detect any already processed repositories, re
 
 ## Permissions
 
-The permissions needed by repo-stats-ts depends on the authentication method:
+The permissions needed by gh-repo-stats-plus depends on the authentication method:
 
 ### For Personal Access Token (PAT):
 
