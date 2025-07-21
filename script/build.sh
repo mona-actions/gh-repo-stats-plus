@@ -23,6 +23,7 @@ npm ci
 npm run bundle
 
 # Get extension name from repository
+# The syntax ${GITHUB_REPOSITORY##*/} removes everything up to and including the last slash
 EXTENSION_NAME="${GITHUB_REPOSITORY##*/}"
 if [ -z "$EXTENSION_NAME" ]; then
     # Fallback to directory name if GITHUB_REPOSITORY not set
