@@ -36,7 +36,8 @@ jobs:
           fi
           # Make executable
           chmod +x dist/index.js
-          # Test that it runs
+          # Test that it runs (this will also test the auto-install logic)
+          rm -rf node_modules dist
           ./gh-repo-stats-plus --help
 
       - name: Create Release

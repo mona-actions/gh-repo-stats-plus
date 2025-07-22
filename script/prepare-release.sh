@@ -15,10 +15,16 @@ echo "📦 Installing dependencies..."
 npm install
 
 echo "🧪 Running tests..."
-npm test
+if ! npm test -- --passWithNoTests; then
+    echo "❌ Tests failed. Aborting release preparation."
+    exit 1
+fi
 
 echo "📝 Running linter..."
-npm run lint
+if ! npm run lint -- --fix; then
+    echo "❌ Linter issues detected. Please fix them before proceeding."
+    exit 1
+fi
 
 echo "🔧 Building extension..."
 npm run build
@@ -38,6 +44,8 @@ fi
 echo "✅ Extension is ready for release!"
 echo ""
 echo "📋 Next steps:"
-echo "   1. Commit the changes: git add dist/ && git commit -m 'Update built extension'"
+echo "   1. Commit any source changes: git add . && git commit -m 'Prepare release'"
 echo "   2. Create a release: gh release create vX.X.X"
 echo "   3. Users can install with: gh extension install your-org/gh-repo-stats-plus"
+echo ""
+echo "Note: Built files are generated automatically when users install the extension."
