@@ -21,7 +21,10 @@ if ! npm test -- --passWithNoTests; then
 fi
 
 echo "📝 Running linter..."
-npm run lint || echo "⚠️  Linter had some issues, but continuing..."
+if ! npm run lint -- --fix; then
+    echo "❌ Linter issues detected. Please fix them before proceeding."
+    exit 1
+fi
 
 echo "🔧 Building extension..."
 npm run build
