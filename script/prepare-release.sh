@@ -15,7 +15,10 @@ echo "📦 Installing dependencies..."
 npm install
 
 echo "🧪 Running tests..."
-npm test || echo "⚠️  Tests had some failures, but continuing..."
+if ! npm test -- --passWithNoTests; then
+    echo "❌ Tests failed. Aborting release preparation."
+    exit 1
+fi
 
 echo "📝 Running linter..."
 npm run lint || echo "⚠️  Linter had some issues, but continuing..."
