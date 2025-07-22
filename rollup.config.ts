@@ -22,9 +22,31 @@ const config = {
     }),
     commonjs(),
   ],
-  // Mark node_modules as external to avoid bundling them
+  // Mark dependencies as external - they'll be installed when users install the extension
   external: [
-    /node_modules/,
+    // Node.js built-ins
+    /^node:/,
+    'fs',
+    'path',
+    'os',
+    'crypto',
+    'util',
+    'events',
+    'stream',
+    'buffer',
+    'url',
+    'querystring',
+    'http',
+    'https',
+    'net',
+    'tls',
+    'zlib',
+    'readline',
+    'child_process',
+    'cluster',
+    'worker_threads',
+    'perf_hooks',
+    // npm dependencies
     'dotenv',
     'winston',
     'octokit',
