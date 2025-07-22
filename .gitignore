@@ -2,6 +2,7 @@
 node_modules/
 
 # Ignore built files
+dist/
 build/
 
 # Ignore TypeScript declaration files

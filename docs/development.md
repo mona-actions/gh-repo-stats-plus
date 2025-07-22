@@ -257,15 +257,15 @@ npm install
 npm test
 npm run lint
 
-# 2. Build the extension
+# 2. Test the build process
 npm run build
 
-# 3. Ensure built files are executable
-chmod +x dist/index.js
+# 3. Test the extension works
+./gh-repo-stats-plus --help
 
-# 4. Add built files to git (they're included in releases)
-git add dist/
-git commit -m "Update built extension for release"
+# 4. Commit any source changes (built files are not committed)
+git add .
+git commit -m "Prepare release vX.X.X"
 
 # 5. Create and push a release tag
 git tag v1.x.x
@@ -277,8 +277,8 @@ gh release create v1.x.x --generate-notes
 
 ### Important Notes
 
-- **Built files are committed**: Unlike typical Node.js projects, the `dist/` folder is committed to the repository
-- **No build process for users**: Users installing via `gh extension install` get pre-built files
+- **Built files are not committed**: The `dist/` folder is in `.gitignore` and built on-demand
+- **Auto-build on first run**: Users installing via `gh extension install` get automatic building
 - **Version management**: Update the version in `package.json` before release
 - **Testing installations**: Test with `gh extension install owner/repo-name` before public release
 
