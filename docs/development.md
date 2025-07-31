@@ -45,14 +45,6 @@ ORG_NAME=my-org
 ACCESS_TOKEN=your_github_token
 ```
 
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m 'Add amazing feature'`
-4. Push to the branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
-
 ## Code Style
 
 - We use TypeScript with strict type checking
@@ -60,7 +52,7 @@ ACCESS_TOKEN=your_github_token
 - ESLint is used for code quality
 - Follow async/await patterns for better readability
 
-5. Install locally for testing
+- Install locally for testing
 
    ```bash
    gh extension install .
@@ -73,7 +65,7 @@ Configure the following environment variables in your `.env` file:
 ### Core Settings
 
 - `ORG_NAME`: Name of the GitHub organization to analyze
-- `BASE_URL`: GitHub API URL (default: https://api.github.com)
+- `BASE_URL`: GitHub API URL (default: `https://api.github.com`)
 - `PROXY_URL`: Optional proxy URL for API requests
 
 ### Authentication
@@ -196,7 +188,7 @@ npm test -- src/__tests__/service.spec.ts
 npm test -- --watch
 ```
 
-### Development Workflow
+### Development Process
 
 1. **Make changes** to TypeScript source files in `src/`
 2. **Build the project**: `npm run bundle`
@@ -207,7 +199,7 @@ npm test -- --watch
 
 ## Project Structure
 
-```
+```bash
 src/
 ├── __tests__/          # Test files
 ├── commands/           # CLI command implementations
@@ -232,48 +224,22 @@ The GitHub CLI extension follows a pre-built distribution model where built arti
 
 ### Preparing for Release
 
-Use the automated release preparation script:
+This project uses **release-drafter** for automated release management. The process creates draft releases automatically based on pull request labels, which you can then review and publish.
 
-```bash
-npm run prepare-release
-```
+### Automated Release Workflow
 
-This script will:
+1. **Pull Request Labels**: When creating PRs, use appropriate labels:
+   - `feature`, `enhancement` → Minor version bump
+   - `bug`, `fix`, `bugfix` → Patch version bump
+   - `major`, `breaking` → Major version bump
+   - `chore`, `maintenance`, `dependencies` → Patch version bump
 
-1. Install dependencies
-2. Run tests
-3. Run linter
-4. Build the extension
-5. Verify the build output
-6. Make files executable
+2. **Draft Release Creation**: When PRs are merged to `main`, release-drafter automatically:
+   - Creates or updates a draft release
+   - Generates release notes from PR titles and labels
+   - Calculates the next version number based on labels
 
-### Manual Release Steps
-
-If you need to prepare a release manually:
-
-```bash
-# 1. Ensure code is ready
-npm install
-npm test
-npm run lint
-
-# 2. Test the build process
-npm run build
-
-# 3. Test the extension works
-./gh-repo-stats-plus --help
-
-# 4. Commit any source changes (built files are not committed)
-git add .
-git commit -m "Prepare release vX.X.X"
-
-# 5. Create and push a release tag
-git tag v1.x.x
-git push origin v1.x.x
-
-# 6. Create GitHub release
-gh release create v1.x.x --generate-notes
-```
+3. **Publishing**: Review the draft release and publish when ready
 
 ### Important Notes
 
