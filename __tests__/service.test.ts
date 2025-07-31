@@ -432,9 +432,9 @@ describe('OctokitClient', () => {
         retryCount: 0,
       });
 
-      vi.spyOn(global, 'setTimeout').mockImplementation((cb: any) => {
+      vi.spyOn(global, 'setTimeout').mockImplementation((cb: () => void) => {
         cb();
-        return {} as any;
+        return {} as ReturnType<typeof setTimeout>;
       });
 
       // Act
@@ -499,9 +499,9 @@ describe('OctokitClient', () => {
       // Mock setTimeout to skip waiting
       const mockSetTimeout = vi
         .spyOn(global, 'setTimeout')
-        .mockImplementation((cb: any) => {
+        .mockImplementation((cb: () => void) => {
           cb();
-          return {} as any;
+          return {} as ReturnType<typeof setTimeout>;
         });
 
       // Act

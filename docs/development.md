@@ -175,7 +175,7 @@ npm run package:watch
 
 ### Testing
 
-The project uses **Vitest** as the testing framework, providing fast test execution and excellent TypeScript integration.
+The project uses **Vitest** as the testing framework.
 
 ```bash
 # Run all tests
@@ -184,17 +184,14 @@ npm test
 # Run tests with coverage
 npm run test:coverage
 
-# Run tests in CI mode (no watch mode)
+# Run tests in CI mode
 npm run test:ci
 
+# Run tests with UI
+npm run test:ui
+
 # Run specific test file
-npx vitest run __tests__/utils.test.ts
-
-# Run tests in watch mode (default behavior)
-npx vitest
-
-# Run tests with UI (if @vitest/ui is installed)
-npx vitest --ui
+npm run test:file __tests__/utils.test.ts
 ```
 
 #### Test Structure
@@ -202,60 +199,28 @@ npx vitest --ui
 - Tests are located in the `__tests__/` directory at the project root
 - Test files use the `.test.ts` naming convention
 - Mocks are located in the `__mocks__/` directory
-- Test utilities are available in `__tests__/test-utils.ts`
 
 #### Parameterized Testing
 
-Use Vitest's `it.each` for testing multiple similar scenarios to reduce code duplication and improve test coverage:
+Use `it.each` to test multiple scenarios efficiently:
 
 ```typescript
-// Good: Parameterized test
 it.each([
-  { input: 1024, expected: 1, description: '1024 KB to 1 MB' },
-  { input: 2048, expected: 2, description: '2048 KB to 2 MB' },
-  { input: 512, expected: 0.5, description: '512 KB to 0.5 MB' },
-])('should convert $description', ({ input, expected }) => {
-  expect(convertKbToMb(input)).toBe(expected);
-});
-
-// Instead of: Multiple separate tests
-it('should convert 1024 KB to 1 MB', () => {
-  /* ... */
-});
-it('should convert 2048 KB to 2 MB', () => {
-  /* ... */
-});
-it('should convert 512 KB to 0.5 MB', () => {
-  /* ... */
+  [1024, 1],
+  [2048, 2],
+  [512, 0.5]
+])('should convert %i KB to %i MB', (kb, expectedMb) => {
+  expect(convertKbToMb(kb)).toBe(expectedMb);
 });
 ```
 
-Benefits of parameterized tests:
-
-- Reduces code duplication
-- Makes test cases more discoverable
-- Easier to add new test scenarios
-- Clearer test output with descriptive names
-
 #### Mocking
 
-The project includes comprehensive mocks for external dependencies:
-
+The project includes mocks for external dependencies:
 - `fs` and `fs/promises` - File system operations
-- `winston` - Logging functionality
+- `winston` - Logging functionality  
 - `octokit` - GitHub API client
 - `path` - Path utilities
-
-All mocks use Vitest's native APIs (`vi.fn()`, `vi.mock()`, etc.).
-
-#### Testing Best Practices
-
-- **Use parameterized tests**: Leverage `it.each` when testing multiple similar scenarios
-- **Descriptive test names**: Use clear, descriptive test names that explain what is being tested
-- **Arrange-Act-Assert**: Structure tests with clear sections for setup, execution, and verification
-- **Mock external dependencies**: Use the provided mocks in `__mocks__/` for consistent testing
-- **Test edge cases**: Include tests for null, undefined, empty values, and error conditions
-- **One assertion per test**: Focus each test on a single behavior or outcome
 
 ### Development Process
 
