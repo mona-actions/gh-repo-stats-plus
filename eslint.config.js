@@ -17,6 +17,8 @@ export default [
         process: 'readonly',
         console: 'readonly',
         setTimeout: 'readonly',
+        global: 'readonly',
+        require: 'readonly',
       },
     },
     plugins: {
