@@ -198,23 +198,6 @@ describe('Logger Module', () => {
   });
 
   describe('logBatchProcessing', () => {
-    it.each([
-      {
-        method: 'allSuccess',
-        args: [],
-        expectedMessage: '✓ All files processed successfully',
-        description: 'all files processed successfully',
-      },
-    ])('should log $description', ({ method, args, expectedMessage }) => {
-      // Arrange
-      const mockLogger = createMockLogger();
-
-      // Act
-      (logBatchProcessing as Record<string, (...args: unknown[]) => void>)[
-        method
-      ](mockLogger, ...args);
-
-      // Assert
     it('should log all files processed successfully', () => {
       // Arrange
       const mockLogger = createMockLogger();
@@ -223,7 +206,9 @@ describe('Logger Module', () => {
       logBatchProcessing.allSuccess(mockLogger);
 
       // Assert
-      expect(mockLogger.info).toHaveBeenCalledWith('✓ All files processed successfully');
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        '✓ All files processed successfully',
+      );
     });
 
     it('should log max retries reached', () => {
