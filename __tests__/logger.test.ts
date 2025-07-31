@@ -215,7 +215,15 @@ describe('Logger Module', () => {
       ](mockLogger, ...args);
 
       // Assert
-      expect(mockLogger.info).toHaveBeenCalledWith(expectedMessage);
+    it('should log all files processed successfully', () => {
+      // Arrange
+      const mockLogger = createMockLogger();
+
+      // Act
+      logBatchProcessing.allSuccess(mockLogger);
+
+      // Assert
+      expect(mockLogger.info).toHaveBeenCalledWith('✓ All files processed successfully');
     });
 
     it('should log max retries reached', () => {
