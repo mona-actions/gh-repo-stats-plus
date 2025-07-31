@@ -1,7 +1,6 @@
 {
-  "jest.jestCommandLine": "npx jest",
-  "jest.runMode": "on-demand",
-  "jest.debugMode": true,
+  "vitest.enable": true,
+  "vitest.commandLine": "npx vitest",
   "javascript.validate.enable": true,
   "typescript.validate.enable": true,
   "js/ts.implicitProjectConfig.experimentalDecorators": true,

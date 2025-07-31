@@ -51,12 +51,13 @@ ACCESS_TOKEN=your_github_token
 - Code is formatted with Prettier
 - ESLint is used for code quality
 - Follow async/await patterns for better readability
+- Testing is implemented using Vitest for fast execution and excellent TypeScript support
 
 - Install locally for testing
 
-   ```bash
-   gh extension install .
-   ```
+  ```bash
+  gh extension install .
+  ```
 
 ## Environment Variables Configuration
 
@@ -110,18 +111,18 @@ The project includes VS Code configurations for debugging:
 
    - **repo-stats Debug**: Debug the repo-stats command
    - **missing-repos Debug**: Debug the missing-repos command
-   - **Jest Current File**: Debug tests for the currently open file
-   - **Jest All Tests**: Debug all tests in the project
+   - **Vitest Current File**: Debug tests for the currently open file
+   - **Vitest All Tests**: Debug all tests in the project
 
 5. Press F5 or click the green play button to start debugging
 
 ### VS Code Tasks
 
-The project includes several VS Code tasks:
+The project includes several VS Code tasks configured for Vitest:
 
 - **tsc: build**: Build the TypeScript project
-- **jest: test current file**: Run tests for the current file
-- **jest: test all**: Run all tests in the project
+- **vitest: test current file**: Run tests for the current file
+- **vitest: test all**: Run all tests in the project
 
 Access these tasks via:
 
@@ -174,19 +175,53 @@ npm run package:watch
 
 ### Testing
 
+The project uses **Vitest** as the testing framework.
+
 ```bash
 # Run all tests
 npm test
 
-# Run tests with verbose output
-npm run test -- --verbose
+# Run tests with coverage
+npm run test:coverage
+
+# Run tests in CI mode
+npm run test:ci
+
+# Run tests with UI
+npm run test:ui
 
 # Run specific test file
-npm test -- src/__tests__/service.spec.ts
-
-# Run tests in watch mode
-npm test -- --watch
+npm run test:file __tests__/utils.test.ts
 ```
+
+#### Test Structure
+
+- Tests are located in the `__tests__/` directory at the project root
+- Test files use the `.test.ts` naming convention
+- Mocks are located in the `__mocks__/` directory
+
+#### Parameterized Testing
+
+Use `it.each` to test multiple scenarios efficiently:
+
+```typescript
+it.each([
+  [1024, 1],
+  [2048, 2],
+  [512, 0.5],
+])('should convert %i KB to %i MB', (kb, expectedMb) => {
+  expect(convertKbToMb(kb)).toBe(expectedMb);
+});
+```
+
+#### Mocking
+
+The project includes mocks for external dependencies:
+
+- `fs` and `fs/promises` - File system operations
+- `winston` - Logging functionality
+- `octokit` - GitHub API client
+- `path` - Path utilities
 
 ### Development Process
 
@@ -200,8 +235,18 @@ npm test -- --watch
 ## Project Structure
 
 ```bash
+__tests__/              # Test files (Vitest)
+├── logger.test.ts
+├── service.test.ts
+├── state.test.ts
+├── test-utils.ts
+└── utils.test.ts
+__mocks__/              # Mock implementations
+├── fs.ts
+├── octokit.ts
+├── path.ts
+└── winston.ts
 src/
-├── __tests__/          # Test files
 ├── commands/           # CLI command implementations
 │   ├── repo-stats-command.ts
 │   └── missing-repos-command.ts
@@ -229,12 +274,14 @@ This project uses **release-drafter** for automated release management. The proc
 ### Automated Release Workflow
 
 1. **Pull Request Labels**: When creating PRs, use appropriate labels:
+
    - `feature`, `enhancement` → Minor version bump
    - `bug`, `fix`, `bugfix` → Patch version bump
    - `major`, `breaking` → Major version bump
    - `chore`, `maintenance`, `dependencies` → Patch version bump
 
 2. **Draft Release Creation**: When PRs are merged to `main`, release-drafter automatically:
+
    - Creates or updates a draft release
    - Generates release notes from PR titles and labels
    - Calculates the next version number based on labels

@@ -15,7 +15,7 @@ import {
 import { createLogger, logInitialization } from './logger.js';
 import { createAuthConfig } from './auth.js';
 import { initializeState, updateState } from './state.js';
-import { appendFileSync, existsSync, writeFileSync } from 'fs';
+import { appendFileSync, existsSync, writeFileSync, unlinkSync } from 'fs';
 import { withRetry, RetryConfig } from './retry.js';
 import {
   generateRepoStatsFileName,
@@ -257,8 +257,7 @@ async function processMissingRepositories({
   } finally {
     // Clean up temporary file
     if (existsSync(missingReposFile)) {
-      const fs = require('fs');
-      fs.unlinkSync(missingReposFile);
+      unlinkSync(missingReposFile);
       logger.info(`Removed temporary file: ${missingReposFile}`);
     }
   }
