@@ -71,47 +71,43 @@ describe('Logger Module', () => {
   });
 
   describe('createLogger', () => {
-    it('should create a logger with default configuration in verbose mode', async () => {
-      // Act
-      const logger = await createLogger(true);
+    it.each([
+      { verbose: true, description: 'verbose mode' },
+      { verbose: false, description: 'quiet mode' },
+    ])(
+      'should create a logger with default configuration in $description',
+      async ({ verbose }) => {
+        // Act
+        const logger = await createLogger(verbose);
 
-      // Assert
-      expect(winston.createLogger).toHaveBeenCalledTimes(1);
-      expect(logger).toBeDefined();
-    });
+        // Assert
+        expect(winston.createLogger).toHaveBeenCalledTimes(1);
+        expect(logger).toBeDefined();
+      },
+    );
 
-    it('should create a logger with default configuration in quiet mode', async () => {
-      // Act
-      const logger = await createLogger(false);
+    it.each([
+      { dirExists: false, shouldCreateDir: true },
+      { dirExists: true, shouldCreateDir: false },
+    ])(
+      'should $<shouldCreateDir ? "create" : "not create"> logs directory when it $<dirExists ? "exists" : "does not exist">',
+      async ({ dirExists, shouldCreateDir }) => {
+        // Arrange
+        vi.mocked(existsSync).mockReturnValue(dirExists);
 
-      // Assert
-      expect(winston.createLogger).toHaveBeenCalledTimes(1);
-      expect(logger).toBeDefined();
-    });
+        // Act
+        await createLogger(true);
 
-    it('should create logs directory if it does not exist', async () => {
-      // Arrange
-      vi.mocked(existsSync).mockReturnValue(false);
-
-      // Act
-      await createLogger(true);
-
-      // Assert
-      expect(mkdir).toHaveBeenCalledWith(expect.stringContaining('logs'), {
-        recursive: true,
-      });
-    });
-
-    it('should not create logs directory if it already exists', async () => {
-      // Arrange
-      vi.mocked(existsSync).mockReturnValue(true);
-
-      // Act
-      await createLogger(true);
-
-      // Assert
-      expect(mkdir).not.toHaveBeenCalled();
-    });
+        // Assert
+        if (shouldCreateDir) {
+          expect(mkdir).toHaveBeenCalledWith(expect.stringContaining('logs'), {
+            recursive: true,
+          });
+        } else {
+          expect(mkdir).not.toHaveBeenCalled();
+        }
+      },
+    );
 
     it('should handle errors during directory creation', async () => {
       // Arrange
@@ -202,17 +198,22 @@ describe('Logger Module', () => {
   });
 
   describe('logBatchProcessing', () => {
-    it('should log all files processed successfully', () => {
+    it.each([
+      {
+        method: 'allSuccess',
+        args: [],
+        expectedMessage: '✓ All files processed successfully',
+        description: 'all files processed successfully',
+      },
+    ])('should log $description', ({ method, args, expectedMessage }) => {
       // Arrange
       const mockLogger = createMockLogger();
 
       // Act
-      logBatchProcessing.allSuccess(mockLogger);
+      (logBatchProcessing as any)[method](mockLogger, ...args);
 
       // Assert
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        '✓ All files processed successfully',
-      );
+      expect(mockLogger.info).toHaveBeenCalledWith(expectedMessage);
     });
 
     it('should log max retries reached', () => {
@@ -230,33 +231,36 @@ describe('Logger Module', () => {
       );
     });
 
-    it('should log files scheduled for retry', () => {
-      // Arrange
-      const mockLogger = createMockLogger();
-      const count = 5;
+    it.each([
+      {
+        method: 'scheduled',
+        args: [5],
+        expectedCall: 'info',
+        expectedMessage: '⟳ 5 files scheduled for retry in next attempt',
+        description: 'files scheduled for retry',
+      },
+      {
+        method: 'total',
+        args: [100],
+        expectedCall: 'info',
+        expectedMessage: 'Total repositories processed: 100',
+        description: 'total repositories processed',
+      },
+    ])(
+      'should log $description',
+      ({ method, args, expectedCall, expectedMessage }) => {
+        // Arrange
+        const mockLogger = createMockLogger();
 
-      // Act
-      logBatchProcessing.scheduled(count, mockLogger);
+        // Act
+        (logBatchProcessing as any)[method](...args, mockLogger);
 
-      // Assert
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        `⟳ ${count} files scheduled for retry in next attempt`,
-      );
-    });
-
-    it('should log total repositories processed', () => {
-      // Arrange
-      const mockLogger = createMockLogger();
-      const count = 100;
-
-      // Act
-      logBatchProcessing.total(count, mockLogger);
-
-      // Assert
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        `Total repositories processed: ${count}`,
-      );
-    });
+        // Assert
+        expect((mockLogger as any)[expectedCall]).toHaveBeenCalledWith(
+          expectedMessage,
+        );
+      },
+    );
   });
 
   describe('logInitialization', () => {

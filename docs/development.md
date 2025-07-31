@@ -204,6 +204,39 @@ npx vitest --ui
 - Mocks are located in the `__mocks__/` directory
 - Test utilities are available in `__tests__/test-utils.ts`
 
+#### Parameterized Testing
+
+Use Vitest's `it.each` for testing multiple similar scenarios to reduce code duplication and improve test coverage:
+
+```typescript
+// Good: Parameterized test
+it.each([
+  { input: 1024, expected: 1, description: '1024 KB to 1 MB' },
+  { input: 2048, expected: 2, description: '2048 KB to 2 MB' },
+  { input: 512, expected: 0.5, description: '512 KB to 0.5 MB' },
+])('should convert $description', ({ input, expected }) => {
+  expect(convertKbToMb(input)).toBe(expected);
+});
+
+// Instead of: Multiple separate tests
+it('should convert 1024 KB to 1 MB', () => {
+  /* ... */
+});
+it('should convert 2048 KB to 2 MB', () => {
+  /* ... */
+});
+it('should convert 512 KB to 0.5 MB', () => {
+  /* ... */
+});
+```
+
+Benefits of parameterized tests:
+
+- Reduces code duplication
+- Makes test cases more discoverable
+- Easier to add new test scenarios
+- Clearer test output with descriptive names
+
 #### Mocking
 
 The project includes comprehensive mocks for external dependencies:
@@ -214,6 +247,15 @@ The project includes comprehensive mocks for external dependencies:
 - `path` - Path utilities
 
 All mocks use Vitest's native APIs (`vi.fn()`, `vi.mock()`, etc.).
+
+#### Testing Best Practices
+
+- **Use parameterized tests**: Leverage `it.each` when testing multiple similar scenarios
+- **Descriptive test names**: Use clear, descriptive test names that explain what is being tested
+- **Arrange-Act-Assert**: Structure tests with clear sections for setup, execution, and verification
+- **Mock external dependencies**: Use the provided mocks in `__mocks__/` for consistent testing
+- **Test edge cases**: Include tests for null, undefined, empty values, and error conditions
+- **One assertion per test**: Focus each test on a single behavior or outcome
 
 ### Development Process
 

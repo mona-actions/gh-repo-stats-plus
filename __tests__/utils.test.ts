@@ -18,36 +18,58 @@ describe('Utils', () => {
   });
 
   describe('convertKbToMb', () => {
-    it('should convert KB to MB correctly', () => {
-      expect(convertKbToMb(1024)).toBe(1);
-      expect(convertKbToMb(2048)).toBe(2);
-      expect(convertKbToMb(512)).toBe(0.5);
-    });
-
-    it('should handle null or undefined values', () => {
-      expect(convertKbToMb(null)).toBe(0);
-      expect(convertKbToMb(undefined)).toBe(0);
+    it.each([
+      { input: 1024, expected: 1, description: '1024 KB to 1 MB' },
+      { input: 2048, expected: 2, description: '2048 KB to 2 MB' },
+      { input: 512, expected: 0.5, description: '512 KB to 0.5 MB' },
+      { input: 0, expected: 0, description: '0 KB to 0 MB' },
+      { input: null, expected: 0, description: 'null to 0 MB' },
+      { input: undefined, expected: 0, description: 'undefined to 0 MB' },
+    ])('should convert $description', ({ input, expected }) => {
+      expect(convertKbToMb(input)).toBe(expected);
     });
   });
 
   describe('checkIfHasMigrationIssues', () => {
-    it('should return true for very large repositories', () => {
-      expect(
-        checkIfHasMigrationIssues({ repoSizeMb: 1501, totalRecordCount: 100 }),
-      ).toBe(true);
-    });
-
-    it('should return true for repositories with extremely high record counts', () => {
-      expect(
-        checkIfHasMigrationIssues({ repoSizeMb: 100, totalRecordCount: 60001 }),
-      ).toBe(true);
-    });
-
-    it('should return false for small repositories', () => {
-      expect(
-        checkIfHasMigrationIssues({ repoSizeMb: 100, totalRecordCount: 100 }),
-      ).toBe(false);
-    });
+    it.each([
+      {
+        repoSizeMb: 1501,
+        totalRecordCount: 100,
+        expected: true,
+        description: 'very large repository (>1500MB)',
+      },
+      {
+        repoSizeMb: 100,
+        totalRecordCount: 60001,
+        expected: true,
+        description: 'repository with extremely high record count (>60000)',
+      },
+      {
+        repoSizeMb: 1500,
+        totalRecordCount: 59999,
+        expected: false,
+        description: 'repository at the threshold limits',
+      },
+      {
+        repoSizeMb: 100,
+        totalRecordCount: 100,
+        expected: false,
+        description: 'small repository',
+      },
+      {
+        repoSizeMb: 0,
+        totalRecordCount: 0,
+        expected: false,
+        description: 'empty repository',
+      },
+    ])(
+      'should return $expected for $description',
+      ({ repoSizeMb, totalRecordCount, expected }) => {
+        expect(
+          checkIfHasMigrationIssues({ repoSizeMb, totalRecordCount }),
+        ).toBe(expected);
+      },
+    );
   });
 
   describe('formatElapsedTime', () => {
