@@ -63,7 +63,7 @@ describe('Logger Module', () => {
       warn: vi.fn(),
       error: vi.fn(),
       on: vi.fn(),
-    } as any);
+    } as winston.Logger);
     vi.mocked(existsSync).mockReturnValue(true);
     vi.mocked(mkdir).mockResolvedValue(undefined);
     console.debug = vi.fn();
@@ -210,7 +210,7 @@ describe('Logger Module', () => {
       const mockLogger = createMockLogger();
 
       // Act
-      (logBatchProcessing as any)[method](mockLogger, ...args);
+      (logBatchProcessing as Record<string, (...args: unknown[]) => void>)[method](mockLogger, ...args);
 
       // Assert
       expect(mockLogger.info).toHaveBeenCalledWith(expectedMessage);
@@ -253,10 +253,10 @@ describe('Logger Module', () => {
         const mockLogger = createMockLogger();
 
         // Act
-        (logBatchProcessing as any)[method](...args, mockLogger);
+        (logBatchProcessing as Record<string, (...args: unknown[]) => void>)[method](...args, mockLogger);
 
         // Assert
-        expect((mockLogger as any)[expectedCall]).toHaveBeenCalledWith(
+        expect((mockLogger as Record<string, unknown>)[expectedCall]).toHaveBeenCalledWith(
           expectedMessage,
         );
       },

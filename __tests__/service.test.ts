@@ -7,7 +7,7 @@ vi.mock('octokit');
 
 describe('OctokitClient', () => {
   // Mock Octokit instances and responses
-  let mockOctokit: any;
+  let mockOctokit: Record<string, unknown>;
   let client: OctokitClient;
 
   beforeEach(() => {
@@ -223,7 +223,7 @@ describe('OctokitClient', () => {
       });
 
       // Act
-      for await (const _ of client.getOrgRepoStats('testorg', 10, cursor)) {
+      for await (const _unused of client.getOrgRepoStats('testorg', 10, cursor)) {
         // Just iterate to trigger the API call
       }
 

@@ -23,7 +23,7 @@ export function withMockedDate(mockDate: Date, testFn: () => void): void {
       static now() {
         return mockDate.getTime();
       }
-    } as any;
+    } as DateConstructor;
 
     // Execute the test function with our mocked Date
     testFn();
