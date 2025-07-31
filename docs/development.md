@@ -210,7 +210,7 @@ The project includes comprehensive mocks for external dependencies:
 
 - `fs` and `fs/promises` - File system operations
 - `winston` - Logging functionality
-- `octokit` - GitHub API client  
+- `octokit` - GitHub API client
 - `path` - Path utilities
 
 All mocks use Vitest's native APIs (`vi.fn()`, `vi.mock()`, etc.).
