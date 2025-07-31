@@ -210,7 +210,9 @@ describe('Logger Module', () => {
       const mockLogger = createMockLogger();
 
       // Act
-      (logBatchProcessing as Record<string, (...args: unknown[]) => void>)[method](mockLogger, ...args);
+      (logBatchProcessing as Record<string, (...args: unknown[]) => void>)[
+        method
+      ](mockLogger, ...args);
 
       // Assert
       expect(mockLogger.info).toHaveBeenCalledWith(expectedMessage);
@@ -253,12 +255,14 @@ describe('Logger Module', () => {
         const mockLogger = createMockLogger();
 
         // Act
-        (logBatchProcessing as Record<string, (...args: unknown[]) => void>)[method](...args, mockLogger);
+        (logBatchProcessing as Record<string, (...args: unknown[]) => void>)[
+          method
+        ](...args, mockLogger);
 
         // Assert
-        expect((mockLogger as Record<string, unknown>)[expectedCall]).toHaveBeenCalledWith(
-          expectedMessage,
-        );
+        expect(
+          (mockLogger as Record<string, unknown>)[expectedCall],
+        ).toHaveBeenCalledWith(expectedMessage);
       },
     );
   });
