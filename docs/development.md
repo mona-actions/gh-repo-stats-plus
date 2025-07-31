@@ -51,6 +51,7 @@ ACCESS_TOKEN=your_github_token
 - Code is formatted with Prettier
 - ESLint is used for code quality
 - Follow async/await patterns for better readability
+- Testing is implemented using Vitest for fast execution and excellent TypeScript support
 
 - Install locally for testing
 
@@ -117,7 +118,7 @@ The project includes VS Code configurations for debugging:
 
 ### VS Code Tasks
 
-The project includes several VS Code tasks:
+The project includes several VS Code tasks configured for Vitest:
 
 - **tsc: build**: Build the TypeScript project
 - **vitest: test current file**: Run tests for the current file
@@ -174,6 +175,8 @@ npm run package:watch
 
 ### Testing
 
+The project uses **Vitest** as the testing framework, providing fast test execution and excellent TypeScript integration.
+
 ```bash
 # Run all tests
 npm test
@@ -181,15 +184,36 @@ npm test
 # Run tests with coverage
 npm run test:coverage
 
-# Run tests in CI mode
+# Run tests in CI mode (no watch mode)
 npm run test:ci
 
 # Run specific test file
 npx vitest run __tests__/utils.test.ts
 
-# Run tests in watch mode
+# Run tests in watch mode (default behavior)
 npx vitest
+
+# Run tests with UI (if @vitest/ui is installed)
+npx vitest --ui
 ```
+
+#### Test Structure
+
+- Tests are located in the `__tests__/` directory at the project root
+- Test files use the `.test.ts` naming convention
+- Mocks are located in the `__mocks__/` directory
+- Test utilities are available in `__tests__/test-utils.ts`
+
+#### Mocking
+
+The project includes comprehensive mocks for external dependencies:
+
+- `fs` and `fs/promises` - File system operations
+- `winston` - Logging functionality
+- `octokit` - GitHub API client  
+- `path` - Path utilities
+
+All mocks use Vitest's native APIs (`vi.fn()`, `vi.mock()`, etc.).
 
 ### Development Process
 
@@ -203,8 +227,18 @@ npx vitest
 ## Project Structure
 
 ```bash
+__tests__/              # Test files (Vitest)
+├── logger.test.ts
+├── service.test.ts
+├── state.test.ts
+├── test-utils.ts
+└── utils.test.ts
+__mocks__/              # Mock implementations
+├── fs.ts
+├── octokit.ts
+├── path.ts
+└── winston.ts
 src/
-├── __tests__/          # Test files
 ├── commands/           # CLI command implementations
 │   ├── repo-stats-command.ts
 │   └── missing-repos-command.ts
