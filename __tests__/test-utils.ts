@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 /**
  * Test utilities for mocking and helper functions used across test files
  */
@@ -34,13 +36,13 @@ export function withMockedDate(mockDate: Date, testFn: () => void): void {
 /**
  * Creates a simple mock logger object that can be used in tests
  *
- * @returns A mock logger with jest spy functions
+ * @returns A mock logger with vitest spy functions
  */
 export function createMockLogger() {
   return {
-    debug: jest.fn(),
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
   };
 }

@@ -33,7 +33,11 @@ Take into consideration the following when providing responses:
 - The application will leverage GitHub octokit javascript SDK for making calls to GitHub APIs.
 - We work in TypeScript and the approach we are implementing should try to leverage constructs such as Queues, Batches, Retry, etc. when appropriate so take this into consideration when providing responses.
 - We always use Prettier to format our code.
-- We will use Jest for our unit tests.
+- Testing is implemented using Vitest, with tests covering the core logic as well as integration with the GitHub APIs. Tests are stored in the **tests** folder. This ensures that migrations are performed correctly and that workflows behave as expected.
+- Use **mocks** directory for mocking external dependencies like octokit and fs modules.
+- Follow Vitest best practices: use vi.mock() for module mocking, vi.fn() for function mocks, and test.\* for test organization.
+- Test files use .test.ts naming convention and mirror the src folder structure within **tests**.
+- Leverage Vitest's built-in TypeScript support and fast execution for efficient development workflow.
 - We will use winston as a Logger and have a createLogger function that exists to create an instance of this.
 - We use tsx for compiling and running our code and we prefer to have any responses be for a more modern approach.
 

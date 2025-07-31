@@ -14,29 +14,27 @@
     {
       "type": "shell",
       "command": "npx",
-      "args": ["jest", "--verbose", "${file}"],
+      "args": ["vitest", "run", "${file}"],
       "group": {
         "kind": "test",
         "isDefault": true
       },
-      "label": "jest: test current file",
+      "label": "vitest: test current file",
       "presentation": {
         "reveal": "always",
         "panel": "new"
-      },
-      "problemMatcher": ["$jest"]
+      }
     },
     {
       "type": "shell",
       "command": "npx",
-      "args": ["jest", "--verbose"],
+      "args": ["vitest", "run"],
       "group": "test",
-      "label": "jest: test all",
+      "label": "vitest: test all",
       "presentation": {
         "reveal": "always",
         "panel": "new"
-      },
-      "problemMatcher": ["$jest"]
+      }
     }
   ]
 }

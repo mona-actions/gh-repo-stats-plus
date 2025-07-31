@@ -1,8 +1,9 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Octokit } from 'octokit';
-import { OctokitClient } from '../service.js';
+import { OctokitClient } from '../src/service.js';
 
 // Setup mocks
-jest.mock('octokit');
+vi.mock('octokit');
 
 describe('OctokitClient', () => {
   // Mock Octokit instances and responses
@@ -10,26 +11,26 @@ describe('OctokitClient', () => {
   let client: OctokitClient;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Create a more flexible mock structure using plain objects
     mockOctokit = {
       rest: {
         repos: {
-          listForOrg: jest.fn(),
+          listForOrg: vi.fn(),
         },
       },
-      auth: jest.fn(),
-      graphql: jest.fn(),
+      auth: vi.fn(),
+      graphql: vi.fn(),
       paginate: {
-        iterator: jest.fn(),
+        iterator: vi.fn(),
       },
-      request: jest.fn(),
+      request: vi.fn(),
     };
 
     // Add paginate to graphql mock
     mockOctokit.graphql.paginate = {
-      iterator: jest.fn(),
+      iterator: vi.fn(),
     };
 
     // Create client with our mock
@@ -431,7 +432,7 @@ describe('OctokitClient', () => {
         retryCount: 0,
       });
 
-      jest.spyOn(global, 'setTimeout').mockImplementation((cb: any) => {
+      vi.spyOn(global, 'setTimeout').mockImplementation((cb: any) => {
         cb();
         return {} as any;
       });
@@ -496,7 +497,7 @@ describe('OctokitClient', () => {
       });
 
       // Mock setTimeout to skip waiting
-      const mockSetTimeout = jest
+      const mockSetTimeout = vi
         .spyOn(global, 'setTimeout')
         .mockImplementation((cb: any) => {
           cb();

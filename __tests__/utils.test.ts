@@ -1,9 +1,10 @@
+import { describe, it, expect } from 'vitest';
 import {
   generateRepoStatsFileName,
   convertKbToMb,
   checkIfHasMigrationIssues,
   formatElapsedTime,
-} from '../utils.js';
+} from '../src/utils.js';
 
 describe('Utils', () => {
   describe('generateRepoStatsFileName', () => {

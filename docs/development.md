@@ -54,9 +54,9 @@ ACCESS_TOKEN=your_github_token
 
 - Install locally for testing
 
-   ```bash
-   gh extension install .
-   ```
+  ```bash
+  gh extension install .
+  ```
 
 ## Environment Variables Configuration
 
@@ -110,8 +110,8 @@ The project includes VS Code configurations for debugging:
 
    - **repo-stats Debug**: Debug the repo-stats command
    - **missing-repos Debug**: Debug the missing-repos command
-   - **Jest Current File**: Debug tests for the currently open file
-   - **Jest All Tests**: Debug all tests in the project
+   - **Vitest Current File**: Debug tests for the currently open file
+   - **Vitest All Tests**: Debug all tests in the project
 
 5. Press F5 or click the green play button to start debugging
 
@@ -120,8 +120,8 @@ The project includes VS Code configurations for debugging:
 The project includes several VS Code tasks:
 
 - **tsc: build**: Build the TypeScript project
-- **jest: test current file**: Run tests for the current file
-- **jest: test all**: Run all tests in the project
+- **vitest: test current file**: Run tests for the current file
+- **vitest: test all**: Run all tests in the project
 
 Access these tasks via:
 
@@ -178,14 +178,17 @@ npm run package:watch
 # Run all tests
 npm test
 
-# Run tests with verbose output
-npm run test -- --verbose
+# Run tests with coverage
+npm run test:coverage
+
+# Run tests in CI mode
+npm run test:ci
 
 # Run specific test file
-npm test -- src/__tests__/service.spec.ts
+npx vitest run __tests__/utils.test.ts
 
 # Run tests in watch mode
-npm test -- --watch
+npx vitest
 ```
 
 ### Development Process
@@ -229,12 +232,14 @@ This project uses **release-drafter** for automated release management. The proc
 ### Automated Release Workflow
 
 1. **Pull Request Labels**: When creating PRs, use appropriate labels:
+
    - `feature`, `enhancement` → Minor version bump
    - `bug`, `fix`, `bugfix` → Patch version bump
    - `major`, `breaking` → Major version bump
    - `chore`, `maintenance`, `dependencies` → Patch version bump
 
 2. **Draft Release Creation**: When PRs are merged to `main`, release-drafter automatically:
+
    - Creates or updates a draft release
    - Generates release notes from PR titles and labels
    - Calculates the next version number based on labels

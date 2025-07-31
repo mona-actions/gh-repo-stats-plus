@@ -1,13 +1,16 @@
-import fs from 'fs';
-import { ProcessedPageState } from '../types.js';
-import { initializeState, updateState } from '../state.js';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { ProcessedPageState } from '../src/types.js';
+import { initializeState, updateState } from '../src/state.js';
 import { withMockedDate, createMockLogger } from './test-utils.js';
 
+// Import fs functions individually
+import { existsSync, readFileSync, writeFileSync } from 'fs';
+
 // Mock the fs module
-jest.mock('fs', () => ({
-  readFileSync: jest.fn(),
-  writeFileSync: jest.fn(),
-  existsSync: jest.fn(),
+vi.mock('fs', () => ({
+  readFileSync: vi.fn(),
+  writeFileSync: vi.fn(),
+  existsSync: vi.fn(),
 }));
 
 describe('State Management', () => {
@@ -15,13 +18,13 @@ describe('State Management', () => {
 
   // Clean up mocks before each test
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('initializeState', () => {
     it('should return default state when no previous state exists', () => {
       // Mock that the file does not exist
-      (fs.existsSync as jest.Mock).mockReturnValue(false);
+      vi.mocked(existsSync).mockReturnValue(false);
 
       const { processedState, resumeFromLastState } = initializeState({
         logger: mockLogger,
@@ -37,15 +40,15 @@ describe('State Management', () => {
         completedSuccessfully: false,
         outputFileName: null,
       });
-      expect(fs.existsSync).toHaveBeenCalledWith('last_known_state.json');
+      expect(existsSync).toHaveBeenCalledWith('last_known_state.json');
     });
 
     it('should not resume from last state if completedSuccessfully is true', () => {
       // Mock that the file exists
-      (fs.existsSync as jest.Mock).mockReturnValue(true);
+      vi.mocked(existsSync).mockReturnValue(true);
 
       // Mock file content with completed state
-      (fs.readFileSync as jest.Mock).mockReturnValue(
+      vi.mocked(readFileSync).mockReturnValue(
         JSON.stringify({
           completedSuccessfully: true,
           processedRepos: ['repo1', 'repo2'],
@@ -78,7 +81,7 @@ describe('State Management', () => {
 
     it('should resume from last state when resumeFromLastSave is true', () => {
       // Mock that the file exists
-      (fs.existsSync as jest.Mock).mockReturnValue(true);
+      vi.mocked(existsSync).mockReturnValue(true);
 
       // Mock file content with incomplete state
       const mockLastState = {
@@ -91,9 +94,7 @@ describe('State Management', () => {
         outputFileName: null,
       };
 
-      (fs.readFileSync as jest.Mock).mockReturnValue(
-        JSON.stringify(mockLastState),
-      );
+      vi.mocked(readFileSync).mockReturnValue(JSON.stringify(mockLastState));
 
       const { processedState, resumeFromLastState } = initializeState({
         resumeFromLastSave: true,
@@ -117,10 +118,10 @@ describe('State Management', () => {
 
     it('should handle invalid state file gracefully', () => {
       // Mock that the file exists
-      (fs.existsSync as jest.Mock).mockReturnValue(true);
+      vi.mocked(existsSync).mockReturnValue(true);
 
       // Mock an error when reading the file - need to do it this way to avoid failing the test
-      (fs.readFileSync as jest.Mock).mockImplementation(() => {
+      vi.mocked(readFileSync).mockImplementation(() => {
         const error = new Error('Invalid JSON');
         // Mock the error without actually throwing it
         mockLogger.error(`Failed to load last state: ${error.message}`);
@@ -150,7 +151,7 @@ describe('State Management', () => {
 
     it('should handle missing processedRepos in state file', () => {
       // Mock that the file exists
-      (fs.existsSync as jest.Mock).mockReturnValue(true);
+      vi.mocked(existsSync).mockReturnValue(true);
 
       // Mock file content with missing processedRepos
       const mockLastState = {
@@ -161,9 +162,7 @@ describe('State Management', () => {
         lastSuccessTimestamp: '2025-03-19T12:00:00Z',
       };
 
-      (fs.readFileSync as jest.Mock).mockReturnValue(
-        JSON.stringify(mockLastState),
-      );
+      vi.mocked(readFileSync).mockReturnValue(JSON.stringify(mockLastState));
 
       const { processedState, resumeFromLastState } = initializeState({
         resumeFromLastSave: true,
@@ -202,7 +201,7 @@ describe('State Management', () => {
 
       expect(mockState.currentCursor).toBe(newCursor);
       expect(mockState.lastUpdated).toBe('2025-03-20T15:00:00.000Z');
-      expect(fs.writeFileSync).toHaveBeenCalledWith(
+      expect(writeFileSync).toHaveBeenCalledWith(
         'last_known_state.json',
         expect.any(String),
       );
@@ -291,7 +290,7 @@ describe('State Management', () => {
       };
 
       // Mock writeFileSync to throw error
-      (fs.writeFileSync as jest.Mock).mockImplementation(() => {
+      vi.mocked(writeFileSync).mockImplementation(() => {
         throw new Error('Write error');
       });
 
