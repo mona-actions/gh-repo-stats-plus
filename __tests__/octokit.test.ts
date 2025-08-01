@@ -93,7 +93,13 @@ describe('octokit', () => {
       const baseUrl = 'https://api.github.com';
 
       // Act
-      const result = createOctokit(mockAuthConfig, baseUrl, undefined, mockLogger, customFetch);
+      const result = createOctokit(
+        mockAuthConfig,
+        baseUrl,
+        undefined,
+        mockLogger,
+        customFetch,
+      );
 
       // Assert
       expect(result).toBeDefined();
@@ -108,7 +114,12 @@ describe('octokit', () => {
       };
 
       // Act
-      const result = createOctokit(authConfigWithStrategy, 'https://api.github.com', undefined, mockLogger);
+      const result = createOctokit(
+        authConfigWithStrategy,
+        'https://api.github.com',
+        undefined,
+        mockLogger,
+      );
 
       // Assert
       expect(result).toBeDefined();
@@ -117,7 +128,12 @@ describe('octokit', () => {
     describe('hook handlers', () => {
       it('should have after and error hooks configured', () => {
         // Arrange
-        const result = createOctokit(mockAuthConfig, 'https://api.github.com', undefined, mockLogger);
+        const result = createOctokit(
+          mockAuthConfig,
+          'https://api.github.com',
+          undefined,
+          mockLogger,
+        );
 
         // Assert
         expect(result.hook.after).toHaveBeenCalled();

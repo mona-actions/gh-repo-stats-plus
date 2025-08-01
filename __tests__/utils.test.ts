@@ -95,7 +95,9 @@ describe('Utils', () => {
     });
 
     it('should throw error for invalid input when no default provided', () => {
-      expect(() => parseIntOption('invalid')).toThrow('Invalid number: invalid');
+      expect(() => parseIntOption('invalid')).toThrow(
+        'Invalid number: invalid',
+      );
       expect(() => parseIntOption('')).toThrow('Invalid number: ');
     });
 
@@ -120,9 +122,13 @@ describe('Utils', () => {
     });
 
     it('should throw error for invalid input when no default provided', () => {
-      expect(() => parseFloatOption('invalid')).toThrow('Invalid number: invalid');
+      expect(() => parseFloatOption('invalid')).toThrow(
+        'Invalid number: invalid',
+      );
       expect(() => parseFloatOption('')).toThrow('Invalid number: ');
-      expect(() => parseFloatOption('not-a-number')).toThrow('Invalid number: not-a-number');
+      expect(() => parseFloatOption('not-a-number')).toThrow(
+        'Invalid number: not-a-number',
+      );
     });
 
     it('should handle edge cases', () => {

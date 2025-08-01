@@ -83,7 +83,9 @@ describe('retry', () => {
       const onRetry = vi.fn();
 
       // Act & Assert
-      await expect(withRetry(operation, defaultConfig, onRetry)).rejects.toThrow(
+      await expect(
+        withRetry(operation, defaultConfig, onRetry),
+      ).rejects.toThrow(
         `Operation failed after ${defaultConfig.maxAttempts} attempts: ${finalError.message}`,
       );
 
@@ -119,7 +121,10 @@ describe('retry', () => {
       // Assert delays were capped
       expect(global.setTimeout).toHaveBeenCalledWith(expect.any(Function), 500);
       expect(global.setTimeout).toHaveBeenCalledWith(expect.any(Function), 800);
-      expect(global.setTimeout).not.toHaveBeenCalledWith(expect.any(Function), 1000);
+      expect(global.setTimeout).not.toHaveBeenCalledWith(
+        expect.any(Function),
+        1000,
+      );
     });
 
     it('should reset retry count after successful threshold', async () => {
@@ -194,7 +199,9 @@ describe('retry', () => {
       const onRetry = vi.fn();
 
       // Act
-      await expect(withRetry(operation, defaultConfig, onRetry)).rejects.toThrow();
+      await expect(
+        withRetry(operation, defaultConfig, onRetry),
+      ).rejects.toThrow();
 
       // Assert - Should only retry maxAttempts - 1 times
       expect(onRetry).toHaveBeenCalledTimes(2); // For 3 max attempts, 2 retries
@@ -222,7 +229,9 @@ describe('retry', () => {
           ...defaultConfig,
           maxAttempts: 1,
         };
-        const operation = vi.fn().mockRejectedValue(new Error('Immediate failure'));
+        const operation = vi
+          .fn()
+          .mockRejectedValue(new Error('Immediate failure'));
 
         // Act & Assert
         await expect(withRetry(operation, config)).rejects.toThrow(
@@ -243,8 +252,14 @@ describe('retry', () => {
         await expect(withRetry(operation, config)).rejects.toThrow();
 
         // Assert - all delays should be the same
-        expect(global.setTimeout).toHaveBeenCalledWith(expect.any(Function), 100);
-        expect(global.setTimeout).toHaveBeenCalledWith(expect.any(Function), 100);
+        expect(global.setTimeout).toHaveBeenCalledWith(
+          expect.any(Function),
+          100,
+        );
+        expect(global.setTimeout).toHaveBeenCalledWith(
+          expect.any(Function),
+          100,
+        );
       });
     });
   });

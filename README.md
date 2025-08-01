@@ -28,7 +28,6 @@ The tool will generate a CSV file with comprehensive repository statistics for a
 This TypeScript rewrite offers several advantages:
 
 1. **Octokit SDK Integration**: Built on GitHub's official Octokit.js SDK, providing:
-
    - Token renewal
    - Built-in retries
    - Rate limit handling
