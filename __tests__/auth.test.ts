@@ -15,7 +15,7 @@ vi.mock('@octokit/auth-app', () => ({
 
 describe('auth', () => {
   const mockLogger = createMockLogger();
-  let originalEnv: NodeJS.ProcessEnv;
+  let originalEnv: typeof process.env;
 
   beforeEach(() => {
     originalEnv = { ...process.env };

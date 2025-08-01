@@ -7,12 +7,13 @@ describe('retry', () => {
   beforeEach(() => {
     originalSetTimeout = global.setTimeout;
     // Mock setTimeout to execute immediately for faster tests
-    global.setTimeout = vi.fn((fn) => {
+    global.setTimeout = vi.fn().mockImplementation((fn) => {
       if (typeof fn === 'function') {
-        setImmediate(fn);
+        // Use Promise.resolve().then() for immediate execution in tests
+        Promise.resolve().then(fn);
       }
-      return 1 as any;
-    });
+      return 1 as unknown as ReturnType<typeof setTimeout>;
+    }) as unknown as typeof setTimeout;
   });
 
   afterEach(() => {
