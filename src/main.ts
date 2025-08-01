@@ -445,7 +445,12 @@ async function processRepositoriesFromFile({
   fileName: string;
 }): Promise<RepoProcessingResult> {
   logger.info(`Processing repositories from list: ${opts.repoList}`);
-  const repoList = readFileSync(opts.repoList!, 'utf-8')
+
+  if (!opts.repoList) {
+    throw new Error('Repository list file path is required');
+  }
+
+  const repoList = readFileSync(opts.repoList, 'utf-8')
     .split('\n')
     .filter((line) => line.trim() !== '')
     .map((line) => {

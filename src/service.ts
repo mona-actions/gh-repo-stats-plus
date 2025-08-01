@@ -9,6 +9,7 @@ import {
   RateLimitResponse,
   RateLimitResult,
   RepositoryStats,
+  RepoStatsGraphQLResponse,
 } from './types.js';
 
 type Repository = components['schemas']['repository'];
@@ -269,11 +270,14 @@ export class OctokitClient {
         }
       }`;
 
-    const response = await this.octokit.graphql<any>(query, {
-      owner,
-      name: repo,
-      pageSize: per_page,
-    });
+    const response = await this.octokit.graphql<RepoStatsGraphQLResponse>(
+      query,
+      {
+        owner,
+        name: repo,
+        pageSize: per_page,
+      },
+    );
 
     // Create a pageInfo object to maintain consistency with getOrgRepoStats
     const pageInfo = {

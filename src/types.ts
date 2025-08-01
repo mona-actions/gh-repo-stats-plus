@@ -146,6 +146,33 @@ export interface RepositoryStats {
   url: string;
 }
 
+export interface RepoStatsGraphQLResponse {
+  repository: {
+    branches: TotalCount;
+    branchProtectionRules: TotalCount;
+    commitComments: TotalCount;
+    collaborators: TotalCount;
+    createdAt: string;
+    diskUsage: number;
+    discussions: TotalCount;
+    hasWikiEnabled: boolean;
+    isEmpty: boolean;
+    isFork: boolean;
+    isArchived: boolean;
+    issues: IssuesConnection;
+    milestones: TotalCount;
+    name: string;
+    owner: RepositoryOwner;
+    projectsV2: TotalCount;
+    pullRequests: PullRequestsConnection;
+    pushedAt: string;
+    releases: TotalCount;
+    tags: TotalCount;
+    updatedAt: string;
+    url: string;
+  };
+}
+
 export interface IssueStats {
   totalCount: number;
   timeline: {

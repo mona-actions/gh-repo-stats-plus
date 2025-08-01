@@ -223,11 +223,8 @@ describe('OctokitClient', () => {
       });
 
       // Act
-      for await (const _unused of client.getOrgRepoStats(
-        'testorg',
-        10,
-        cursor,
-      )) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      for await (const _ of client.getOrgRepoStats('testorg', 10, cursor)) {
         // Just iterate to trigger the API call
       }
 

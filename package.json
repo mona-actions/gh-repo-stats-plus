@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "all": "npm run lint:fix && npm run format:write && npm run build && npm run test:ci",
     "bundle": "npm run format:write && npm run package",
     "start": "node dist/index.js",
     "dev": "npx tsx src/index.ts",
@@ -19,7 +20,7 @@
     "prepare-release": "./script/prepare-release.sh"
   },
   "name": "gh-repo-stats-plus",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "main": "dist/index.js",
   "description": "GitHub CLI extension for gathering comprehensive repository statistics from GitHub organizations",
   "keywords": [
