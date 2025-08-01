@@ -108,6 +108,7 @@ The project includes VS Code configurations for debugging:
 2. Ensure your `.env` file is properly configured
 3. Open the Run and Debug sidebar (`Ctrl+Shift+D` or `Cmd+Shift+D`)
 4. Select one of the debug configurations:
+
    - **repo-stats Debug**: Debug the repo-stats command
    - **missing-repos Debug**: Debug the missing-repos command
    - **Vitest Current File**: Debug tests for the currently open file
@@ -273,12 +274,14 @@ This project uses **release-drafter** for automated release management. The proc
 ### Automated Release Workflow
 
 1. **Pull Request Labels**: When creating PRs, use appropriate labels:
+
    - `feature`, `enhancement` → Minor version bump
    - `bug`, `fix`, `bugfix` → Patch version bump
    - `major`, `breaking` → Major version bump
    - `chore`, `maintenance`, `dependencies` → Patch version bump
 
 2. **Draft Release Creation**: When PRs are merged to `main`, release-drafter automatically:
+
    - Creates or updates a draft release
    - Generates release notes from PR titles and labels
    - Calculates the next version number based on labels
