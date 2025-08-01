@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "all": "npm run lint:fix && npm run format:write && npm run build && npm run test:ci",
     "bundle": "npm run format:write && npm run package",
     "start": "node dist/index.js",
     "dev": "npx tsx src/index.ts",
