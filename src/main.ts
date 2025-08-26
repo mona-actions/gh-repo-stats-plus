@@ -22,6 +22,7 @@ import {
   convertKbToMb,
   checkIfHasMigrationIssues,
   formatElapsedTime,
+  resolveOutputPath,
 } from './utils.js';
 import { readFileSync } from 'fs';
 import { parse } from 'csv-parse/sync';
@@ -64,7 +65,8 @@ const _init = async (
     fileName = processedState.outputFileName || '';
     logger.info(`Resuming from last state. Using existing file: ${fileName}`);
   } else {
-    fileName = generateRepoStatsFileName(opts.orgName);
+    const baseFileName = generateRepoStatsFileName(opts.orgName);
+    fileName = await resolveOutputPath(opts.outputDir, baseFileName);
 
     initializeCsvFile(fileName, logger);
     logger.info(`Results will be saved to file: ${fileName}`);
@@ -1015,11 +1017,15 @@ export async function checkForMissingRepos({
   });
 
   // file name of output file with missing repos with datetime suffix
-  const missingReposFileName = `${org}-missing-repos-${
+  const baseMissingReposFileName = `${org}-missing-repos-${
     new Date().toISOString().split('T')[0]
   }-${new Date().toISOString().split('T')[1].split(':')[0]}-${
     new Date().toISOString().split('T')[1].split(':')[1]
   }.csv`;
+  const missingReposFileName = await resolveOutputPath(
+    opts.outputDir,
+    baseMissingReposFileName,
+  );
 
   logger.info('Checking for missing repositories in the organization');
   const missingRepos = [];
@@ -1034,6 +1040,9 @@ export async function checkForMissingRepos({
     }
   }
   logger.info(`Found ${missingRepos.length} missing repositories`);
+  if (missingRepos.length > 0) {
+    logger.info(`Missing repositories written to: ${missingReposFileName}`);
+  }
 
   return { missingRepos };
 }
