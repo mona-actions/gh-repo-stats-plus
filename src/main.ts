@@ -470,13 +470,14 @@ async function processRepositoriesFromFile({
       const repoStats = await client.getRepoStats(
         owner,
         repo,
-        opts.pageSize || 10,
+        opts.pageSize != null ? Number(opts.pageSize) : 10,
       );
 
       const result = await analyzeRepositoryStats({
         repo: repoStats,
         owner,
-        extraPageSize: opts.extraPageSize || 50,
+        extraPageSize:
+          opts.extraPageSize != null ? Number(opts.extraPageSize) : 25,
         client,
         logger,
       });
@@ -546,7 +547,7 @@ async function processRepositories({
 
   const reposIterator = client.getOrgRepoStats(
     opts.orgName,
-    opts.pageSize || 10,
+    opts.pageSize != null ? Number(opts.pageSize) : 10,
     startCursor,
   );
 
@@ -558,7 +559,8 @@ async function processRepositories({
       reposIterator,
       client,
       logger,
-      extraPageSize: opts.extraPageSize || 50,
+      extraPageSize:
+        opts.extraPageSize != null ? Number(opts.extraPageSize) : 25,
       processedState,
     })) {
       try {
@@ -993,7 +995,7 @@ export async function checkForMissingRepos({
 }> {
   const { logger, client } = await _init(opts);
   const org = opts.orgName.toLowerCase();
-  const per_page = opts.pageSize || 10;
+  const per_page = opts.pageSize != null ? Number(opts.pageSize) : 10;
 
   logger.debug(`Checking for missing repositories in organization: ${org}`);
 

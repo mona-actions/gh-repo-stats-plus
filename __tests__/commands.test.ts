@@ -39,6 +39,11 @@ describe('Commands', () => {
         (opt) => opt.long === '--page-size',
       );
       expect(pageSizeOption?.defaultValue).toBe('10');
+
+      const extraPageSizeOption = repoStatsCommand.options.find(
+        (opt) => opt.long === '--extra-page-size',
+      );
+      expect(extraPageSizeOption?.defaultValue).toBe('25');
     });
 
     it('should have environment variable mappings', () => {
