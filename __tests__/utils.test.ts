@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   generateRepoStatsFileName,
   convertKbToMb,
@@ -6,7 +6,21 @@ import {
   formatElapsedTime,
   parseIntOption,
   parseFloatOption,
+  resolveOutputPath,
 } from '../src/utils.js';
+
+// Mock fs modules
+vi.mock('fs', () => ({
+  existsSync: vi.fn(),
+}));
+
+vi.mock('fs/promises', () => ({
+  mkdir: vi.fn(),
+}));
+
+vi.mock('path', () => ({
+  resolve: vi.fn(),
+}));
 
 describe('Utils', () => {
   describe('generateRepoStatsFileName', () => {
@@ -168,6 +182,62 @@ describe('Utils', () => {
 
       const formattedTime = formatElapsedTime(start, end);
       expect(formattedTime).toBe('25h 30m 15s');
+    });
+  });
+
+  describe('resolveOutputPath', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should create directory and return full path when directory does not exist', async () => {
+      const { existsSync } = await import('fs');
+      const { mkdir } = await import('fs/promises');
+      const { resolve } = await import('path');
+
+      vi.mocked(existsSync).mockReturnValue(false);
+      vi.mocked(mkdir).mockResolvedValue(undefined);
+      vi.mocked(resolve)
+        .mockReturnValueOnce('/current/working/dir/output') // for fullOutputDir
+        .mockReturnValueOnce('/current/working/dir/output/test.csv'); // for final path
+
+      const result = await resolveOutputPath('output', 'test.csv');
+
+      expect(mkdir).toHaveBeenCalledWith('/current/working/dir/output', { recursive: true });
+      expect(result).toBe('/current/working/dir/output/test.csv');
+    });
+
+    it('should not create directory when it already exists', async () => {
+      const { existsSync } = await import('fs');
+      const { mkdir } = await import('fs/promises');
+      const { resolve } = await import('path');
+
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(resolve)
+        .mockReturnValueOnce('/current/working/dir/output') // for fullOutputDir
+        .mockReturnValueOnce('/current/working/dir/output/test.csv'); // for final path
+
+      const result = await resolveOutputPath('output', 'test.csv');
+
+      expect(mkdir).not.toHaveBeenCalled();
+      expect(result).toBe('/current/working/dir/output/test.csv');
+    });
+
+    it('should use default output directory when not specified', async () => {
+      const { existsSync } = await import('fs');
+      const { mkdir } = await import('fs/promises');
+      const { resolve } = await import('path');
+
+      vi.mocked(existsSync).mockReturnValue(false);
+      vi.mocked(mkdir).mockResolvedValue(undefined);
+      vi.mocked(resolve)
+        .mockReturnValueOnce('/current/working/dir/output') // for fullOutputDir
+        .mockReturnValueOnce('/current/working/dir/output/test.csv'); // for final path
+
+      const result = await resolveOutputPath(undefined, 'test.csv');
+
+      expect(mkdir).toHaveBeenCalledWith('/current/working/dir/output', { recursive: true });
+      expect(result).toBe('/current/working/dir/output/test.csv');
     });
   });
 });

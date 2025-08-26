@@ -1,3 +1,7 @@
+import { mkdir } from 'fs/promises';
+import { existsSync } from 'fs';
+import { resolve } from 'path';
+
 export function generateRepoStatsFileName(orgName: string): string {
   const timestamp = new Date()
     .toISOString()
@@ -63,4 +67,24 @@ export function formatElapsedTime(startTime: Date, endTime: Date): string {
   const hours = Math.floor(minutes / 60);
 
   return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
+}
+
+/**
+ * Creates the output directory if it doesn't exist and returns the full path for a file
+ * @param outputDir The output directory (defaults to 'output')
+ * @param fileName The file name
+ * @returns The full path to the file
+ */
+export async function resolveOutputPath(
+  outputDir: string = 'output',
+  fileName: string,
+): Promise<string> {
+  const fullOutputDir = resolve(process.cwd(), outputDir);
+
+  // Create directory if it doesn't exist
+  if (!existsSync(fullOutputDir)) {
+    await mkdir(fullOutputDir, { recursive: true });
+  }
+
+  return resolve(fullOutputDir, fileName);
 }

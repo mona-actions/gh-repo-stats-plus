@@ -66,6 +66,11 @@ missingReposCommand
       .default('10')
       .argParser(parseIntOption),
   )
+  .addOption(
+    new Option('--output-dir <dir>', 'Output directory for generated files')
+      .env('OUTPUT_DIR')
+      .default('output'),
+  )
   .action(async (options: Arguments) => {
     console.log('Version:', VERSION);
 
