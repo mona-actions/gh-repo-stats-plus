@@ -76,7 +76,7 @@ export function formatElapsedTime(startTime: Date, endTime: Date): string {
  * @returns The full path to the file
  */
 export async function resolveOutputPath(
-  outputDir: string = 'output',
+  outputDir = 'output',
   fileName: string,
 ): Promise<string> {
   const fullOutputDir = resolve(process.cwd(), outputDir);
