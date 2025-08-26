@@ -5,6 +5,8 @@ import {
   RequestInit as undiciRequestInit,
 } from 'undici';
 import { Octokit, RequestError } from 'octokit';
+// For safe URL parsing in wrappedWarn
+import { URL } from 'url';
 import { paginateGraphQL } from '@octokit/plugin-paginate-graphql';
 import { throttling } from '@octokit/plugin-throttling';
 import { Logger, LoggerFn } from './types.js';
@@ -32,7 +34,21 @@ export const createOctokit = (
   };
 
   const wrappedWarn: LoggerFn = (message: string, meta: unknown) => {
-    if (message.includes('https://gh.io/tag-protection-sunset')) return;
+    try {
+      // Find and parse first URL in the message, if present
+      const urlMatch = message.match(/https?:\/\/[^\s'"]+/);
+      if (urlMatch) {
+        const parsed = new URL(urlMatch[0]);
+        if (
+          parsed.hostname === 'gh.io' &&
+          parsed.pathname === '/tag-protection-sunset'
+        ) {
+          return;
+        }
+      }
+    } catch (e) {
+      // Ignore parse errors, fall through to warn
+    }
     logger.warn(message, meta);
   };
 
