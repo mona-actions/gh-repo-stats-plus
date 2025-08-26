@@ -28,8 +28,10 @@ describe('Arguments Type Conversion', () => {
   it('should handle various input types for Number conversion with null checking', () => {
     // Test edge cases for our improved conversion logic
     // Use a helper function to simulate the actual logic
-    const convertWithFallback = (value: string | number | null | undefined, fallback: number) => 
-      value != null ? Number(value) : fallback;
+    const convertWithFallback = (
+      value: string | number | null | undefined,
+      fallback: number,
+    ) => (value != null ? Number(value) : fallback);
 
     expect(convertWithFallback('50', 25)).toBe(50);
     expect(convertWithFallback('0', 25)).toBe(0); // Now 0 is preserved!
