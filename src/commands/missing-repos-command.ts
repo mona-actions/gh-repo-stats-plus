@@ -74,9 +74,21 @@ missingReposCommand
   .action(async (options: Arguments) => {
     console.log('Version:', VERSION);
 
+    // Resolve the processed file path relative to output directory if it's not absolute
+    const { resolve, isAbsolute } = await import('path');
+    let processedFilePath = options.outputFileName || '';
+
+    if (processedFilePath && !isAbsolute(processedFilePath)) {
+      processedFilePath = resolve(
+        process.cwd(),
+        options.outputDir || 'output',
+        processedFilePath,
+      );
+    }
+
     const result = await checkForMissingRepos({
       opts: options,
-      processedFile: `${options.outputFileName}`,
+      processedFile: processedFilePath,
     });
 
     const missing = result.missingRepos;

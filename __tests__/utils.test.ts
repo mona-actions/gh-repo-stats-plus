@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   generateRepoStatsFileName,
   convertKbToMb,
@@ -203,7 +203,9 @@ describe('Utils', () => {
 
       const result = await resolveOutputPath('output', 'test.csv');
 
-      expect(mkdir).toHaveBeenCalledWith('/current/working/dir/output', { recursive: true });
+      expect(mkdir).toHaveBeenCalledWith('/current/working/dir/output', {
+        recursive: true,
+      });
       expect(result).toBe('/current/working/dir/output/test.csv');
     });
 
@@ -236,7 +238,9 @@ describe('Utils', () => {
 
       const result = await resolveOutputPath(undefined, 'test.csv');
 
-      expect(mkdir).toHaveBeenCalledWith('/current/working/dir/output', { recursive: true });
+      expect(mkdir).toHaveBeenCalledWith('/current/working/dir/output', {
+        recursive: true,
+      });
       expect(result).toBe('/current/working/dir/output/test.csv');
     });
   });
