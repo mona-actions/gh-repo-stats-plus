@@ -27,14 +27,18 @@ describe('Arguments Type Conversion', () => {
 
   it('should handle various input types for Number conversion with null checking', () => {
     // Test edge cases for our improved conversion logic
-    expect('50' != null ? Number('50') : 25).toBe(50);
-    expect('0' != null ? Number('0') : 25).toBe(0); // Now 0 is preserved!
-    expect('' != null ? Number('') : 25).toBe(0); // empty string converts to 0
-    expect(undefined != null ? Number(undefined) : 25).toBe(25);
-    expect(null != null ? Number(null) : 25).toBe(25);
+    // Use a helper function to simulate the actual logic
+    const convertWithFallback = (value: string | number | null | undefined, fallback: number) => 
+      value != null ? Number(value) : fallback;
+
+    expect(convertWithFallback('50', 25)).toBe(50);
+    expect(convertWithFallback('0', 25)).toBe(0); // Now 0 is preserved!
+    expect(convertWithFallback('', 25)).toBe(0); // empty string converts to 0
+    expect(convertWithFallback(undefined, 25)).toBe(25);
+    expect(convertWithFallback(null, 25)).toBe(25);
 
     // For invalid strings, Number() returns NaN, but we still preserve it
-    const invalidResult = 'invalid' != null ? Number('invalid') : 25;
+    const invalidResult = convertWithFallback('invalid', 25);
     expect(isNaN(invalidResult)).toBe(true);
   });
 });
