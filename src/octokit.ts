@@ -32,7 +32,28 @@ export const createOctokit = (
   };
 
   const wrappedWarn: LoggerFn = (message: string, meta: unknown) => {
-    if (message.includes('https://gh.io/tag-protection-sunset')) return;
+    try {
+      // Find and parse all URLs in the message, if present
+      const urlRegex = /https?:\/\/[^\s'")]+/g;
+      const matches = message.match(urlRegex);
+      if (matches) {
+        for (const urlStr of matches) {
+          try {
+            const parsed = new URL(urlStr);
+            if (
+              parsed.hostname === 'gh.io' &&
+              parsed.pathname === '/tag-protection-sunset'
+            ) {
+              return;
+            }
+          } catch (e) {
+            // Ignore parse errors for individual URLs
+          }
+        }
+      }
+    } catch (e) {
+      // Ignore parse errors, fall through to warn
+    }
     logger.warn(message, meta);
   };
 
