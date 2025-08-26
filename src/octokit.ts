@@ -5,8 +5,6 @@ import {
   RequestInit as undiciRequestInit,
 } from 'undici';
 import { Octokit, RequestError } from 'octokit';
-// For safe URL parsing in wrappedWarn
-import { URL } from 'url';
 import { paginateGraphQL } from '@octokit/plugin-paginate-graphql';
 import { throttling } from '@octokit/plugin-throttling';
 import { Logger, LoggerFn } from './types.js';
