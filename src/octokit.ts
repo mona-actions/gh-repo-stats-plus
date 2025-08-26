@@ -33,15 +33,22 @@ export const createOctokit = (
 
   const wrappedWarn: LoggerFn = (message: string, meta: unknown) => {
     try {
-      // Find and parse first URL in the message, if present
-      const urlMatch = message.match(/https?:\/\/[^\s'"]+/);
-      if (urlMatch) {
-        const parsed = new URL(urlMatch[0]);
-        if (
-          parsed.hostname === 'gh.io' &&
-          parsed.pathname === '/tag-protection-sunset'
-        ) {
-          return;
+      // Find and parse all URLs in the message, if present
+      const urlRegex = /https?:\/\/[^\s'")]+/g;
+      const matches = message.match(urlRegex);
+      if (matches) {
+        for (const urlStr of matches) {
+          try {
+            const parsed = new URL(urlStr);
+            if (
+              parsed.hostname === 'gh.io' &&
+              parsed.pathname === '/tag-protection-sunset'
+            ) {
+              return;
+            }
+          } catch (e) {
+            // Ignore parse errors for individual URLs
+          }
         }
       }
     } catch (e) {
