@@ -19,6 +19,7 @@ export default [
         setTimeout: 'readonly',
         global: 'readonly',
         require: 'readonly',
+        URL: 'readonly',
       },
     },
     plugins: {
