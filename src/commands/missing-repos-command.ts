@@ -1,4 +1,5 @@
 import * as commander from 'commander';
+import { resolve, isAbsolute } from 'path';
 import VERSION from '../version.js';
 import { parseIntOption } from '../utils.js';
 import { Arguments } from '../types.js';
@@ -75,7 +76,6 @@ missingReposCommand
     console.log('Version:', VERSION);
 
     // Resolve the processed file path relative to output directory if it's not absolute
-    const { resolve, isAbsolute } = await import('path');
     let processedFilePath = options.outputFileName || '';
 
     if (processedFilePath && !isAbsolute(processedFilePath)) {
