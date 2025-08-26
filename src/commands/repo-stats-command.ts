@@ -60,7 +60,7 @@ repoStatsCommand
   .addOption(
     new Option('--extra-page-size <size>', 'Extra page size')
       .env('EXTRA_PAGE_SIZE')
-      .default('50')
+      .default('25')
       .argParser(parseIntOption),
   )
   .addOption(
