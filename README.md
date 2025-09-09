@@ -21,7 +21,7 @@ A GitHub CLI extension for gathering comprehensive repository statistics from Gi
    gh repo-stats-plus repo-stats --organization my-org
    ```
 
-The tool will generate a CSV file with comprehensive repository statistics for analysis.
+The tool will generate a CSV file with comprehensive repository statistics in the `./output/` directory (or a custom directory you specify).
 
 ## Key Features
 
@@ -50,6 +50,8 @@ This TypeScript rewrite offers several advantages:
 
 9. **Missing Repositories Detection**: Dedicated command to identify repositories that might have been missed during processing.
 
+10. **Configurable Output Directory**: Control where output files are saved with the `--output-dir` option (defaults to `./output/` directory for organized file management).
+
 ## Technical Implementation
 
 The extension is built using modern TypeScript patterns with:
@@ -76,7 +78,18 @@ The extension is built using modern TypeScript patterns with:
 ### Basic Organization Analysis
 
 ```bash
+# Generate repository statistics (output saved to ./output/ directory)
 gh repo-stats-plus repo-stats --organization my-org
+```
+
+### Custom Output Directory
+
+```bash
+# Save output files to a custom directory
+gh repo-stats-plus repo-stats --organization my-org --output-dir /path/to/my/reports
+
+# Use relative path from current directory
+gh repo-stats-plus repo-stats --organization my-org --output-dir reports
 ```
 
 ### Resume Long-Running Collection
@@ -92,13 +105,23 @@ gh repo-stats-plus repo-stats \
   --organization my-org \
   --app-id 12345 \
   --private-key-file app.pem \
-  --app-installation-id 67890
+  --app-installation-id 67890 \
+  --output-dir /path/to/reports
 ```
 
 ### Find and Process Missing Data
 
 ```bash
+# Check for missing repositories (looks for CSV in ./output/ by default)
 gh repo-stats-plus missing-repos --organization my-org --file results.csv
+
+# Use custom output directory for missing repos check
+gh repo-stats-plus missing-repos \
+  --organization my-org \
+  --file results.csv \
+  --output-dir /path/to/reports
+
+# Auto-process missing repositories
 gh repo-stats-plus repo-stats --organization my-org --auto-process-missing
 ```
 
