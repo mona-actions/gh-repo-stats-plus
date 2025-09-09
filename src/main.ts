@@ -93,9 +93,8 @@ const _init = async (
 };
 
 export async function run(opts: Arguments): Promise<void> {
-  const { logger, client, fileName, processedState, retryConfig } = await _init(
-    opts,
-  );
+  const { logger, client, fileName, processedState, retryConfig } =
+    await _init(opts);
   const startTime = new Date();
   logger.info(`Started processing at: ${startTime.toISOString()}`);
 
@@ -714,7 +713,7 @@ async function writeResultToCsv(
       formattedResult.Created,
     ].map((value) =>
       // Escape values containing commas with quotes
-      value?.toString().includes(',') ? `"${value}"` : value ?? '',
+      value?.toString().includes(',') ? `"${value}"` : (value ?? ''),
     );
 
     const csvRow = `${values.join(',')}\n`;
