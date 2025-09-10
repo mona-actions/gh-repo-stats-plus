@@ -168,7 +168,24 @@ export class OctokitClient {
       const pageInfo = response.organization.repositories.pageInfo;
 
       for (const repo of repos) {
-        yield { ...repo, pageInfo };
+        // Check if release count might be capped at 1000 and get accurate count
+        let adjustedRepo = { ...repo };
+        if (repo.releases?.totalCount === 1000) {
+          try {
+            const accurateCount = await this.getAccurateReleaseCount(
+              repo.owner.login,
+              repo.name,
+            );
+            adjustedRepo = {
+              ...repo,
+              releases: { totalCount: accurateCount },
+            };
+          } catch (error) {
+            // If we can't get accurate count, use the original capped value
+            // This ensures the function doesn't fail completely
+          }
+        }
+        yield { ...adjustedRepo, pageInfo };
       }
     }
   }
@@ -286,7 +303,22 @@ export class OctokitClient {
       startCursor: null,
     };
 
-    return { ...response.repository, pageInfo };
+    // Check if release count might be capped at 1000 and get accurate count
+    let adjustedRepository = response.repository;
+    if (response.repository.releases?.totalCount === 1000) {
+      try {
+        const accurateCount = await this.getAccurateReleaseCount(owner, repo);
+        adjustedRepository = {
+          ...response.repository,
+          releases: { totalCount: accurateCount },
+        };
+      } catch (error) {
+        // If we can't get accurate count, use the original capped value
+        // This ensures the function doesn't fail completely
+      }
+    }
+
+    return { ...adjustedRepository, pageInfo };
   }
 
   async *getRepoIssues(
@@ -384,6 +416,43 @@ export class OctokitClient {
         yield pr;
       }
     }
+  }
+
+  // Method to get accurate release count when totalCount might be capped at 1000
+  async getAccurateReleaseCount(
+    owner: string,
+    repo: string,
+    pageSize = 100,
+  ): Promise<number> {
+    const query = `
+      query countReleases($owner: String!, $name: String!, $pageSize: Int!, $cursor: String) {
+        repository(owner: $owner, name: $name) {
+          releases(first: $pageSize, after: $cursor) {
+            pageInfo {
+              endCursor
+              hasNextPage
+            }
+            nodes {
+              id
+            }
+          }
+        }
+      }`;
+
+    const iterator = this.octokit.graphql.paginate.iterator(query, {
+      owner,
+      name: repo,
+      pageSize,
+      cursor: null,
+    });
+
+    let totalCount = 0;
+    for await (const response of iterator) {
+      const releases = response.repository.releases.nodes;
+      totalCount += releases.length;
+    }
+
+    return totalCount;
   }
 
   async checkRateLimits(
