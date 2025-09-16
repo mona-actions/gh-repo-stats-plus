@@ -519,4 +519,239 @@ describe('OctokitClient', () => {
       );
     });
   });
+
+  describe('getAccurateReleaseCount', () => {
+    it('should count releases across multiple pages', async () => {
+      // Arrange
+      const page1Releases = Array(100)
+        .fill(0)
+        .map((_, i) => ({ id: `release-${i}` }));
+      const page2Releases = Array(50)
+        .fill(0)
+        .map((_, i) => ({ id: `release-${i + 100}` }));
+
+      mockOctokit.graphql.paginate.iterator.mockReturnValue({
+        async *[Symbol.asyncIterator]() {
+          yield {
+            repository: {
+              releases: {
+                nodes: page1Releases,
+                pageInfo: { endCursor: 'cursor1', hasNextPage: true },
+              },
+            },
+          };
+          yield {
+            repository: {
+              releases: {
+                nodes: page2Releases,
+                pageInfo: { endCursor: 'cursor2', hasNextPage: false },
+              },
+            },
+          };
+        },
+      });
+
+      // Act
+      const result = await client.getAccurateReleaseCount(
+        'testorg',
+        'testrepo',
+      );
+
+      // Assert
+      expect(result).toBe(150);
+      expect(mockOctokit.graphql.paginate.iterator).toHaveBeenCalledWith(
+        expect.any(String),
+        {
+          owner: 'testorg',
+          name: 'testrepo',
+          pageSize: 100,
+          cursor: null,
+        },
+      );
+    });
+
+    it('should handle repositories with no releases', async () => {
+      // Arrange
+      mockOctokit.graphql.paginate.iterator.mockReturnValue({
+        async *[Symbol.asyncIterator]() {
+          yield {
+            repository: {
+              releases: {
+                nodes: [],
+                pageInfo: { endCursor: null, hasNextPage: false },
+              },
+            },
+          };
+        },
+      });
+
+      // Act
+      const result = await client.getAccurateReleaseCount(
+        'testorg',
+        'testrepo',
+      );
+
+      // Assert
+      expect(result).toBe(0);
+    });
+  });
+
+  describe('enhanced release count functionality', () => {
+    it('should use accurate count when getOrgRepoStats encounters 1000 releases', async () => {
+      // Arrange
+      const mockRepos = [
+        {
+          name: 'repo-with-many-releases',
+          owner: { login: 'testorg' },
+          releases: { totalCount: 1000 }, // This triggers the accurate count
+        },
+      ];
+
+      const mockPageInfo = {
+        endCursor: 'cursor123',
+        hasNextPage: false,
+        startCursor: 'start123',
+      };
+
+      // Mock the org repo stats response
+      mockOctokit.graphql.paginate.iterator.mockReturnValue({
+        async *[Symbol.asyncIterator]() {
+          yield {
+            organization: {
+              repositories: {
+                nodes: mockRepos,
+                pageInfo: mockPageInfo,
+              },
+            },
+          };
+        },
+      });
+
+      // Mock the accurate release count response
+      mockOctokit.graphql.paginate.iterator
+        .mockReturnValueOnce({
+          async *[Symbol.asyncIterator]() {
+            yield {
+              organization: {
+                repositories: {
+                  nodes: mockRepos,
+                  pageInfo: mockPageInfo,
+                },
+              },
+            };
+          },
+        })
+        .mockReturnValueOnce({
+          async *[Symbol.asyncIterator]() {
+            // Return mock releases for accurate counting (simulating 1500 releases)
+            const releases = Array(1500)
+              .fill(0)
+              .map((_, i) => ({ id: `release-${i}` }));
+            // Split into pages
+            for (let i = 0; i < releases.length; i += 100) {
+              yield {
+                repository: {
+                  releases: {
+                    nodes: releases.slice(i, i + 100),
+                    pageInfo: {
+                      endCursor: `cursor-${i}`,
+                      hasNextPage: i + 100 < releases.length,
+                    },
+                  },
+                },
+              };
+            }
+          },
+        });
+
+      // Act
+      const result = [];
+      for await (const repo of client.getOrgRepoStats('testorg', 10)) {
+        result.push(repo);
+      }
+
+      // Assert
+      expect(result).toHaveLength(1);
+      expect(result[0].releases.totalCount).toBe(1500);
+      expect(result[0].name).toBe('repo-with-many-releases');
+    });
+
+    it('should use accurate count when getRepoStats encounters 1000 releases', async () => {
+      // Arrange
+      const mockRepoResponse = {
+        repository: {
+          name: 'testrepo',
+          owner: { login: 'testorg' },
+          releases: { totalCount: 1000 }, // This triggers the accurate count
+          branches: { totalCount: 5 },
+          issues: {
+            totalCount: 10,
+            nodes: [],
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
+        },
+      };
+
+      // Mock the single repo stats response
+      mockOctokit.graphql.mockResolvedValue(mockRepoResponse);
+
+      // Mock the accurate release count response (simulating 1200 releases)
+      mockOctokit.graphql.paginate.iterator.mockReturnValue({
+        async *[Symbol.asyncIterator]() {
+          const releases = Array(1200)
+            .fill(0)
+            .map((_, i) => ({ id: `release-${i}` }));
+          // Split into pages
+          for (let i = 0; i < releases.length; i += 100) {
+            yield {
+              repository: {
+                releases: {
+                  nodes: releases.slice(i, i + 100),
+                  pageInfo: {
+                    endCursor: `cursor-${i}`,
+                    hasNextPage: i + 100 < releases.length,
+                  },
+                },
+              },
+            };
+          }
+        },
+      });
+
+      // Act
+      const result = await client.getRepoStats('testorg', 'testrepo', 10);
+
+      // Assert
+      expect(result.releases.totalCount).toBe(1200);
+      expect(result.name).toBe('testrepo');
+    });
+
+    it('should not trigger accurate count when releases are less than 1000', async () => {
+      // Arrange
+      const mockRepoResponse = {
+        repository: {
+          name: 'testrepo',
+          owner: { login: 'testorg' },
+          releases: { totalCount: 500 }, // This should NOT trigger accurate count
+          branches: { totalCount: 5 },
+          issues: {
+            totalCount: 10,
+            nodes: [],
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
+        },
+      };
+
+      mockOctokit.graphql.mockResolvedValue(mockRepoResponse);
+
+      // Act
+      const result = await client.getRepoStats('testorg', 'testrepo', 10);
+
+      // Assert
+      expect(result.releases.totalCount).toBe(500);
+      expect(result.name).toBe('testrepo');
+      // Verify that getAccurateReleaseCount was NOT called
+      expect(mockOctokit.graphql.paginate.iterator).not.toHaveBeenCalled();
+    });
+  });
 });
