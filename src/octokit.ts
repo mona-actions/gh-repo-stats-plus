@@ -46,12 +46,12 @@ export const createOctokit = (
             ) {
               return;
             }
-          } catch (e) {
+          } catch {
             // Ignore parse errors for individual URLs
           }
         }
       }
-    } catch (e) {
+    } catch {
       // Ignore parse errors, fall through to warn
     }
     logger.warn(message, meta);
