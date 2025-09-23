@@ -135,6 +135,11 @@ repoStatsCommand
       'Automatically process any missing repositories when main processing is complete',
     ).env('AUTO_PROCESS_MISSING'),
   )
+  .addOption(
+    new Option('--output-dir <dir>', 'Output directory for generated files')
+      .env('OUTPUT_DIR')
+      .default('output'),
+  )
   .action(async (options: Arguments) => {
     console.log('Version:', VERSION);
 
