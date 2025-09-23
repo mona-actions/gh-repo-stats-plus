@@ -10,6 +10,7 @@ export default [
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
+      parser: tseslint.parser,
       globals: {
         process: 'readonly',
         console: 'readonly',
