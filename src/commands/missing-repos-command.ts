@@ -1,4 +1,5 @@
 import * as commander from 'commander';
+import { resolve, isAbsolute } from 'path';
 import VERSION from '../version.js';
 import { parseIntOption } from '../utils.js';
 import { Arguments } from '../types.js';
@@ -66,12 +67,28 @@ missingReposCommand
       .default('10')
       .argParser(parseIntOption),
   )
+  .addOption(
+    new Option('--output-dir <dir>', 'Output directory for generated files')
+      .env('OUTPUT_DIR')
+      .default('output'),
+  )
   .action(async (options: Arguments) => {
     console.log('Version:', VERSION);
 
+    // Resolve the processed file path relative to output directory if it's not absolute
+    let processedFilePath = options.outputFileName || '';
+
+    if (processedFilePath && !isAbsolute(processedFilePath)) {
+      processedFilePath = resolve(
+        process.cwd(),
+        options.outputDir || 'output',
+        processedFilePath,
+      );
+    }
+
     const result = await checkForMissingRepos({
       opts: options,
-      processedFile: `${options.outputFileName}`,
+      processedFile: processedFilePath,
     });
 
     const missing = result.missingRepos;
