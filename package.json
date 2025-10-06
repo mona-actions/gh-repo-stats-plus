@@ -38,7 +38,7 @@
     "@octokit/openapi-types": "^24.0.0",
     "@rollup/plugin-commonjs": "^28.0.6",
     "@rollup/plugin-json": "^6.1.0",
-    "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-node-resolve": "^16.0.2",
     "@rollup/plugin-typescript": "^12.1.4",
     "@types/node": "^24.5.2",
     "@types/shell-quote": "^1.7.5",
