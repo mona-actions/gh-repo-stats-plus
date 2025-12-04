@@ -1,5 +1,4 @@
 import { mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
 import { resolve } from 'path';
 
 export function generateRepoStatsFileName(orgName: string): string {
@@ -81,10 +80,8 @@ export async function resolveOutputPath(
 ): Promise<string> {
   const fullOutputDir = resolve(process.cwd(), outputDir);
 
-  // Create directory if it doesn't exist
-  if (!existsSync(fullOutputDir)) {
-    await mkdir(fullOutputDir, { recursive: true });
-  }
+  // Create directory - mkdir with recursive option handles existing directories gracefully
+  await mkdir(fullOutputDir, { recursive: true });
 
   return resolve(fullOutputDir, fileName);
 }

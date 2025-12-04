@@ -27,6 +27,7 @@ describe('Commands', () => {
       expect(optionNames).toContain('--page-size');
       expect(optionNames).toContain('--extra-page-size');
       expect(optionNames).toContain('--verbose');
+      expect(optionNames).toContain('--output-dir');
     });
 
     it('should have default values for certain options', () => {
@@ -44,6 +45,11 @@ describe('Commands', () => {
         (opt) => opt.long === '--extra-page-size',
       );
       expect(extraPageSizeOption?.defaultValue).toBe('25');
+
+      const outputDirOption = repoStatsCommand.options.find(
+        (opt) => opt.long === '--output-dir',
+      );
+      expect(outputDirOption?.defaultValue).toBe('output');
     });
 
     it('should have environment variable mappings', () => {
@@ -56,6 +62,11 @@ describe('Commands', () => {
         (opt) => opt.long === '--access-token',
       );
       expect(accessTokenOption?.envVar).toBe('ACCESS_TOKEN');
+
+      const outputDirOption = repoStatsCommand.options.find(
+        (opt) => opt.long === '--output-dir',
+      );
+      expect(outputDirOption?.envVar).toBe('OUTPUT_DIR');
     });
   });
 
@@ -75,6 +86,7 @@ describe('Commands', () => {
       expect(optionNames).toContain('--org-name');
       expect(optionNames).toContain('--access-token');
       expect(optionNames).toContain('--base-url');
+      expect(optionNames).toContain('--output-dir');
     });
 
     it('should have mandatory output-file-name option', () => {
@@ -89,6 +101,11 @@ describe('Commands', () => {
         (opt) => opt.long === '--base-url',
       );
       expect(baseUrlOption?.defaultValue).toBe('https://api.github.com');
+
+      const outputDirOption = missingReposCommand.options.find(
+        (opt) => opt.long === '--output-dir',
+      );
+      expect(outputDirOption?.defaultValue).toBe('output');
 
       const verboseOption = missingReposCommand.options.find(
         (opt) => opt.long === '--verbose',
@@ -107,6 +124,11 @@ describe('Commands', () => {
         (opt) => opt.long === '--org-name',
       );
       expect(orgNameOption?.envVar).toBe('ORG_NAME');
+
+      const outputDirOption = missingReposCommand.options.find(
+        (opt) => opt.long === '--output-dir',
+      );
+      expect(outputDirOption?.envVar).toBe('OUTPUT_DIR');
     });
   });
 
