@@ -1016,11 +1016,14 @@ export async function checkForMissingRepos({
   });
 
   // file name of output file with missing repos with datetime suffix
-  const baseMissingReposFileName = `${org}-missing-repos-${
-    new Date().toISOString().split('T')[0]
-  }-${new Date().toISOString().split('T')[1].split(':')[0]}-${
-    new Date().toISOString().split('T')[1].split(':')[1]
-  }.csv`;
+  function generateTimestampSuffix(date: Date): string {
+    const iso = date.toISOString();
+    const [datePart, timePart] = iso.split('T');
+    const [hour, minute] = timePart.split(':');
+    return `${datePart}-${hour}-${minute}`;
+  }
+  const timestampSuffix = generateTimestampSuffix(new Date());
+  const baseMissingReposFileName = `${org}-missing-repos-${timestampSuffix}.csv`;
   const missingReposFileName = await resolveOutputPath(
     opts.outputDir,
     baseMissingReposFileName,
