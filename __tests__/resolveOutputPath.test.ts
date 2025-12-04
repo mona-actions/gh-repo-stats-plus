@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { resolveOutputPath } from '../src/utils.js';
+import { mkdir } from 'fs/promises';
+import { resolve } from 'path';
 
 // Mock fs modules
 vi.mock('fs', () => ({
@@ -20,9 +22,6 @@ describe('resolveOutputPath', () => {
   });
 
   it('should create directory and return full path', async () => {
-    const { mkdir } = await import('fs/promises');
-    const { resolve } = await import('path');
-
     vi.mocked(mkdir).mockResolvedValue(undefined);
     vi.mocked(resolve)
       .mockReturnValueOnce('/current/working/dir/output') // for fullOutputDir
@@ -37,9 +36,6 @@ describe('resolveOutputPath', () => {
   });
 
   it('should handle mkdir gracefully when directory already exists', async () => {
-    const { mkdir } = await import('fs/promises');
-    const { resolve } = await import('path');
-
     vi.mocked(mkdir).mockResolvedValue(undefined);
     vi.mocked(resolve)
       .mockReturnValueOnce('/current/working/dir/output') // for fullOutputDir
@@ -54,9 +50,6 @@ describe('resolveOutputPath', () => {
   });
 
   it('should use default output directory when not specified', async () => {
-    const { mkdir } = await import('fs/promises');
-    const { resolve } = await import('path');
-
     vi.mocked(mkdir).mockResolvedValue(undefined);
     vi.mocked(resolve)
       .mockReturnValueOnce('/current/working/dir/output') // for fullOutputDir
