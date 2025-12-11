@@ -22,6 +22,7 @@ import {
   convertKbToMb,
   checkIfHasMigrationIssues,
   formatElapsedTime,
+  resolveOutputPath,
 } from './utils.js';
 import { readFileSync } from 'fs';
 import { parse } from 'csv-parse/sync';
@@ -64,7 +65,8 @@ const _init = async (
     fileName = processedState.outputFileName || '';
     logger.info(`Resuming from last state. Using existing file: ${fileName}`);
   } else {
-    fileName = generateRepoStatsFileName(opts.orgName);
+    const baseFileName = generateRepoStatsFileName(opts.orgName);
+    fileName = await resolveOutputPath(opts.outputDir, baseFileName);
 
     initializeCsvFile(fileName, logger);
     logger.info(`Results will be saved to file: ${fileName}`);
@@ -132,7 +134,8 @@ export async function run(opts: Arguments): Promise<void> {
           `Total elapsed time: ${elapsedTime}\n` +
           `Consecutive successful operations: ${processingState.successCount}\n` +
           `Total retry attempts: ${processingState.retryCount}\n` +
-          `Processing completed successfully: ${processedState.completedSuccessfully}`,
+          `Processing completed successfully: ${processedState.completedSuccessfully}\n` +
+          `Output saved to: ${fileName}`,
       );
 
       updateState({ state: processedState, logger });
@@ -992,7 +995,21 @@ export async function checkForMissingRepos({
 }): Promise<{
   missingRepos: string[];
 }> {
-  const { logger, client } = await _init(opts);
+  // Initialize only what we need - logger and client
+  const logFileName = `${opts.orgName}-missing-repos-check-${
+    new Date().toISOString().split('T')[0]
+  }.log`;
+  const logger = await createLogger(opts.verbose, logFileName);
+
+  const authConfig = createAuthConfig({ ...opts, logger: logger });
+  const octokit = createOctokit(
+    authConfig,
+    opts.baseUrl,
+    opts.proxyUrl,
+    logger,
+  );
+  const client = new OctokitClient(octokit);
+
   const org = opts.orgName.toLowerCase();
   const per_page = opts.pageSize != null ? Number(opts.pageSize) : 10;
 
@@ -1014,11 +1031,18 @@ export async function checkForMissingRepos({
   });
 
   // file name of output file with missing repos with datetime suffix
-  const missingReposFileName = `${org}-missing-repos-${
-    new Date().toISOString().split('T')[0]
-  }-${new Date().toISOString().split('T')[1].split(':')[0]}-${
-    new Date().toISOString().split('T')[1].split(':')[1]
-  }.csv`;
+  function generateTimestampSuffix(date: Date): string {
+    const iso = date.toISOString();
+    const [datePart, timePart] = iso.split('T');
+    const [hour, minute] = timePart.split(':');
+    return `${datePart}-${hour}-${minute}`;
+  }
+  const timestampSuffix = generateTimestampSuffix(new Date());
+  const baseMissingReposFileName = `${org}-missing-repos-${timestampSuffix}.csv`;
+  const missingReposFileName = await resolveOutputPath(
+    opts.outputDir,
+    baseMissingReposFileName,
+  );
 
   logger.info('Checking for missing repositories in the organization');
   const missingRepos = [];
@@ -1033,6 +1057,9 @@ export async function checkForMissingRepos({
     }
   }
   logger.info(`Found ${missingRepos.length} missing repositories`);
+  if (missingRepos.length > 0) {
+    logger.info(`Missing repositories written to: ${missingReposFileName}`);
+  }
 
   return { missingRepos };
 }
