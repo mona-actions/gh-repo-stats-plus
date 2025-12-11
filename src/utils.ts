@@ -75,10 +75,13 @@ export function formatElapsedTime(startTime: Date, endTime: Date): string {
  * @returns The full path to the file
  */
 export async function resolveOutputPath(
-  outputDir = 'output',
+  outputDir: string | undefined,
   fileName: string,
 ): Promise<string> {
-  const fullOutputDir = resolve(process.cwd(), outputDir);
+  // Normalize outputDir: if empty, null, or undefined, default to 'output'
+  const normalizedOutputDir =
+    outputDir && outputDir.trim() !== '' ? outputDir : 'output';
+  const fullOutputDir = resolve(process.cwd(), normalizedOutputDir);
 
   // Create directory - mkdir with recursive option handles existing directories gracefully
   await mkdir(fullOutputDir, { recursive: true });
