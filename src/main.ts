@@ -134,7 +134,8 @@ export async function run(opts: Arguments): Promise<void> {
           `Total elapsed time: ${elapsedTime}\n` +
           `Consecutive successful operations: ${processingState.successCount}\n` +
           `Total retry attempts: ${processingState.retryCount}\n` +
-          `Processing completed successfully: ${processedState.completedSuccessfully}`,
+          `Processing completed successfully: ${processedState.completedSuccessfully}\n` +
+          `Output saved to: ${fileName}`,
       );
 
       updateState({ state: processedState, logger });
