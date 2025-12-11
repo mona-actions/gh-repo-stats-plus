@@ -994,7 +994,21 @@ export async function checkForMissingRepos({
 }): Promise<{
   missingRepos: string[];
 }> {
-  const { logger, client } = await _init(opts);
+  // Initialize only what we need - logger and client
+  const logFileName = `${opts.orgName}-missing-repos-check-${
+    new Date().toISOString().split('T')[0]
+  }.log`;
+  const logger = await createLogger(opts.verbose, logFileName);
+
+  const authConfig = createAuthConfig({ ...opts, logger: logger });
+  const octokit = createOctokit(
+    authConfig,
+    opts.baseUrl,
+    opts.proxyUrl,
+    logger,
+  );
+  const client = new OctokitClient(octokit);
+
   const org = opts.orgName.toLowerCase();
   const per_page = opts.pageSize != null ? Number(opts.pageSize) : 10;
 
