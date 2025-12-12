@@ -24,6 +24,7 @@ export class StateManager {
   private sanitizeFilename(name: string): string {
     // Replace characters that are invalid in filenames with underscores
     // Invalid characters: / \ : * ? " < > | and control characters
+    // eslint-disable-next-line no-control-regex
     return name.replace(/[/\\:*?"<>|\x00-\x1f]/g, '_').toLowerCase();
   }
 
