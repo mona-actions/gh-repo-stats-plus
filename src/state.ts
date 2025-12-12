@@ -1,141 +1,207 @@
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  mkdirSync,
+  unlinkSync,
+} from 'fs';
+import { join } from 'path';
 import { Logger, ProcessedPageState } from './types.js';
 
-const LAST_STATE_FILE = 'last_known_state.json';
+const LEGACY_STATE_FILE = 'last_known_state.json';
 
-function saveLastState(state: ProcessedPageState, logger: Logger): void {
-  try {
-    writeFileSync(LAST_STATE_FILE, JSON.stringify(state, null, 2));
-    logger.debug(`Saved last state to ${LAST_STATE_FILE}`);
-  } catch (error) {
-    logger.error(`Failed to save last state: ${error}`);
+export class StateManager {
+  private readonly outputDir: string;
+  private readonly organizationName: string;
+  private readonly logger: Logger;
+
+  constructor(outputDir: string, organizationName: string, logger: Logger) {
+    this.outputDir = outputDir;
+    this.organizationName = organizationName;
+    this.logger = logger;
   }
-}
 
-function loadLastState(logger: Logger): ProcessedPageState | null {
-  try {
-    if (existsSync(LAST_STATE_FILE)) {
-      const data = readFileSync(LAST_STATE_FILE, 'utf-8');
-      logger.info(`Loaded last state from ${LAST_STATE_FILE}`);
-      const parsedState = JSON.parse(data);
+  private getStateFileName(): string {
+    return `last_known_state_${this.organizationName.toLowerCase()}.json`;
+  }
 
-      // Validate processedRepos exists and is an array
-      if (
-        !parsedState.processedRepos ||
-        !Array.isArray(parsedState.processedRepos)
-      ) {
-        logger.warn(
-          'Invalid state file: processedRepos is missing or not an array',
-        );
-        parsedState.processedRepos = [];
+  private getStateFilePath(): string {
+    return join(this.outputDir, this.getStateFileName());
+  }
+
+  private checkLegacyStateFile(): void {
+    if (existsSync(LEGACY_STATE_FILE)) {
+      this.logger.warn(
+        `Found legacy state file '${LEGACY_STATE_FILE}' without organization suffix. ` +
+          `This file will not be used. Organization-specific state files are now used (e.g., '${this.getStateFileName()}'). ` +
+          `Please manually remove '${LEGACY_STATE_FILE}' to avoid confusion.`,
+      );
+    }
+  }
+
+  private save(state: ProcessedPageState): void {
+    try {
+      // Ensure output directory exists
+      if (!existsSync(this.outputDir)) {
+        this.logger.debug(`Creating output directory: ${this.outputDir}`);
+        mkdirSync(this.outputDir, { recursive: true });
       }
 
-      // Ensure uniqueness while keeping as array
-      parsedState.processedRepos = [...new Set(parsedState.processedRepos)];
-
-      return {
-        ...parsedState,
-        currentCursor: parsedState.currentCursor || null,
-        lastSuccessfulCursor: parsedState.lastSuccessfulCursor || null,
-        lastProcessedRepo: parsedState.lastProcessedRepo || null,
-        lastUpdated: parsedState.lastSuccessTimestamp || null,
-        completedSuccessfully: parsedState.completedSuccessfully || false,
-      };
+      const stateFilePath = this.getStateFilePath();
+      writeFileSync(stateFilePath, JSON.stringify(state, null, 2));
+      this.logger.debug(`Saved last state to ${stateFilePath}`);
+    } catch (error) {
+      this.logger.error(`Failed to save last state: ${error}`);
     }
-  } catch (error) {
-    logger.error(
-      `Failed to load last state: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-    );
-    logger.debug(
-      `State file contents: ${
-        existsSync(LAST_STATE_FILE)
-          ? readFileSync(LAST_STATE_FILE, 'utf-8')
-          : 'file not found'
-      }`,
-    );
   }
-  return null;
-}
 
-export function initializeState({
-  resumeFromLastSave,
-  logger,
-}: {
-  resumeFromLastSave?: boolean;
-  logger: Logger;
-}): { processedState: ProcessedPageState; resumeFromLastState: boolean } {
-  let processedState: ProcessedPageState = {
-    currentCursor: null,
-    processedRepos: [],
-    lastSuccessfulCursor: null,
-    lastProcessedRepo: null,
-    lastUpdated: null,
-    completedSuccessfully: false,
-    outputFileName: null,
-  };
+  private load(): ProcessedPageState | null {
+    try {
+      const stateFilePath = this.getStateFilePath();
+      if (existsSync(stateFilePath)) {
+        const data = readFileSync(stateFilePath, 'utf-8');
+        this.logger.info(`Loaded last state from ${stateFilePath}`);
+        const parsedState = JSON.parse(data);
 
-  let resumeFromLastState = false;
-  if (existsSync(LAST_STATE_FILE)) {
-    const lastState = loadLastState(logger);
-    let isNewRun = false;
-    if (lastState?.completedSuccessfully) {
-      logger.info(
-        'All repositories were previously processed successfully. Nothing to resume.',
+        // Validate processedRepos exists and is an array
+        if (
+          !parsedState.processedRepos ||
+          !Array.isArray(parsedState.processedRepos)
+        ) {
+          this.logger.warn(
+            'Invalid state file: processedRepos is missing or not an array',
+          );
+          parsedState.processedRepos = [];
+        }
+
+        // Ensure uniqueness while keeping as array
+        parsedState.processedRepos = [...new Set(parsedState.processedRepos)];
+
+        return {
+          ...parsedState,
+          currentCursor: parsedState.currentCursor || null,
+          lastSuccessfulCursor: parsedState.lastSuccessfulCursor || null,
+          lastProcessedRepo: parsedState.lastProcessedRepo || null,
+          lastUpdated:
+            parsedState.lastUpdated || parsedState.lastSuccessTimestamp || null,
+          completedSuccessfully: parsedState.completedSuccessfully || false,
+          outputFileName: parsedState.outputFileName || null,
+        };
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to load last state: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
       );
-      isNewRun = true;
-    }
-
-    if (!isNewRun && resumeFromLastSave && lastState) {
-      processedState = lastState;
-      resumeFromLastState = true;
-      logger.info(
-        `Resuming from last state that was last updated: ${lastState.lastUpdated}`,
+      const stateFilePath = this.getStateFilePath();
+      this.logger.debug(
+        `State file contents: ${
+          existsSync(stateFilePath)
+            ? readFileSync(stateFilePath, 'utf-8')
+            : 'file not found'
+        }`,
       );
     }
+    return null;
   }
 
-  return { processedState, resumeFromLastState };
-}
+  public initialize(resumeFromLastSave?: boolean): {
+    processedState: ProcessedPageState;
+    resumeFromLastState: boolean;
+  } {
+    let processedState: ProcessedPageState = {
+      currentCursor: null,
+      processedRepos: [],
+      lastSuccessfulCursor: null,
+      lastProcessedRepo: null,
+      lastUpdated: null,
+      completedSuccessfully: false,
+      outputFileName: null,
+    };
 
-export function updateState({
-  state,
-  repoName,
-  newCursor,
-  lastSuccessfulCursor,
-  logger,
-}: {
-  state: ProcessedPageState;
-  repoName?: string | null;
-  newCursor?: string | null;
-  lastSuccessfulCursor?: string | null;
-  logger: Logger;
-}): void {
-  // Update cursor if provided and different from current
-  if (newCursor && newCursor !== state.currentCursor) {
-    state.currentCursor = newCursor;
-    logger.debug(
-      `Updated cursor to: ${state.currentCursor} for repo: ${repoName}`,
-    );
+    // Check for legacy state file and warn user
+    this.checkLegacyStateFile();
+
+    let resumeFromLastState = false;
+    const stateFilePath = this.getStateFilePath();
+    if (existsSync(stateFilePath)) {
+      const lastState = this.load();
+      let isNewRun = false;
+      if (lastState?.completedSuccessfully) {
+        this.logger.info(
+          'All repositories were previously processed successfully. Nothing to resume.',
+        );
+        isNewRun = true;
+      }
+
+      if (!isNewRun && resumeFromLastSave && lastState) {
+        processedState = lastState;
+        resumeFromLastState = true;
+        this.logger.info(
+          `Resuming from last state that was last updated: ${lastState.lastUpdated}`,
+        );
+      }
+    }
+
+    return { processedState, resumeFromLastState };
   }
 
-  // Update last successful cursor if provided
-  if (lastSuccessfulCursor) {
-    state.lastSuccessfulCursor = lastSuccessfulCursor;
+  public update(
+    state: ProcessedPageState,
+    updates: {
+      repoName?: string | null;
+      newCursor?: string | null;
+      lastSuccessfulCursor?: string | null;
+    },
+  ): void {
+    const { repoName, newCursor, lastSuccessfulCursor } = updates;
+
+    // Update cursor if provided and different from current
+    if (newCursor && newCursor !== state.currentCursor) {
+      state.currentCursor = newCursor;
+      this.logger.debug(
+        `Updated cursor to: ${state.currentCursor} for repo: ${repoName}`,
+      );
+    }
+
+    // Update last successful cursor if provided
+    if (lastSuccessfulCursor) {
+      state.lastSuccessfulCursor = lastSuccessfulCursor;
+    }
+
+    // Add to processed repos if not already included
+    if (repoName && !state.processedRepos.includes(repoName)) {
+      state.processedRepos.push(repoName);
+    }
+
+    // Update last processed repo and timestamp
+    if (repoName) {
+      state.lastProcessedRepo = repoName;
+    }
+    state.lastUpdated = new Date().toISOString();
+
+    // Save state after updates
+    this.save(state);
   }
 
-  // Add to processed repos if not already included
-  if (repoName && !state.processedRepos.includes(repoName)) {
-    state.processedRepos.push(repoName);
+  public cleanup(): void {
+    try {
+      const stateFilePath = this.getStateFilePath();
+      if (existsSync(stateFilePath)) {
+        unlinkSync(stateFilePath);
+        this.logger.info(`Removed state file: ${stateFilePath}`);
+      } else {
+        this.logger.debug(
+          `State file does not exist, nothing to clean up: ${stateFilePath}`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to cleanup state file: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
-
-  // Update last processed repo and timestamp
-  if (repoName) {
-    state.lastProcessedRepo = repoName;
-  }
-  state.lastUpdated = new Date().toISOString();
-
-  // Save state after updates
-  saveLastState(state, logger);
 }
