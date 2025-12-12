@@ -140,6 +140,12 @@ repoStatsCommand
       .env('OUTPUT_DIR')
       .default('output'),
   )
+  .addOption(
+    new Option(
+      '--clean-state',
+      'Remove state file after successful completion',
+    ).env('CLEAN_STATE'),
+  )
   .action(async (options: Arguments) => {
     console.log('Version:', VERSION);
 
