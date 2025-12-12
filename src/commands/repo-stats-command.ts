@@ -1,5 +1,9 @@
 import * as commander from 'commander';
-import { parseFloatOption, parseIntOption } from '../utils.js';
+import {
+  parseFloatOption,
+  parseIntOption,
+  parseBooleanOption,
+} from '../utils.js';
 import { Arguments } from '../types.js';
 import VERSION from '../version.js';
 
@@ -118,10 +122,9 @@ repoStatsCommand
       .argParser(parseIntOption),
   )
   .addOption(
-    new Option(
-      '--resume-from-last-save',
-      'Resume from the last saved state',
-    ).env('RESUME_FROM_LAST_SAVE'),
+    new Option('--resume-from-last-save', 'Resume from the last saved state')
+      .env('RESUME_FROM_LAST_SAVE')
+      .argParser(parseBooleanOption),
   )
   .addOption(
     new Option(
@@ -133,12 +136,19 @@ repoStatsCommand
     new Option(
       '--auto-process-missing',
       'Automatically process any missing repositories when main processing is complete',
-    ).env('AUTO_PROCESS_MISSING'),
+    )
+      .env('AUTO_PROCESS_MISSING')
+      .argParser(parseBooleanOption),
   )
   .addOption(
     new Option('--output-dir <dir>', 'Output directory for generated files')
       .env('OUTPUT_DIR')
       .default('output'),
+  )
+  .addOption(
+    new Option('--clean-state', 'Remove state file after successful completion')
+      .env('CLEAN_STATE')
+      .argParser(parseBooleanOption),
   )
   .action(async (options: Arguments) => {
     console.log('Version:', VERSION);

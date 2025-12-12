@@ -28,6 +28,9 @@ describe('Commands', () => {
       expect(optionNames).toContain('--extra-page-size');
       expect(optionNames).toContain('--verbose');
       expect(optionNames).toContain('--output-dir');
+      expect(optionNames).toContain('--clean-state');
+      expect(optionNames).toContain('--resume-from-last-save');
+      expect(optionNames).toContain('--auto-process-missing');
     });
 
     it('should have default values for certain options', () => {
@@ -67,6 +70,34 @@ describe('Commands', () => {
         (opt) => opt.long === '--output-dir',
       );
       expect(outputDirOption?.envVar).toBe('OUTPUT_DIR');
+
+      const cleanStateOption = repoStatsCommand.options.find(
+        (opt) => opt.long === '--clean-state',
+      );
+      expect(cleanStateOption?.envVar).toBe('CLEAN_STATE');
+
+      const resumeFromLastSaveOption = repoStatsCommand.options.find(
+        (opt) => opt.long === '--resume-from-last-save',
+      );
+      expect(resumeFromLastSaveOption?.envVar).toBe('RESUME_FROM_LAST_SAVE');
+
+      const autoProcessMissingOption = repoStatsCommand.options.find(
+        (opt) => opt.long === '--auto-process-missing',
+      );
+      expect(autoProcessMissingOption?.envVar).toBe('AUTO_PROCESS_MISSING');
+    });
+
+    it('should have clean-state option properly configured', () => {
+      const cleanStateOption = repoStatsCommand.options.find(
+        (opt) => opt.long === '--clean-state',
+      );
+
+      expect(cleanStateOption).toBeDefined();
+      expect(cleanStateOption?.long).toBe('--clean-state');
+      expect(cleanStateOption?.description).toBe(
+        'Remove state file after successful completion',
+      );
+      expect(cleanStateOption?.envVar).toBe('CLEAN_STATE');
     });
   });
 

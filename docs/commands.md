@@ -52,8 +52,10 @@ gh repo-stats-plus missing-repos --organization my-org --file output.csv
 Both commands generate:
 
 - CSV file with repository statistics
-- `last_known_state.json` for resume capability
+- Organization-specific state file (e.g., `last_known_state_<org>.json`) for resume capability
 - Log files in the `logs/` directory
+
+**Note**: Each organization maintains its own isolated state file in the output directory, allowing you to process multiple organizations without conflicts.
 
 - `--page-size <size>`: Number of items per page (Default: 10)
 - `--extra-page-size <size>`: Extra page size (Default: 25)
@@ -72,6 +74,8 @@ Both commands generate:
 - `--resume-from-last-save`: Resume from the last saved state
 - `--repo-list <file>`: Path to file containing list of repositories to process (format: owner/repo_name)
 - `--auto-process-missing`: Automatically process any missing repositories when main processing is complete
+- `--output-dir <dir>`: Output directory for generated files and state files (Default: output)
+- `--clean-state`: Remove state file after successful completion
 
 ### Examples
 
@@ -225,4 +229,24 @@ gh repo-stats-plus repo-stats \
   --retry-max-attempts 5 \
   --auto-process-missing \
   --resume-from-last-save
+```
+
+### Multiple Organizations
+
+```bash
+# Process multiple organizations sequentially
+# Each organization maintains its own state file automatically
+gh repo-stats-plus repo-stats --organization org1
+gh repo-stats-plus repo-stats --organization org2
+gh repo-stats-plus repo-stats --organization org3
+
+# Use custom output directory (state files stored here too)
+gh repo-stats-plus repo-stats \
+  --organization myorg \
+  --output-dir ./reports
+
+# Clean up state files after successful completion
+gh repo-stats-plus repo-stats \
+  --organization myorg \
+  --clean-state
 ```
