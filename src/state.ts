@@ -21,8 +21,15 @@ export class StateManager {
     this.logger = logger;
   }
 
+  private sanitizeFilename(name: string): string {
+    // Replace characters that are invalid in filenames with underscores
+    // Invalid characters: / \ : * ? " < > | and control characters
+    return name.replace(/[/\\:*?"<>|\x00-\x1f]/g, '_').toLowerCase();
+  }
+
   private getStateFileName(): string {
-    return `last_known_state_${this.organizationName.toLowerCase()}.json`;
+    const sanitizedOrg = this.sanitizeFilename(this.organizationName);
+    return `last_known_state_${sanitizedOrg}.json`;
   }
 
   private getStateFilePath(): string {

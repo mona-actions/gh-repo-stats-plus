@@ -245,6 +245,33 @@ describe('StateManager', () => {
         '/custom/output/last_known_state_test-org.json',
       );
     });
+
+    it('should sanitize organization names with invalid filesystem characters', () => {
+      vi.mocked(existsSync).mockReturnValue(false);
+
+      // Test various invalid characters
+      const invalidOrgNames = [
+        { input: 'org/with/slashes', expected: 'org_with_slashes' },
+        { input: 'org\\with\\backslashes', expected: 'org_with_backslashes' },
+        { input: 'org:with:colons', expected: 'org_with_colons' },
+        { input: 'org*with*asterisks', expected: 'org_with_asterisks' },
+        { input: 'org?with?questions', expected: 'org_with_questions' },
+        { input: 'org"with"quotes', expected: 'org_with_quotes' },
+        { input: 'org<with>brackets', expected: 'org_with_brackets' },
+        { input: 'org|with|pipes', expected: 'org_with_pipes' },
+        { input: 'My-Org.Name_123', expected: 'my-org.name_123' },
+      ];
+
+      invalidOrgNames.forEach(({ input, expected }) => {
+        vi.clearAllMocks();
+        const stateManager = new StateManager(outputDir, input, mockLogger);
+        stateManager.initialize();
+
+        expect(existsSync).toHaveBeenCalledWith(
+          `/test/output/last_known_state_${expected}.json`,
+        );
+      });
+    });
   });
 
   describe('update', () => {
