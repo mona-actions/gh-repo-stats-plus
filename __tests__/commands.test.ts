@@ -91,10 +91,12 @@ describe('Commands', () => {
       const cleanStateOption = repoStatsCommand.options.find(
         (opt) => opt.long === '--clean-state',
       );
-      
+
       expect(cleanStateOption).toBeDefined();
       expect(cleanStateOption?.long).toBe('--clean-state');
-      expect(cleanStateOption?.description).toBe('Remove state file after successful completion');
+      expect(cleanStateOption?.description).toBe(
+        'Remove state file after successful completion',
+      );
       expect(cleanStateOption?.envVar).toBe('CLEAN_STATE');
     });
   });
