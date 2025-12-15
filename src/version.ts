@@ -1,1 +1,1 @@
-export default process.env.NPM_PACKAGE_VERSION ?? '1.0.7';
+export default process.env.NPM_PACKAGE_VERSION ?? '2.0.0';
