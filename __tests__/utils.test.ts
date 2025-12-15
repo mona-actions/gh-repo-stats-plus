@@ -164,11 +164,15 @@ describe('Utils', () => {
       expect(parseBooleanOption('  0  ')).toBe(false);
     });
 
+    it('should handle undefined and empty values', () => {
+      expect(parseBooleanOption(undefined)).toBe(false);
+      expect(parseBooleanOption('')).toBe(false);
+    });
+
     it('should throw error for invalid values', () => {
       expect(() => parseBooleanOption('invalid')).toThrow(
         'Invalid boolean value: invalid',
       );
-      expect(() => parseBooleanOption('')).toThrow('Invalid boolean value: ');
       expect(() => parseBooleanOption('maybe')).toThrow(
         'Invalid boolean value: maybe',
       );

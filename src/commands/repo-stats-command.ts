@@ -122,8 +122,12 @@ repoStatsCommand
       .argParser(parseIntOption),
   )
   .addOption(
-    new Option('--resume-from-last-save', 'Resume from the last saved state')
+    new Option(
+      '--resume-from-last-save [value]',
+      'Resume from the last saved state',
+    )
       .env('RESUME_FROM_LAST_SAVE')
+      .default('false')
       .argParser(parseBooleanOption),
   )
   .addOption(
@@ -134,10 +138,11 @@ repoStatsCommand
   )
   .addOption(
     new Option(
-      '--auto-process-missing',
+      '--auto-process-missing [value]',
       'Automatically process any missing repositories when main processing is complete',
     )
       .env('AUTO_PROCESS_MISSING')
+      .default('false')
       .argParser(parseBooleanOption),
   )
   .addOption(
@@ -146,8 +151,12 @@ repoStatsCommand
       .default('output'),
   )
   .addOption(
-    new Option('--clean-state', 'Remove state file after successful completion')
+    new Option(
+      '--clean-state [value]',
+      'Remove state file after successful completion',
+    )
       .env('CLEAN_STATE')
+      .default('false')
       .argParser(parseBooleanOption),
   )
   .action(async (options: Arguments) => {

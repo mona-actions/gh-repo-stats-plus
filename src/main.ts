@@ -58,6 +58,11 @@ const _init = async (
 
   const outputDir = opts.outputDir || 'output';
   const stateManager = new StateManager(outputDir, opts.orgName, logger);
+
+  logger.debug(
+    `resumeFromLastSave option value: ${opts.resumeFromLastSave} (type: ${typeof opts.resumeFromLastSave})`,
+  );
+
   const { processedState, resumeFromLastState } = stateManager.initialize(
     opts.resumeFromLastSave || false,
   );

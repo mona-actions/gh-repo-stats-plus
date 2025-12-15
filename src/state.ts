@@ -133,24 +133,44 @@ export class StateManager {
 
     let resumeFromLastState = false;
     const stateFilePath = this.getStateFilePath();
-    if (existsSync(stateFilePath)) {
-      const lastState = this.load();
-      let isNewRun = false;
-      if (lastState?.completedSuccessfully) {
-        this.logger.info(
-          'All repositories were previously processed successfully. Nothing to resume.',
-        );
-        isNewRun = true;
-      }
 
-      if (!isNewRun && resumeFromLastSave && lastState) {
-        processedState = lastState;
-        resumeFromLastState = true;
-        this.logger.info(
-          `Resuming from last state that was last updated: ${lastState.lastUpdated}`,
-        );
-      }
+    if (!existsSync(stateFilePath)) {
+      this.logger.debug(
+        `No state file found at ${stateFilePath}. Starting fresh.`,
+      );
+      return { processedState, resumeFromLastState };
     }
+
+    const lastState = this.load();
+    if (!lastState) {
+      this.logger.warn(
+        'State file exists but could not be loaded. Starting fresh.',
+      );
+      return { processedState, resumeFromLastState };
+    }
+
+    // Check if previous run completed successfully
+    if (lastState.completedSuccessfully) {
+      this.logger.info(
+        'Previous run completed successfully. Starting fresh run.',
+      );
+      return { processedState, resumeFromLastState };
+    }
+
+    // Check if user wants to resume
+    if (!resumeFromLastSave) {
+      this.logger.info(
+        'State file exists but resume-from-last-save is not enabled. Starting fresh.',
+      );
+      return { processedState, resumeFromLastState };
+    }
+
+    // Resume from last state
+    processedState = lastState;
+    resumeFromLastState = true;
+    this.logger.info(
+      `Resuming from last state (last updated: ${lastState.lastUpdated})`,
+    );
 
     return { processedState, resumeFromLastState };
   }

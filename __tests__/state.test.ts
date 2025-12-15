@@ -90,7 +90,7 @@ describe('StateManager', () => {
       expect(resumeFromLastState).toBe(false);
       expect(processedState.processedRepos).toEqual([]);
       expect(mockLogger.info).toHaveBeenCalledWith(
-        'All repositories were previously processed successfully. Nothing to resume.',
+        'Previous run completed successfully. Starting fresh run.',
       );
     });
 
@@ -126,7 +126,37 @@ describe('StateManager', () => {
       expect(processedState.completedSuccessfully).toBe(false);
 
       expect(mockLogger.info).toHaveBeenCalledWith(
-        'Resuming from last state that was last updated: 2025-03-19T12:00:00Z',
+        'Resuming from last state (last updated: 2025-03-19T12:00:00Z)',
+      );
+    });
+
+    it('should NOT resume when resumeFromLastSave is false even if state exists', () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const mockLastState = {
+        completedSuccessfully: false,
+        processedRepos: ['repo1', 'repo2'],
+        currentCursor: 'cursor1',
+        lastSuccessfulCursor: 'cursor1',
+        lastProcessedRepo: 'repo2',
+        lastUpdated: '2025-03-19T12:00:00Z',
+        outputFileName: null,
+      };
+
+      vi.mocked(readFileSync).mockReturnValue(JSON.stringify(mockLastState));
+
+      const stateManager = new StateManager(
+        outputDir,
+        organizationName,
+        mockLogger,
+      );
+      const { processedState, resumeFromLastState } =
+        stateManager.initialize(false); // resumeFromLastSave=false
+
+      expect(resumeFromLastState).toBe(false);
+      expect(processedState.processedRepos).toEqual([]); // Should be fresh state
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'State file exists but resume-from-last-save is not enabled. Starting fresh.',
       );
     });
 
