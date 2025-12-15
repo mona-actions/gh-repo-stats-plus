@@ -20,7 +20,7 @@
     "prepare-release": "./script/prepare-release.sh"
   },
   "name": "gh-repo-stats-plus",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "main": "dist/index.js",
   "description": "GitHub CLI extension for gathering comprehensive repository statistics from GitHub organizations",
   "keywords": [
