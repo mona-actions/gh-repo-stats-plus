@@ -59,6 +59,29 @@ export function parseFloatOption(value: string, defaultValue?: number): number {
   return parsed;
 }
 
+export function parseBooleanOption(
+  value: string | undefined | boolean,
+): boolean {
+  // If value is a boolean, return it as-is
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  // If value is undefined or empty, return false (default when not provided)
+  if (!value) {
+    return false;
+  }
+
+  const normalized = value.toLowerCase().trim();
+  if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+    return true;
+  }
+  if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+    return false;
+  }
+  throw new Error(`Invalid boolean value: ${value}`);
+}
+
 export function formatElapsedTime(startTime: Date, endTime: Date): string {
   const elapsed = endTime.getTime() - startTime.getTime();
   const seconds = Math.floor(elapsed / 1000);
