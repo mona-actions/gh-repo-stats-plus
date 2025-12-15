@@ -14,7 +14,7 @@ import {
 } from './types.js';
 import { createLogger, logInitialization } from './logger.js';
 import { createAuthConfig } from './auth.js';
-import { initializeState, updateState } from './state.js';
+import { StateManager } from './state.js';
 import { appendFileSync, existsSync, writeFileSync, unlinkSync } from 'fs';
 import { withRetry, RetryConfig } from './retry.js';
 import {
@@ -35,6 +35,7 @@ const _init = async (
   fileName: string;
   processedState: ProcessedPageState;
   retryConfig: RetryConfig;
+  stateManager: StateManager;
 }> => {
   const logFileName = `${opts.orgName}-repo-stats-${
     new Date().toISOString().split('T')[0]
@@ -55,10 +56,16 @@ const _init = async (
 
   const client = new OctokitClient(octokit);
 
-  const { processedState, resumeFromLastState } = initializeState({
-    resumeFromLastSave: opts.resumeFromLastSave || false,
-    logger,
-  });
+  const outputDir = opts.outputDir || 'output';
+  const stateManager = new StateManager(outputDir, opts.orgName, logger);
+
+  logger.debug(
+    `resumeFromLastSave option value: ${opts.resumeFromLastSave} (type: ${typeof opts.resumeFromLastSave})`,
+  );
+
+  const { processedState, resumeFromLastState } = stateManager.initialize(
+    opts.resumeFromLastSave || false,
+  );
 
   let fileName = '';
   if (resumeFromLastState) {
@@ -72,7 +79,7 @@ const _init = async (
     logger.info(`Results will be saved to file: ${fileName}`);
 
     processedState.outputFileName = fileName;
-    updateState({ state: processedState, logger });
+    stateManager.update(processedState, {});
   }
 
   const retryConfig: RetryConfig = {
@@ -89,12 +96,19 @@ const _init = async (
     fileName,
     processedState,
     retryConfig,
+    stateManager,
   };
 };
 
 export async function run(opts: Arguments): Promise<void> {
-  const { logger, client, fileName, processedState, retryConfig } =
-    await _init(opts);
+  const {
+    logger,
+    client,
+    fileName,
+    processedState,
+    retryConfig,
+    stateManager,
+  } = await _init(opts);
   const startTime = new Date();
   logger.info(`Started processing at: ${startTime.toISOString()}`);
 
@@ -113,6 +127,7 @@ export async function run(opts: Arguments): Promise<void> {
         processedState,
         state: processingState,
         fileName,
+        stateManager,
       });
 
       const endTime = new Date();
@@ -138,7 +153,7 @@ export async function run(opts: Arguments): Promise<void> {
           `Output saved to: ${fileName}`,
       );
 
-      updateState({ state: processedState, logger });
+      stateManager.update(processedState, {});
 
       // Check for and process missing repositories if enabled
       if (opts.autoProcessMissing && result.isComplete) {
@@ -149,7 +164,13 @@ export async function run(opts: Arguments): Promise<void> {
           logger,
           processedState,
           retryConfig,
+          stateManager,
         });
+      }
+
+      // Clean up state file if requested and processing completed successfully
+      if (opts.cleanState && result.isComplete) {
+        stateManager.cleanup();
       }
 
       return result;
@@ -169,7 +190,7 @@ export async function run(opts: Arguments): Promise<void> {
           `Error: ${state.error?.message}\n` +
           `Elapsed time so far: ${formatElapsedTime(startTime, new Date())}`,
       );
-      updateState({ state: processedState, logger });
+      stateManager.update(processedState, {});
     },
   );
 }
@@ -181,6 +202,7 @@ async function processMissingRepositories({
   logger,
   processedState,
   retryConfig,
+  stateManager,
 }: {
   opts: Arguments;
   fileName: string;
@@ -188,6 +210,7 @@ async function processMissingRepositories({
   logger: Logger;
   processedState: ProcessedPageState;
   retryConfig: RetryConfig;
+  stateManager: StateManager;
 }): Promise<void> {
   logger.info('Checking for missing repositories...');
   const missingReposResult = await checkForMissingRepos({
@@ -236,6 +259,7 @@ async function processMissingRepositories({
           processedState,
           state: missingReposProcessingState,
           fileName,
+          stateManager,
         });
 
         logger.info(
@@ -349,19 +373,19 @@ async function* processRepoStats({
   logger,
   extraPageSize,
   processedState,
+  stateManager,
 }: {
   reposIterator: AsyncGenerator<RepositoryStats, void, unknown>;
   client: OctokitClient;
   logger: Logger;
   extraPageSize: number;
   processedState: ProcessedPageState;
+  stateManager: StateManager;
 }): AsyncGenerator<RepoStatsResult> {
   for await (const repo of reposIterator) {
     if (repo.pageInfo?.endCursor) {
-      updateState({
-        state: processedState,
+      stateManager.update(processedState, {
         newCursor: repo.pageInfo.endCursor,
-        logger,
       });
     }
 
@@ -386,6 +410,7 @@ async function handleRepoProcessingSuccess({
   logger,
   processedCount,
   currentCursor = null,
+  stateManager,
 }: {
   result: RepoStatsResult;
   processedState: ProcessedPageState;
@@ -395,6 +420,7 @@ async function handleRepoProcessingSuccess({
   logger: Logger;
   processedCount: number;
   currentCursor?: string | null;
+  stateManager: StateManager;
 }): Promise<void> {
   const successThreshold = opts.retrySuccessThreshold || 5;
 
@@ -408,11 +434,9 @@ async function handleRepoProcessingSuccess({
     state.successCount = 0;
   }
 
-  updateState({
-    state: processedState,
+  stateManager.update(processedState, {
     repoName: result.Repo_Name,
     lastSuccessfulCursor: currentCursor,
-    logger,
   });
 
   // Check rate limits after configured interval
@@ -438,6 +462,7 @@ async function processRepositoriesFromFile({
   processedState,
   state,
   fileName,
+  stateManager,
 }: {
   client: OctokitClient;
   logger: Logger;
@@ -445,6 +470,7 @@ async function processRepositoriesFromFile({
   processedState: ProcessedPageState;
   state: { successCount: number; retryCount: number };
   fileName: string;
+  stateManager: StateManager;
 }): Promise<RepoProcessingResult> {
   logger.info(`Processing repositories from list: ${opts.repoList}`);
 
@@ -494,6 +520,7 @@ async function processRepositoriesFromFile({
         client,
         logger,
         processedCount: ++processedCount,
+        stateManager,
       });
     } catch (error) {
       state.successCount = 0;
@@ -519,6 +546,7 @@ async function processRepositories({
   processedState,
   state,
   fileName,
+  stateManager,
 }: {
   client: OctokitClient;
   logger: Logger;
@@ -526,6 +554,7 @@ async function processRepositories({
   processedState: ProcessedPageState;
   state: { successCount: number; retryCount: number };
   fileName: string;
+  stateManager: StateManager;
 }): Promise<RepoProcessingResult> {
   logger.debug(
     `Starting/Resuming from cursor: ${processedState.currentCursor}`,
@@ -539,6 +568,7 @@ async function processRepositories({
       processedState,
       state,
       fileName,
+      stateManager,
     });
   }
 
@@ -564,6 +594,7 @@ async function processRepositories({
       extraPageSize:
         opts.extraPageSize != null ? Number(opts.extraPageSize) : 25,
       processedState,
+      stateManager,
     })) {
       try {
         if (processedState.processedRepos.includes(result.Repo_Name)) {
@@ -584,6 +615,7 @@ async function processRepositories({
           logger,
           processedCount: ++processedCount,
           currentCursor: processedState.currentCursor,
+          stateManager,
         });
       } catch (error) {
         state.successCount = 0;
@@ -1026,7 +1058,7 @@ export async function checkForMissingRepos({
 
   logger.debug(`Parsed ${records.length} records from processed file`);
   const processedReposSet = new Set<string>();
-  records.forEach((record: { Repo_Name: string }) => {
+  (records as Array<{ Repo_Name: string }>).forEach((record) => {
     processedReposSet.add(record.Repo_Name.toLowerCase());
   });
 
