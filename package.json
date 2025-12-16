@@ -20,7 +20,7 @@
     "prepare-release": "./script/prepare-release.sh"
   },
   "name": "gh-repo-stats-plus",
-  "version": "1.0.7",
+  "version": "2.0.1",
   "main": "dist/index.js",
   "description": "GitHub CLI extension for gathering comprehensive repository statistics from GitHub organizations",
   "keywords": [
@@ -53,7 +53,7 @@
     "tslib": "^2.8.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.44.1",
+    "typescript-eslint": "^8.49.0",
     "vitest": "^3.2.2"
   },
   "dependencies": {

@@ -6,6 +6,7 @@ import {
   formatElapsedTime,
   parseIntOption,
   parseFloatOption,
+  parseBooleanOption,
 } from '../src/utils.js';
 
 describe('Utils', () => {
@@ -134,6 +135,48 @@ describe('Utils', () => {
     it('should handle edge cases', () => {
       expect(parseFloatOption('  123.45  ')).toBe(123.45); // handles whitespace
       expect(parseFloatOption('123')).toBe(123); // handles integer input
+    });
+  });
+
+  describe('parseBooleanOption', () => {
+    it('should parse "true" values correctly', () => {
+      expect(parseBooleanOption('true')).toBe(true);
+      expect(parseBooleanOption('TRUE')).toBe(true);
+      expect(parseBooleanOption('True')).toBe(true);
+      expect(parseBooleanOption('1')).toBe(true);
+      expect(parseBooleanOption('yes')).toBe(true);
+      expect(parseBooleanOption('YES')).toBe(true);
+    });
+
+    it('should parse "false" values correctly', () => {
+      expect(parseBooleanOption('false')).toBe(false);
+      expect(parseBooleanOption('FALSE')).toBe(false);
+      expect(parseBooleanOption('False')).toBe(false);
+      expect(parseBooleanOption('0')).toBe(false);
+      expect(parseBooleanOption('no')).toBe(false);
+      expect(parseBooleanOption('NO')).toBe(false);
+    });
+
+    it('should handle whitespace', () => {
+      expect(parseBooleanOption('  true  ')).toBe(true);
+      expect(parseBooleanOption('  false  ')).toBe(false);
+      expect(parseBooleanOption('  1  ')).toBe(true);
+      expect(parseBooleanOption('  0  ')).toBe(false);
+    });
+
+    it('should handle undefined and empty values', () => {
+      expect(parseBooleanOption(undefined)).toBe(false);
+      expect(parseBooleanOption('')).toBe(false);
+    });
+
+    it('should throw error for invalid values', () => {
+      expect(() => parseBooleanOption('invalid')).toThrow(
+        'Invalid boolean value: invalid',
+      );
+      expect(() => parseBooleanOption('maybe')).toThrow(
+        'Invalid boolean value: maybe',
+      );
+      expect(() => parseBooleanOption('2')).toThrow('Invalid boolean value: 2');
     });
   });
 
