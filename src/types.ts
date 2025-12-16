@@ -41,6 +41,10 @@ export interface Arguments {
 
   // output
   outputFileName?: string;
+  outputDir?: string;
+
+  // state management
+  cleanState?: boolean;
 
   repoList?: string;
   autoProcessMissing?: boolean;

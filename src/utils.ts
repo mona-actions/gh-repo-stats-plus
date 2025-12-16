@@ -1,3 +1,6 @@
+import { mkdir } from 'fs/promises';
+import { resolve } from 'path';
+
 export function generateRepoStatsFileName(orgName: string): string {
   const timestamp = new Date()
     .toISOString()
@@ -56,6 +59,29 @@ export function parseFloatOption(value: string, defaultValue?: number): number {
   return parsed;
 }
 
+export function parseBooleanOption(
+  value: string | undefined | boolean,
+): boolean {
+  // If value is a boolean, return it as-is
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  // If value is undefined or empty, return false (default when not provided)
+  if (!value) {
+    return false;
+  }
+
+  const normalized = value.toLowerCase().trim();
+  if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+    return true;
+  }
+  if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+    return false;
+  }
+  throw new Error(`Invalid boolean value: ${value}`);
+}
+
 export function formatElapsedTime(startTime: Date, endTime: Date): string {
   const elapsed = endTime.getTime() - startTime.getTime();
   const seconds = Math.floor(elapsed / 1000);
@@ -63,4 +89,25 @@ export function formatElapsedTime(startTime: Date, endTime: Date): string {
   const hours = Math.floor(minutes / 60);
 
   return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
+}
+
+/**
+ * Creates the output directory if it doesn't exist and returns the full path for a file
+ * @param outputDir The output directory (defaults to 'output')
+ * @param fileName The file name
+ * @returns The full path to the file
+ */
+export async function resolveOutputPath(
+  outputDir: string | undefined,
+  fileName: string,
+): Promise<string> {
+  // Normalize outputDir: if empty, null, or undefined, default to 'output'
+  const normalizedOutputDir =
+    outputDir && outputDir.trim() !== '' ? outputDir : 'output';
+  const fullOutputDir = resolve(process.cwd(), normalizedOutputDir);
+
+  // Create directory - mkdir with recursive option handles existing directories gracefully
+  await mkdir(fullOutputDir, { recursive: true });
+
+  return resolve(fullOutputDir, fileName);
 }

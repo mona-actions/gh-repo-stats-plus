@@ -21,7 +21,7 @@ A GitHub CLI extension for gathering comprehensive repository statistics from Gi
    gh repo-stats-plus repo-stats --organization my-org
    ```
 
-The tool will generate a CSV file with comprehensive repository statistics for analysis.
+The tool will generate a CSV file with comprehensive repository statistics in the `./output/` directory (or a custom directory you specify).
 
 ## Key Features
 
@@ -36,7 +36,7 @@ This TypeScript rewrite offers several advantages:
 
 2. **Streaming Processing with Async Generators**: Writes results incrementally as they're processed rather than collecting everything up front, resulting in better memory management and reliability.
 
-3. **State Persistence**: Saves processing state to a `last_known_state.json` file after each successful repository, storing the current cursor position and processed repositories.
+3. **State Persistence with Multi-Organization Support**: Saves processing state to organization-specific files (e.g., `last_known_state_<org>.json`) after each successful repository, storing the current cursor position and processed repositories. Each organization maintains its own isolated state, allowing sequential or parallel processing of multiple organizations without conflicts.
 
 4. **Resume Capability**: Can resume operations from the last saved state in case of interruptions or failures.
 
@@ -49,6 +49,8 @@ This TypeScript rewrite offers several advantages:
 8. **Comprehensive Logging**: Detailed logs stored in log files for later review and troubleshooting.
 
 9. **Missing Repositories Detection**: Dedicated command to identify repositories that might have been missed during processing.
+
+10. **Configurable Output Directory**: Control where output files and state files are saved with the `--output-dir` option (defaults to `./output/`) for organized file management.
 
 ## Technical Implementation
 
@@ -76,7 +78,33 @@ The extension is built using modern TypeScript patterns with:
 ### Basic Organization Analysis
 
 ```bash
+# Generate repository statistics (output saved to ./output/ directory)
 gh repo-stats-plus repo-stats --organization my-org
+```
+
+### Multiple Organizations
+
+```bash
+# Process multiple organizations sequentially (each maintains its own state)
+gh repo-stats-plus repo-stats --organization org1
+gh repo-stats-plus repo-stats --organization org2
+gh repo-stats-plus repo-stats --organization org3
+
+# Use custom output directory (state files are stored here too)
+gh repo-stats-plus repo-stats --organization my-org --output-dir ./reports
+
+# Clean up state file after successful completion
+gh repo-stats-plus repo-stats --organization my-org --clean-state
+```
+
+### Custom Output Directory
+
+```bash
+# Save output files to a custom directory
+gh repo-stats-plus repo-stats --organization my-org --output-dir /path/to/my/reports
+
+# Use relative path from current directory
+gh repo-stats-plus repo-stats --organization my-org --output-dir reports
 ```
 
 ### Resume Long-Running Collection
@@ -92,13 +120,23 @@ gh repo-stats-plus repo-stats \
   --organization my-org \
   --app-id 12345 \
   --private-key-file app.pem \
-  --app-installation-id 67890
+  --app-installation-id 67890 \
+  --output-dir /path/to/reports
 ```
 
 ### Find and Process Missing Data
 
 ```bash
+# Check for missing repositories (looks for CSV in ./output/ by default)
 gh repo-stats-plus missing-repos --organization my-org --file results.csv
+
+# Use custom output directory for missing repos check
+gh repo-stats-plus missing-repos \
+  --organization my-org \
+  --file results.csv \
+  --output-dir /path/to/reports
+
+# Auto-process missing repositories
 gh repo-stats-plus repo-stats --organization my-org --auto-process-missing
 ```
 

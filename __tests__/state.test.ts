@@ -1,34 +1,55 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ProcessedPageState } from '../src/types.js';
-import { initializeState, updateState } from '../src/state.js';
+import { StateManager } from '../src/state.js';
 import { withMockedDate, createMockLogger } from './test-utils.js';
 
 // Import fs functions individually
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  unlinkSync,
+} from 'fs';
 
 // Mock the fs module
 vi.mock('fs', () => ({
   readFileSync: vi.fn(),
   writeFileSync: vi.fn(),
   existsSync: vi.fn(),
+  mkdirSync: vi.fn(),
+  unlinkSync: vi.fn(),
 }));
 
-describe('State Management', () => {
+// Mock path module
+vi.mock('path', async () => {
+  const actual = await vi.importActual<typeof import('path')>('path');
+  return {
+    ...actual,
+    join: vi.fn((...args: string[]) => args.join('/')),
+  };
+});
+
+describe('StateManager', () => {
   const mockLogger = createMockLogger();
+  const outputDir = '/test/output';
+  const organizationName = 'test-org';
 
   // Clean up mocks before each test
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('initializeState', () => {
+  describe('initialize', () => {
     it('should return default state when no previous state exists', () => {
-      // Mock that the file does not exist
       vi.mocked(existsSync).mockReturnValue(false);
 
-      const { processedState, resumeFromLastState } = initializeState({
-        logger: mockLogger,
-      });
+      const stateManager = new StateManager(
+        outputDir,
+        organizationName,
+        mockLogger,
+      );
+      const { processedState, resumeFromLastState } = stateManager.initialize();
 
       expect(resumeFromLastState).toBe(false);
       expect(processedState).toEqual({
@@ -40,14 +61,13 @@ describe('State Management', () => {
         completedSuccessfully: false,
         outputFileName: null,
       });
-      expect(existsSync).toHaveBeenCalledWith('last_known_state.json');
+      expect(existsSync).toHaveBeenCalledWith(
+        '/test/output/last_known_state_test-org.json',
+      );
     });
 
     it('should not resume from last state if completedSuccessfully is true', () => {
-      // Mock that the file exists
       vi.mocked(existsSync).mockReturnValue(true);
-
-      // Mock file content with completed state
       vi.mocked(readFileSync).mockReturnValue(
         JSON.stringify({
           completedSuccessfully: true,
@@ -59,31 +79,24 @@ describe('State Management', () => {
         }),
       );
 
-      const { processedState, resumeFromLastState } = initializeState({
-        resumeFromLastSave: true,
-        logger: mockLogger,
-      });
+      const stateManager = new StateManager(
+        outputDir,
+        organizationName,
+        mockLogger,
+      );
+      const { processedState, resumeFromLastState } =
+        stateManager.initialize(true);
 
       expect(resumeFromLastState).toBe(false);
-      expect(processedState).toEqual({
-        currentCursor: null,
-        processedRepos: [],
-        lastSuccessfulCursor: null,
-        lastProcessedRepo: null,
-        lastUpdated: null,
-        completedSuccessfully: false,
-        outputFileName: null,
-      });
+      expect(processedState.processedRepos).toEqual([]);
       expect(mockLogger.info).toHaveBeenCalledWith(
-        'All repositories were previously processed successfully. Nothing to resume.',
+        'Previous run completed successfully. Starting fresh run.',
       );
     });
 
     it('should resume from last state when resumeFromLastSave is true', () => {
-      // Mock that the file exists
       vi.mocked(existsSync).mockReturnValue(true);
 
-      // Mock file content with incomplete state
       const mockLastState = {
         completedSuccessfully: false,
         processedRepos: ['repo1', 'repo2'],
@@ -96,14 +109,15 @@ describe('State Management', () => {
 
       vi.mocked(readFileSync).mockReturnValue(JSON.stringify(mockLastState));
 
-      const { processedState, resumeFromLastState } = initializeState({
-        resumeFromLastSave: true,
-        logger: mockLogger,
-      });
+      const stateManager = new StateManager(
+        outputDir,
+        organizationName,
+        mockLogger,
+      );
+      const { processedState, resumeFromLastState } =
+        stateManager.initialize(true);
 
       expect(resumeFromLastState).toBe(true);
-
-      // Instead of comparing the entire object, check key properties
       expect(processedState.currentCursor).toBe('cursor1');
       expect(processedState.processedRepos).toEqual(['repo1', 'repo2']);
       expect(processedState.lastSuccessfulCursor).toBe('cursor1');
@@ -112,48 +126,60 @@ describe('State Management', () => {
       expect(processedState.completedSuccessfully).toBe(false);
 
       expect(mockLogger.info).toHaveBeenCalledWith(
-        'Resuming from last state that was last updated: 2025-03-19T12:00:00Z',
+        'Resuming from last state (last updated: 2025-03-19T12:00:00Z)',
+      );
+    });
+
+    it('should NOT resume when resumeFromLastSave is false even if state exists', () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const mockLastState = {
+        completedSuccessfully: false,
+        processedRepos: ['repo1', 'repo2'],
+        currentCursor: 'cursor1',
+        lastSuccessfulCursor: 'cursor1',
+        lastProcessedRepo: 'repo2',
+        lastUpdated: '2025-03-19T12:00:00Z',
+        outputFileName: null,
+      };
+
+      vi.mocked(readFileSync).mockReturnValue(JSON.stringify(mockLastState));
+
+      const stateManager = new StateManager(
+        outputDir,
+        organizationName,
+        mockLogger,
+      );
+      const { processedState, resumeFromLastState } =
+        stateManager.initialize(false); // resumeFromLastSave=false
+
+      expect(resumeFromLastState).toBe(false);
+      expect(processedState.processedRepos).toEqual([]); // Should be fresh state
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'State file exists but resume-from-last-save is not enabled. Starting fresh.',
       );
     });
 
     it('should handle invalid state file gracefully', () => {
-      // Mock that the file exists
       vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(readFileSync).mockReturnValue('invalid json');
 
-      // Mock an error when reading the file - need to do it this way to avoid failing the test
-      vi.mocked(readFileSync).mockImplementation(() => {
-        const error = new Error('Invalid JSON');
-        // Mock the error without actually throwing it
-        mockLogger.error(`Failed to load last state: ${error.message}`);
-        mockLogger.debug(`State file contents: file not found`);
-        return ''; // Return empty string to avoid parsing
-      });
-
-      const { processedState, resumeFromLastState } = initializeState({
-        resumeFromLastSave: true,
-        logger: mockLogger,
-      });
+      const stateManager = new StateManager(
+        outputDir,
+        organizationName,
+        mockLogger,
+      );
+      const { processedState, resumeFromLastState } =
+        stateManager.initialize(true);
 
       expect(resumeFromLastState).toBe(false);
-      expect(processedState).toEqual({
-        currentCursor: null,
-        processedRepos: [],
-        lastSuccessfulCursor: null,
-        lastProcessedRepo: null,
-        lastUpdated: null,
-        completedSuccessfully: false,
-        outputFileName: null,
-      });
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'Failed to load last state: Invalid JSON',
-      );
+      expect(processedState.processedRepos).toEqual([]);
+      expect(mockLogger.error).toHaveBeenCalled();
     });
 
     it('should handle missing processedRepos in state file', () => {
-      // Mock that the file exists
       vi.mocked(existsSync).mockReturnValue(true);
 
-      // Mock file content with missing processedRepos
       const mockLastState = {
         completedSuccessfully: false,
         currentCursor: 'cursor1',
@@ -164,10 +190,13 @@ describe('State Management', () => {
 
       vi.mocked(readFileSync).mockReturnValue(JSON.stringify(mockLastState));
 
-      const { processedState, resumeFromLastState } = initializeState({
-        resumeFromLastSave: true,
-        logger: mockLogger,
-      });
+      const stateManager = new StateManager(
+        outputDir,
+        organizationName,
+        mockLogger,
+      );
+      const { processedState, resumeFromLastState } =
+        stateManager.initialize(true);
 
       expect(resumeFromLastState).toBe(true);
       expect(processedState.processedRepos).toEqual([]);
@@ -175,9 +204,107 @@ describe('State Management', () => {
         'Invalid state file: processedRepos is missing or not an array',
       );
     });
+
+    it('should warn about legacy state file when detected', () => {
+      vi.mocked(existsSync).mockImplementation((path) => {
+        const pathStr = path.toString();
+        if (pathStr === 'last_known_state.json') return true;
+        if (pathStr === '/test/output/last_known_state_test-org.json')
+          return false;
+        return false;
+      });
+
+      const stateManager = new StateManager(
+        outputDir,
+        organizationName,
+        mockLogger,
+      );
+      stateManager.initialize();
+
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Found legacy state file'),
+      );
+    });
+
+    it('should isolate state between different organizations', () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const org1State = {
+        completedSuccessfully: false,
+        processedRepos: ['org1-repo1', 'org1-repo2'],
+        currentCursor: 'org1-cursor',
+        lastSuccessfulCursor: 'org1-cursor',
+        lastProcessedRepo: 'org1-repo2',
+        lastSuccessTimestamp: '2025-03-19T12:00:00Z',
+        outputFileName: null,
+      };
+
+      vi.mocked(readFileSync).mockReturnValue(JSON.stringify(org1State));
+
+      const stateManager1 = new StateManager(outputDir, 'org1', mockLogger);
+      const { processedState: state1 } = stateManager1.initialize(true);
+
+      expect(state1.processedRepos).toEqual(['org1-repo1', 'org1-repo2']);
+      expect(existsSync).toHaveBeenCalledWith(
+        '/test/output/last_known_state_org1.json',
+      );
+
+      vi.clearAllMocks();
+      vi.mocked(existsSync).mockReturnValue(false);
+
+      const stateManager2 = new StateManager(outputDir, 'org2', mockLogger);
+      const { processedState: state2 } = stateManager2.initialize(true);
+
+      expect(state2.processedRepos).toEqual([]);
+      expect(existsSync).toHaveBeenCalledWith(
+        '/test/output/last_known_state_org2.json',
+      );
+    });
+
+    it('should use output directory for state files', () => {
+      vi.mocked(existsSync).mockReturnValue(false);
+
+      const stateManager = new StateManager(
+        '/custom/output',
+        organizationName,
+        mockLogger,
+      );
+      stateManager.initialize();
+
+      expect(existsSync).toHaveBeenCalledWith(
+        '/custom/output/last_known_state_test-org.json',
+      );
+    });
+
+    it('should sanitize organization names with invalid filesystem characters', () => {
+      vi.mocked(existsSync).mockReturnValue(false);
+
+      // Test various invalid characters
+      const invalidOrgNames = [
+        { input: 'org/with/slashes', expected: 'org_with_slashes' },
+        { input: 'org\\with\\backslashes', expected: 'org_with_backslashes' },
+        { input: 'org:with:colons', expected: 'org_with_colons' },
+        { input: 'org*with*asterisks', expected: 'org_with_asterisks' },
+        { input: 'org?with?questions', expected: 'org_with_questions' },
+        { input: 'org"with"quotes', expected: 'org_with_quotes' },
+        { input: 'org<with>brackets', expected: 'org_with_brackets' },
+        { input: 'org|with|pipes', expected: 'org_with_pipes' },
+        { input: 'My-Org.Name_123', expected: 'my-org.name_123' },
+      ];
+
+      invalidOrgNames.forEach(({ input, expected }) => {
+        vi.clearAllMocks();
+        const stateManager = new StateManager(outputDir, input, mockLogger);
+        stateManager.initialize();
+
+        expect(existsSync).toHaveBeenCalledWith(
+          `/test/output/last_known_state_${expected}.json`,
+        );
+      });
+    });
   });
 
-  describe('updateState', () => {
+  describe('update', () => {
     it('should update cursor when new cursor is provided', () => {
       const mockState: ProcessedPageState = {
         currentCursor: 'cursor1',
@@ -189,24 +316,24 @@ describe('State Management', () => {
         outputFileName: null,
       };
 
-      const newCursor = 'cursor2';
+      const stateManager = new StateManager(
+        outputDir,
+        organizationName,
+        mockLogger,
+      );
 
       withMockedDate(new Date('2025-03-20T15:00:00Z'), () => {
-        updateState({
-          state: mockState,
-          newCursor,
-          logger: mockLogger,
-        });
+        stateManager.update(mockState, { newCursor: 'cursor2' });
       });
 
-      expect(mockState.currentCursor).toBe(newCursor);
+      expect(mockState.currentCursor).toBe('cursor2');
       expect(mockState.lastUpdated).toBe('2025-03-20T15:00:00.000Z');
       expect(writeFileSync).toHaveBeenCalledWith(
-        'last_known_state.json',
+        '/test/output/last_known_state_test-org.json',
         expect.any(String),
       );
       expect(mockLogger.debug).toHaveBeenCalledWith(
-        `Updated cursor to: ${newCursor} for repo: undefined`,
+        'Updated cursor to: cursor2 for repo: undefined',
       );
     });
 
@@ -221,11 +348,15 @@ describe('State Management', () => {
         outputFileName: null,
       };
 
+      const stateManager = new StateManager(
+        outputDir,
+        organizationName,
+        mockLogger,
+      );
+
       withMockedDate(new Date('2025-03-20T15:00:00Z'), () => {
-        updateState({
-          state: mockState,
+        stateManager.update(mockState, {
           lastSuccessfulCursor: 'success-cursor',
-          logger: mockLogger,
         });
       });
 
@@ -243,12 +374,14 @@ describe('State Management', () => {
         outputFileName: null,
       };
 
+      const stateManager = new StateManager(
+        outputDir,
+        organizationName,
+        mockLogger,
+      );
+
       withMockedDate(new Date('2025-03-20T15:00:00Z'), () => {
-        updateState({
-          state: mockState,
-          repoName: 'repo2',
-          logger: mockLogger,
-        });
+        stateManager.update(mockState, { repoName: 'repo2' });
       });
 
       expect(mockState.processedRepos).toContain('repo2');
@@ -266,12 +399,14 @@ describe('State Management', () => {
         outputFileName: null,
       };
 
+      const stateManager = new StateManager(
+        outputDir,
+        organizationName,
+        mockLogger,
+      );
+
       withMockedDate(new Date('2025-03-20T15:00:00Z'), () => {
-        updateState({
-          state: mockState,
-          repoName: 'repo2',
-          logger: mockLogger,
-        });
+        stateManager.update(mockState, { repoName: 'repo2' });
       });
 
       expect(mockState.processedRepos).toEqual(['repo1', 'repo2']);
@@ -289,17 +424,18 @@ describe('State Management', () => {
         outputFileName: null,
       };
 
-      // Mock writeFileSync to throw error
       vi.mocked(writeFileSync).mockImplementation(() => {
         throw new Error('Write error');
       });
 
+      const stateManager = new StateManager(
+        outputDir,
+        organizationName,
+        mockLogger,
+      );
+
       withMockedDate(new Date('2025-03-20T15:00:00Z'), () => {
-        updateState({
-          state: mockState,
-          repoName: 'repo1',
-          logger: mockLogger,
-        });
+        stateManager.update(mockState, { repoName: 'repo1' });
       });
 
       expect(mockLogger.error).toHaveBeenCalledWith(
@@ -319,16 +455,103 @@ describe('State Management', () => {
         outputFileName: null,
       };
 
+      const stateManager = new StateManager(
+        outputDir,
+        organizationName,
+        mockLogger,
+      );
+
       withMockedDate(new Date('2025-03-20T15:00:00Z'), () => {
-        updateState({
-          state: mockState,
-          newCursor: currentCursor,
-          logger: mockLogger,
-        });
+        stateManager.update(mockState, { newCursor: currentCursor });
       });
 
       expect(mockLogger.debug).not.toHaveBeenCalledWith(
         expect.stringContaining(`Updated cursor to: ${currentCursor}`),
+      );
+    });
+
+    it('should auto-create output directory if it does not exist', () => {
+      const mockState: ProcessedPageState = {
+        currentCursor: null,
+        processedRepos: [],
+        lastSuccessfulCursor: null,
+        lastProcessedRepo: null,
+        lastUpdated: null,
+        completedSuccessfully: false,
+        outputFileName: null,
+      };
+
+      vi.mocked(existsSync).mockReturnValue(false);
+
+      const stateManager = new StateManager(
+        '/new/output/dir',
+        organizationName,
+        mockLogger,
+      );
+
+      withMockedDate(new Date('2025-03-20T15:00:00Z'), () => {
+        stateManager.update(mockState, { repoName: 'repo1' });
+      });
+
+      expect(mkdirSync).toHaveBeenCalledWith('/new/output/dir', {
+        recursive: true,
+      });
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        'Creating output directory: /new/output/dir',
+      );
+    });
+  });
+
+  describe('cleanup', () => {
+    it('should remove state file when it exists', () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const stateManager = new StateManager(
+        outputDir,
+        organizationName,
+        mockLogger,
+      );
+      stateManager.cleanup();
+
+      expect(unlinkSync).toHaveBeenCalledWith(
+        '/test/output/last_known_state_test-org.json',
+      );
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Removed state file: /test/output/last_known_state_test-org.json',
+      );
+    });
+
+    it('should handle missing state file gracefully', () => {
+      vi.mocked(existsSync).mockReturnValue(false);
+
+      const stateManager = new StateManager(
+        outputDir,
+        organizationName,
+        mockLogger,
+      );
+      stateManager.cleanup();
+
+      expect(unlinkSync).not.toHaveBeenCalled();
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        'State file does not exist, nothing to clean up: /test/output/last_known_state_test-org.json',
+      );
+    });
+
+    it('should handle cleanup errors', () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(unlinkSync).mockImplementation(() => {
+        throw new Error('Permission denied');
+      });
+
+      const stateManager = new StateManager(
+        outputDir,
+        organizationName,
+        mockLogger,
+      );
+      stateManager.cleanup();
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to cleanup state file: Permission denied',
       );
     });
   });
