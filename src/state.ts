@@ -8,135 +8,98 @@ import {
 import { join } from 'path';
 import { Logger, ProcessedPageState } from './types.js';
 
-interface MultiOrgState {
-  [orgName: string]: ProcessedPageState;
-}
+const LEGACY_STATE_FILE = 'last_known_state.json';
 
-function getStateFileName(): string {
-  return 'last_known_state.json';
-}
+export class StateManager {
+  private readonly outputDir: string;
+  private readonly organizationName: string;
+  private readonly logger: Logger;
 
-function loadMultiOrgState(logger: Logger): MultiOrgState {
-  const stateFile = getStateFileName();
-  try {
-    if (existsSync(stateFile)) {
-      const content = readFileSync(stateFile, 'utf-8');
-      const parsed = JSON.parse(content);
-      return parsed;
-    }
-    return {};
-  } catch (error) {
-    logger.warn(`Failed to load state: ${error}`);
-    return {};
+  constructor(outputDir: string, organizationName: string, logger: Logger) {
+    this.outputDir = outputDir;
+    this.organizationName = organizationName;
+    this.logger = logger;
   }
 
-function saveMultiOrgState(state: MultiOrgState, logger: Logger): void {
-  const stateFile = getStateFileName();
-  try {
-    writeFileSync(stateFile, JSON.stringify(state, null, 2));
-    logger.debug(`Saved multi-org state to ${stateFile}`);
-  } catch (error) {
-    logger.error(`Failed to save state: ${error}`);
-  }
-}
-
-function saveLastState(
-  state: ProcessedPageState,
-  logger: Logger,
-  orgName?: string,
-): void {
-  if (!orgName) {
-    // Single-org mode not supported in new multi-org structure
-    logger.warn(
-      'Single-org mode not supported with new multi-org state structure. Please provide orgName.',
-    );
-    return;
+  private sanitizeFilename(name: string): string {
+    // Replace characters that are invalid in filenames with underscores
+    // Invalid characters: / \ : * ? " < > | and control characters
+    // eslint-disable-next-line no-control-regex
+    return name.replace(/[/\\:*?"<>|\x00-\x1f]/g, '_').toLowerCase();
   }
 
-  // Multi-org approach
-  const multiOrgState = loadMultiOrgState(logger);
-  multiOrgState[orgName.toLowerCase()] = state;
-  saveMultiOrgState(multiOrgState, logger);
-}
-
-function loadLastState(
-  logger: Logger,
-  orgName?: string,
-): ProcessedPageState | null {
-  if (!orgName) {
-    // Single-org mode - not supported in new multi-org structure
-    logger.warn(
-      'Single-org mode not supported with new multi-org state structure. Please provide orgName.',
-    );
-    return null;
+  private getStateFileName(): string {
+    const sanitizedOrg = this.sanitizeFilename(this.organizationName);
+    return `last_known_state_${sanitizedOrg}.json`;
   }
 
-  // Multi-org mode - load specific org from multi-org structure
-  const multiOrgState = loadMultiOrgState(logger);
-  const orgState = multiOrgState[orgName.toLowerCase()];
-
-  if (!orgState) {
-    logger.debug(`No previous state found for organization: ${orgName}`);
-    return null;
+  private getStateFilePath(): string {
+    return join(this.outputDir, this.getStateFileName());
   }
 
-  // Validate processedRepos exists and is an array
-  if (!orgState.processedRepos || !Array.isArray(orgState.processedRepos)) {
-    logger.warn(
-      'Invalid state file: processedRepos is missing or not an array',
-    );
-    orgState.processedRepos = [];
-  }
-
-  // Ensure uniqueness while keeping as array
-  orgState.processedRepos = [...new Set(orgState.processedRepos)];
-
-  logger.debug(`Loaded state for organization: ${orgName}`);
-  return {
-    ...orgState,
-    currentCursor: orgState.currentCursor || null,
-    lastSuccessfulCursor: orgState.lastSuccessfulCursor || null,
-    lastProcessedRepo: orgState.lastProcessedRepo || null,
-    lastUpdated: orgState.lastUpdated || null,
-    completedSuccessfully: orgState.completedSuccessfully || false,
-  };
-}
-
-export function initializeState({
-  resumeFromLastSave,
-  logger,
-  orgName,
-}: {
-  resumeFromLastSave?: boolean;
-  logger: Logger;
-  orgName?: string;
-}): { processedState: ProcessedPageState; resumeFromLastState: boolean } {
-  let processedState: ProcessedPageState = {
-    currentCursor: null,
-    processedRepos: [],
-    lastSuccessfulCursor: null,
-    lastProcessedRepo: null,
-    lastUpdated: null,
-    completedSuccessfully: false,
-    outputFileName: null,
-  };
-
-  let resumeFromLastState = false;
-
-  // Check if state exists for this organization
-  const lastState = loadLastState(logger, orgName);
-  if (lastState) {
-    let isNewRun = false;
-    if (lastState?.completedSuccessfully) {
-      logger.info(
-        'All repositories were previously processed successfully. Nothing to resume.',
+  private checkLegacyStateFile(): void {
+    if (existsSync(LEGACY_STATE_FILE)) {
+      this.logger.warn(
+        `Found legacy state file '${LEGACY_STATE_FILE}' without organization suffix. ` +
+          `This file will not be used. Organization-specific state files are now used (e.g., '${this.getStateFileName()}'). ` +
+          `Please manually remove '${LEGACY_STATE_FILE}' to avoid confusion.`,
       );
+    }
+  }
+
+  private save(state: ProcessedPageState): void {
+    try {
+      // Ensure output directory exists
+      if (!existsSync(this.outputDir)) {
+        this.logger.debug(`Creating output directory: ${this.outputDir}`);
+        mkdirSync(this.outputDir, { recursive: true });
+      }
+
       const stateFilePath = this.getStateFilePath();
-      this.logger.debug(
-        `State file contents: ${
-          existsSync(stateFilePath)
-            ? readFileSync(stateFilePath, 'utf-8')
-            : 'file not found'
+      writeFileSync(stateFilePath, JSON.stringify(state, null, 2));
+      this.logger.debug(`Saved last state to ${stateFilePath}`);
+    } catch (error) {
+      this.logger.error(`Failed to save last state: ${error}`);
+    }
+  }
+
+  private load(): ProcessedPageState | null {
+    try {
+      const stateFilePath = this.getStateFilePath();
+      if (existsSync(stateFilePath)) {
+        const data = readFileSync(stateFilePath, 'utf-8');
+        this.logger.info(`Loaded last state from ${stateFilePath}`);
+        const parsedState = JSON.parse(data);
+
+        // Validate processedRepos exists and is an array
+        if (
+          !parsedState.processedRepos ||
+          !Array.isArray(parsedState.processedRepos)
+        ) {
+          this.logger.warn(
+            'Invalid state file: processedRepos is missing or not an array',
+          );
+          parsedState.processedRepos = [];
+        }
+
+        // Ensure uniqueness while keeping as array
+        parsedState.processedRepos = [...new Set(parsedState.processedRepos)];
+
+        return {
+          ...parsedState,
+          currentCursor: parsedState.currentCursor || null,
+          lastSuccessfulCursor: parsedState.lastSuccessfulCursor || null,
+          lastProcessedRepo: parsedState.lastProcessedRepo || null,
+          lastUpdated:
+            parsedState.lastUpdated || parsedState.lastSuccessTimestamp || null,
+          completedSuccessfully: parsedState.completedSuccessfully || false,
+          outputFileName: parsedState.outputFileName || null,
+        };
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to load last state: ${
+          error instanceof Error ? error.message : String(error)
         }`,
       );
     }
@@ -260,63 +223,5 @@ export function initializeState({
         }`,
       );
     }
-  }
-
-  return { processedState, resumeFromLastState };
-}
-
-export function updateState({
-  state,
-  repoName,
-  newCursor,
-  lastSuccessfulCursor,
-  logger,
-  orgName,
-}: {
-  state: ProcessedPageState;
-  repoName?: string | null;
-  newCursor?: string | null;
-  lastSuccessfulCursor?: string | null;
-  logger: Logger;
-  orgName?: string;
-}): void {
-  // Update cursor if provided and different from current
-  if (newCursor && newCursor !== state.currentCursor) {
-    state.currentCursor = newCursor;
-    logger.debug(
-      `Updated cursor to: ${state.currentCursor} for repo: ${repoName}`,
-    );
-  }
-
-  // Update last successful cursor if provided
-  if (lastSuccessfulCursor) {
-    state.lastSuccessfulCursor = lastSuccessfulCursor;
-  }
-
-  // Add to processed repos if not already included
-  if (repoName && !state.processedRepos.includes(repoName)) {
-    state.processedRepos.push(repoName);
-  }
-
-  // Update last processed repo and timestamp
-  if (repoName) {
-    state.lastProcessedRepo = repoName;
-  }
-  state.lastUpdated = new Date().toISOString();
-
-  // Save state after updates
-  saveLastState(state, logger, orgName);
-}
-
-export function clearCompletedOrgState(orgName: string, logger: Logger): void {
-  const multiOrgState = loadMultiOrgState(logger);
-  const orgKey = orgName.toLowerCase();
-
-  if (multiOrgState[orgKey]) {
-    delete multiOrgState[orgKey];
-    saveMultiOrgState(multiOrgState, logger);
-    logger.info(`Cleared completed state for organization: ${orgName}`);
-  } else {
-    logger.debug(`No state found to clear for organization: ${orgName}`);
   }
 }

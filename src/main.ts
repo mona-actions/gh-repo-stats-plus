@@ -14,12 +14,9 @@ import {
 } from './types.js';
 import { createLogger, logInitialization } from './logger.js';
 import { createAuthConfig } from './auth.js';
-import {
-  initializeState,
-  updateState,
-  clearCompletedOrgState,
-} from './state.js';
-import { appendFileSync, existsSync, writeFileSync } from 'fs';
+import { StateManager } from './state.js';
+import { appendFileSync, existsSync, writeFileSync, unlinkSync } from 'fs';
+
 import { withRetry, RetryConfig } from './retry.js';
 import {
   generateRepoStatsFileName,
@@ -60,24 +57,32 @@ const _init = async (
 
   const client = new OctokitClient(octokit);
 
-  const { processedState, resumeFromLastState } = initializeState({
-    resumeFromLastSave: opts.resumeFromLastSave || false,
-    logger,
-    orgName: opts.orgName,
-  });
+  const outputDir = opts.outputDir || 'output';
+  const stateManager = new StateManager(outputDir, opts.orgName!, logger);
+
+  logger.debug(
+    `resumeFromLastSave option value: ${
+      opts.resumeFromLastSave
+    } (type: ${typeof opts.resumeFromLastSave})`,
+  );
+
+  const { processedState, resumeFromLastState } = stateManager.initialize(
+    opts.resumeFromLastSave || false,
+  );
 
   let fileName = '';
   if (resumeFromLastState) {
     fileName = processedState.outputFileName || '';
     logger.info(`Resuming from last state. Using existing file: ${fileName}`);
   } else {
-    fileName = generateRepoStatsFileName(opts.orgName!);
+    const baseFileName = generateRepoStatsFileName(opts.orgName!);
+    fileName = await resolveOutputPath(opts.outputDir, baseFileName);
 
     initializeCsvFile(fileName, logger);
     logger.info(`Results will be saved to file: ${fileName}`);
 
     processedState.outputFileName = fileName;
-    updateState({ state: processedState, logger, orgName: opts.orgName });
+    stateManager.update(processedState, {});
   }
 
   const retryConfig: RetryConfig = {
@@ -151,7 +156,7 @@ export async function run(opts: Arguments): Promise<void> {
           `Output saved to: ${fileName}`,
       );
 
-      updateState({ state: processedState, logger, orgName: opts.orgName });
+      stateManager.update(processedState, {});
 
       // Check for and process missing repositories if enabled
       if (opts.autoProcessMissing && result.isComplete) {
@@ -188,7 +193,7 @@ export async function run(opts: Arguments): Promise<void> {
           `Error: ${state.error?.message}\n` +
           `Elapsed time so far: ${formatElapsedTime(startTime, new Date())}`,
       );
-      updateState({ state: processedState, logger, orgName: opts.orgName });
+      stateManager.update(processedState, {});
     },
   );
 }
@@ -357,14 +362,6 @@ export async function runMultiOrg(opts: Arguments): Promise<void> {
   }
 
   summaryLogger.info('='.repeat(80));
-
-  // Clean up completed organization states after all processing is done
-  summaryLogger.info('Cleaning up completed organization states...');
-  for (const result of results) {
-    if (result.success) {
-      clearCompletedOrgState(result.org, summaryLogger);
-    }
-  }
 
   // If there were failures and we continued, inform about them
   if (totalFailed > 0 && continueOnError) {
@@ -550,21 +547,19 @@ async function* processRepoStats({
   logger,
   extraPageSize,
   processedState,
-  orgName,
+  stateManager,
 }: {
   reposIterator: AsyncGenerator<RepositoryStats, void, unknown>;
   client: OctokitClient;
   logger: Logger;
   extraPageSize: number;
   processedState: ProcessedPageState;
-  orgName?: string;
+  stateManager: StateManager;
 }): AsyncGenerator<RepoStatsResult> {
   for await (const repo of reposIterator) {
     if (repo.pageInfo?.endCursor) {
       stateManager.update(processedState, {
         newCursor: repo.pageInfo.endCursor,
-        logger,
-        orgName,
       });
     }
 
@@ -616,8 +611,6 @@ async function handleRepoProcessingSuccess({
   stateManager.update(processedState, {
     repoName: result.Repo_Name,
     lastSuccessfulCursor: currentCursor,
-    logger,
-    orgName: opts.orgName,
   });
 
   // Check rate limits after configured interval
@@ -775,7 +768,7 @@ async function processRepositories({
       extraPageSize:
         opts.extraPageSize != null ? Number(opts.extraPageSize) : 25,
       processedState,
-      orgName: opts.orgName,
+      stateManager,
     })) {
       try {
         if (processedState.processedRepos.includes(result.Repo_Name)) {
@@ -1208,7 +1201,21 @@ export async function checkForMissingRepos({
 }): Promise<{
   missingRepos: string[];
 }> {
-  const { logger, client } = await _init(opts);
+  // Initialize only what we need - logger and client
+  const logFileName = `${opts.orgName!}-missing-repos-check-${
+    new Date().toISOString().split('T')[0]
+  }.log`;
+  const logger = await createLogger(opts.verbose, logFileName);
+
+  const authConfig = createAuthConfig({ ...opts, logger: logger });
+  const octokit = createOctokit(
+    authConfig,
+    opts.baseUrl,
+    opts.proxyUrl,
+    logger,
+  );
+  const client = new OctokitClient(octokit);
+
   const org = opts.orgName!.toLowerCase();
   const per_page = opts.pageSize || 10;
 

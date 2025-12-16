@@ -84,6 +84,35 @@ gh repo-stats-plus repo-stats --organization my-org
 
 ### Multiple Organizations
 
+Process multiple organizations from a single file:
+
+```bash
+# Create an org list file (one org per line)
+cat > orgs.txt << EOF
+Org1
+Org2
+Org3
+EOF
+
+# Process all organizations with a single command
+gh repo-stats-plus repo-stats --org-list orgs.txt
+
+# Add delays between organizations (default: 5 seconds)
+gh repo-stats-plus repo-stats --org-list orgs.txt --delay-between-orgs 10
+
+# Continue processing other orgs if one fails
+gh repo-stats-plus repo-stats --org-list orgs.txt --continue-on-error
+
+# Combine options
+gh repo-stats-plus repo-stats \
+  --org-list orgs.txt \
+  --delay-between-orgs 10 \
+  --continue-on-error \
+  --output-dir ./reports
+```
+
+Or process organizations individually:
+
 ```bash
 # Process multiple organizations sequentially (each maintains its own state)
 gh repo-stats-plus repo-stats --organization org1
@@ -142,15 +171,40 @@ gh repo-stats-plus repo-stats --organization my-org --auto-process-missing
 
 #### Repo Stats Options
 
-- `-o, --org-name <org>`: The name of the organization to process (Required)
+**Organization Selection** (one required):
+
+- `-o, --org-name <org>`: Process a single organization
+- `--org-list <file>`: Process multiple organizations from a file (one org per line)
+
+**Multi-Organization Options**:
+
+- `--delay-between-orgs <seconds>`: Delay between processing organizations (Default: 5)
+- `--continue-on-error`: Continue processing other organizations if one fails
+
+**Authentication**:
+
 - `-t, --access-token <token>`: GitHub access token
-- `-u, --base-url <url>`: GitHub API base URL (Default: https://api.github.com)
-- `--proxy-url <url>`: Proxy URL if required
-- `-v, --verbose`: Enable verbose logging
 - `--app-id <id>`: GitHub App ID
 - `--private-key <key>`: GitHub App private key
 - `--private-key-file <file>`: Path to GitHub App private key file
 - `--app-installation-id <id>`: GitHub App installation ID
+
+**Processing Options**:
+
+- `--resume-from-last-save`: Resume from the last saved state
+- `--repo-list <file>`: Path to file containing list of repositories to process (format: owner/repo_name)
+- `--auto-process-missing`: Automatically process any missing repositories when main processing is complete
+- `--clean-state`: Remove state file after successful completion
+
+**Configuration**:
+
+- `-u, --base-url <url>`: GitHub API base URL (Default: https://api.github.com)
+- `--proxy-url <url>`: Proxy URL if required
+- `--output-dir <dir>`: Output directory for generated files (Default: ./output)
+- `-v, --verbose`: Enable verbose logging
+
+**Performance Tuning**:
+
 - `--page-size <size>`: Number of items per page (Default: 10)
 - `--extra-page-size <size>`: Extra page size (Default: 50)
 - `--rate-limit-check-interval <seconds>`: Interval for rate limit checks (Default: 60)
@@ -159,9 +213,6 @@ gh repo-stats-plus repo-stats --organization my-org --auto-process-missing
 - `--retry-max-delay <milliseconds>`: Maximum delay for retry (Default: 30000)
 - `--retry-backoff-factor <factor>`: Backoff factor for retry delays (Default: 2)
 - `--retry-success-threshold <count>`: Successful operations before resetting retry count (Default: 5)
-- `--resume-from-last-save`: Resume from the last saved state
-- `--repo-list <file>`: Path to file containing list of repositories to process (format: owner/repo_name)
-- `--auto-process-missing`: Automatically process any missing repositories when main processing is complete
 
 ## Permissions
 
@@ -227,49 +278,6 @@ The CSV output includes detailed information about each repository:
   - 60,000 or more objects being imported
   - 1.5 GB or larger size on disk
 - `Created`: Date/time when the repository was created
-
-## Advanced Usage Examples
-
-### Multiple Organizations
-
-```bash
-gh repo-stats-plus repo-stats --org-list <path/to/org-list-file> -t <github-token>
-```
-
-For multiple organizations, create a text file with one organization name per line:
-
-```text
-Org1
-Org2
-Org3
-```
-
-#### Multi-Organization Features
-
-- **Sequential Processing**: Organizations are processed one at a time to respect GitHub's rate limits
-- **Configurable Delays**: Add delays between organizations with `--delay-between-orgs`
-- **Error Resilience**: Continue processing other orgs if one fails with `--continue-on-error`
-- **Comprehensive Logging**: Generates a summary log with overall results plus individual org logs
-- **Progress Tracking**: Shows current progress through the organization list
-
-#### Additional Options for Multi-Org Mode
-
-- `--delay-between-orgs <seconds>`: Delay between processing organizations in seconds (Default: 5)
-- `--continue-on-error`: Continue processing other organizations if one fails
-- All other single-org options are supported and apply to each organization
-
-### Resume from a Previous Run
-
-```bash
-git clone https://github.com/mona-actions/gh-repo-stats-plus.git
-cd gh-repo-stats-plus
-npm install
-npm run build
-npm test
-```
-
-See the [Development Guide](docs/development.md) for detailed setup instructions.
-
 
 ## 🛠️ Development Quick Start
 
