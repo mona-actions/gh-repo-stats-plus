@@ -17,6 +17,7 @@ A GitHub CLI extension for gathering comprehensive repository statistics from Gi
    ```
 
 3. **Collect repository statistics**:
+
    ```bash
    gh repo-stats-plus repo-stats --organization my-org
    ```
@@ -111,42 +112,44 @@ gh repo-stats-plus repo-stats \
   --output-dir ./reports
 ```
 
+> [!NOTE] Organizations are processed strictly sequentially. This design choice is intentional to respect GitHub API rate limits and provide predictable resource usage. For large organization lists, consider the configurable delay between organizations and the estimated processing time logged at startup.
+
 Or process organizations individually:
 
 ```bash
 # Process multiple organizations sequentially (each maintains its own state)
-gh repo-stats-plus repo-stats --organization org1
-gh repo-stats-plus repo-stats --organization org2
-gh repo-stats-plus repo-stats --organization org3
+gh repo-stats-plus repo-stats --org-name org1
+gh repo-stats-plus repo-stats --org-name org2
+gh repo-stats-plus repo-stats --org-name org3
 
 # Use custom output directory (state files are stored here too)
-gh repo-stats-plus repo-stats --organization my-org --output-dir ./reports
+gh repo-stats-plus repo-stats --org-name my-org --output-dir ./reports
 
 # Clean up state file after successful completion
-gh repo-stats-plus repo-stats --organization my-org --clean-state
+gh repo-stats-plus repo-stats --org-name my-org --clean-state
 ```
 
 ### Custom Output Directory
 
 ```bash
 # Save output files to a custom directory
-gh repo-stats-plus repo-stats --organization my-org --output-dir /path/to/my/reports
+gh repo-stats-plus repo-stats --org-name my-org --output-dir /path/to/my/reports
 
 # Use relative path from current directory
-gh repo-stats-plus repo-stats --organization my-org --output-dir reports
+gh repo-stats-plus repo-stats --org-name my-org --output-dir reports
 ```
 
 ### Resume Long-Running Collection
 
 ```bash
-gh repo-stats-plus repo-stats --organization my-org --resume-from-last-save
+gh repo-stats-plus repo-stats --org-name my-org --resume-from-last-save
 ```
 
 ### High-Volume Processing with GitHub App
 
 ```bash
 gh repo-stats-plus repo-stats \
-  --organization my-org \
+  --org-name my-org \
   --app-id 12345 \
   --private-key-file app.pem \
   --app-installation-id 67890 \
@@ -157,16 +160,16 @@ gh repo-stats-plus repo-stats \
 
 ```bash
 # Check for missing repositories (looks for CSV in ./output/ by default)
-gh repo-stats-plus missing-repos --organization my-org --file results.csv
+gh repo-stats-plus missing-repos --org-name my-org --file results.csv
 
 # Use custom output directory for missing repos check
 gh repo-stats-plus missing-repos \
-  --organization my-org \
+  --org-name my-org \
   --file results.csv \
   --output-dir /path/to/reports
 
 # Auto-process missing repositories
-gh repo-stats-plus repo-stats --organization my-org --auto-process-missing
+gh repo-stats-plus repo-stats --org-name my-org --auto-process-missing
 ```
 
 #### Repo Stats Options
@@ -198,7 +201,7 @@ gh repo-stats-plus repo-stats --organization my-org --auto-process-missing
 
 **Configuration**:
 
-- `-u, --base-url <url>`: GitHub API base URL (Default: https://api.github.com)
+- `-u, --base-url <url>`: GitHub API base URL (Default: <https://api.github.com>)
 - `--proxy-url <url>`: Proxy URL if required
 - `--output-dir <dir>`: Output directory for generated files (Default: ./output)
 - `-v, --verbose`: Enable verbose logging
@@ -218,7 +221,7 @@ gh repo-stats-plus repo-stats --organization my-org --auto-process-missing
 
 The permissions needed by repo-stats-ts depends on the authentication method:
 
-### For Personal Access Token (PAT):
+### For Personal Access Token (PAT)
 
 - `repo`: Full control of private repositories
 - `read:org`: Read organization membership

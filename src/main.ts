@@ -198,6 +198,27 @@ export async function run(opts: Arguments): Promise<void> {
   );
 }
 
+/**
+ * Processes multiple GitHub organizations sequentially, collecting repository statistics for each.
+ *
+ * Reads a list of organizations from a file, then for each organization:
+ *   - Runs the main processing logic (see `run` function) for that organization.
+ *   - Waits for a configurable delay between organizations.
+ *   - Handles errors according to the `continueOnError` option.
+ *
+ * @param {Arguments} opts - The options for multi-organization processing.
+ * @param {string} opts.orgList - Path to a file containing a list of organizations (one per line).
+ * @param {number} [opts.delayBetweenOrgs=5] - Delay in seconds between processing each organization.
+ * @param {boolean} [opts.continueOnError=false] - Whether to continue processing remaining organizations if an error occurs.
+ * @throws {Error} If the organization list file is missing or empty.
+ * @returns {Promise<void>} Resolves when all organizations have been processed.
+ *
+ * Notes:
+ * - The function logs progress and errors using the logger.
+ * - Organization list file may contain comments (lines starting with '#') and empty lines, which are ignored.
+ * - Each organization's processing is isolated; errors can be skipped or halt the process based on options.
+ * - Organizations are processed strictly sequentially to respect rate limits and provide predictable resource usage.
+ */
 export async function runMultiOrg(opts: Arguments): Promise<void> {
   const { orgList, delayBetweenOrgs = 5, continueOnError = false } = opts;
 
@@ -233,6 +254,19 @@ export async function runMultiOrg(opts: Arguments): Promise<void> {
   );
   summaryLogger.info(`Organizations to process: ${orgListContent.join(', ')}`);
 
+  // Log estimated completion time based on delay between orgs
+  if (orgListContent.length > 1 && delayBetweenOrgs > 0) {
+    const estimatedDelayMinutes = Math.ceil(
+      ((orgListContent.length - 1) * delayBetweenOrgs) / 60,
+    );
+    summaryLogger.info(
+      `Estimated minimum time (delays only): ${estimatedDelayMinutes} minutes`,
+    );
+    summaryLogger.info(
+      `Note: Actual processing time will be longer depending on repository counts`,
+    );
+  }
+
   const results: Array<{
     org: string;
     success: boolean;
@@ -241,7 +275,6 @@ export async function runMultiOrg(opts: Arguments): Promise<void> {
     endTime?: Date;
   }> = [];
 
-  let totalProcessed = 0;
   let totalSuccessful = 0;
   let totalFailed = 0;
 
@@ -257,7 +290,7 @@ export async function runMultiOrg(opts: Arguments): Promise<void> {
       // Create organization-specific options
       const orgOptions: Arguments = {
         ...opts,
-        orgName: orgName.trim(),
+        orgName: orgName,
         orgList: undefined, // Clear orgList to prevent infinite recursion
       };
 
@@ -332,11 +365,10 @@ export async function runMultiOrg(opts: Arguments): Promise<void> {
         }
       }
     }
-
-    totalProcessed++;
   }
 
   // Log final summary
+  const totalProcessed = totalSuccessful + totalFailed;
   summaryLogger.info('\n' + '='.repeat(80));
   summaryLogger.info('MULTI-ORG PROCESSING SUMMARY');
   summaryLogger.info('='.repeat(80));
@@ -344,7 +376,9 @@ export async function runMultiOrg(opts: Arguments): Promise<void> {
   summaryLogger.info(`Successful: ${totalSuccessful}`);
   summaryLogger.info(`Failed: ${totalFailed}`);
   summaryLogger.info(
-    `Success rate: ${((totalSuccessful / totalProcessed) * 100).toFixed(1)}%`,
+    totalProcessed > 0
+      ? `Success rate: ${((totalSuccessful / totalProcessed) * 100).toFixed(1)}%`
+      : 'Success rate: N/A',
   );
   summaryLogger.info('\nDetailed Results:');
 
