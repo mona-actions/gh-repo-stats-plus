@@ -18,7 +18,7 @@ A GitHub CLI extension for gathering comprehensive repository statistics from Gi
 
 3. **Collect repository statistics**:
    ```bash
-   gh repo-stats-plus repo-stats --organization my-org
+   gh repo-stats-plus repo-stats --org-name my-org
    ```
 
 The tool will generate a CSV file with comprehensive repository statistics in the `./output/` directory (or a custom directory you specify).
