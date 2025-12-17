@@ -178,9 +178,12 @@ repoStatsCommand
   )
   .addOption(
     new Option(
-      '--continue-on-error',
+      '--continue-on-error [value]',
       'Continue processing other organizations if one fails (for multi-org mode)',
-    ).env('CONTINUE_ON_ERROR'),
+    )
+      .env('CONTINUE_ON_ERROR')
+      .default('false')
+      .argParser(parseBooleanOption),
   )
   .action(async (options: Arguments) => {
     console.log('Version:', VERSION);

@@ -15,7 +15,13 @@ import {
 import { createLogger, logInitialization } from './logger.js';
 import { createAuthConfig } from './auth.js';
 import { StateManager } from './state.js';
-import { appendFileSync, existsSync, writeFileSync, unlinkSync } from 'fs';
+import {
+  appendFileSync,
+  existsSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+} from 'fs';
 
 import { withRetry, RetryConfig } from './retry.js';
 import {
@@ -25,7 +31,6 @@ import {
   formatElapsedTime,
   resolveOutputPath,
 } from './utils.js';
-import { readFileSync } from 'fs';
 import { parse } from 'csv-parse/sync';
 
 const _init = async (
@@ -210,6 +215,7 @@ export async function run(opts: Arguments): Promise<void> {
  * @param {string} opts.orgList - Path to a file containing a list of organizations (one per line).
  * @param {number} [opts.delayBetweenOrgs=5] - Delay in seconds between processing each organization.
  * @param {boolean} [opts.continueOnError=false] - Whether to continue processing remaining organizations if an error occurs.
+ * @param {Function} [runFn=run] - Function to process each organization. Defaults to `run`. Used primarily for testing.
  * @throws {Error} If the organization list file is missing or empty.
  * @returns {Promise<void>} Resolves when all organizations have been processed.
  *
@@ -219,7 +225,10 @@ export async function run(opts: Arguments): Promise<void> {
  * - Each organization's processing is isolated; errors can be skipped or halt the process based on options.
  * - Organizations are processed strictly sequentially to respect rate limits and provide predictable resource usage.
  */
-export async function runMultiOrg(opts: Arguments): Promise<void> {
+export async function runMultiOrg(
+  opts: Arguments,
+  runFn: (opts: Arguments) => Promise<void> = run,
+): Promise<void> {
   const { orgList, delayBetweenOrgs = 5, continueOnError = false } = opts;
 
   if (!orgList) {
@@ -294,8 +303,8 @@ export async function runMultiOrg(opts: Arguments): Promise<void> {
         orgList: undefined, // Clear orgList to prevent infinite recursion
       };
 
-      // Process the organization
-      await run(orgOptions);
+      // Process the organization using the injected function
+      await runFn(orgOptions);
 
       const orgEndTime = new Date();
       const duration = (orgEndTime.getTime() - orgStartTime.getTime()) / 1000;

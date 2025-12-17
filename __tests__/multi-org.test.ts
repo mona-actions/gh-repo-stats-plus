@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { existsSync, readFileSync } from 'fs';
 import type { Arguments } from '../src/types.js';
+import { runMultiOrg } from '../src/main.js';
 
 // Mock fs module
 vi.mock('fs', () => ({
@@ -50,57 +51,39 @@ vi.mock('../src/service.js', () => ({
   })),
 }));
 
-// Track calls to run function
-const runCalls: Array<{ orgName: string }> = [];
-
-// Mock main module with tracking
-vi.mock('../src/main.js', () => ({
-  run: vi.fn((opts: Partial<Arguments>) => {
-    runCalls.push({ orgName: opts.orgName || '' });
-    return Promise.resolve();
-  }),
-  runMultiOrg: undefined as unknown, // Will be imported after mocks are set
-}));
-
-describe('Multi-Org Validation and Logic', () => {
+describe('Multi-Org Processing', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    runCalls.length = 0; // Clear the tracking array
   });
 
-  describe('Multi-org file validation logic', () => {
-    let runMultiOrg: typeof import('../src/main.js').runMultiOrg;
-
-    beforeEach(async () => {
-      // Dynamically import after mocks are configured
-      const mainModule =
-        await vi.importActual<typeof import('../src/main.js')>(
-          '../src/main.js',
-        );
-      runMultiOrg = mainModule.runMultiOrg;
-    });
-
-    it('should throw error when file does not exist', async () => {
+  describe('File validation', () => {
+    it('should throw error when org list file does not exist', async () => {
       vi.mocked(existsSync).mockReturnValue(false);
+      const mockRun = vi.fn();
 
       const args: Partial<Arguments> = {
         orgList: 'nonexistent.txt',
       };
-      await expect(runMultiOrg(args as Arguments)).rejects.toThrow(
+
+      await expect(runMultiOrg(args as Arguments, mockRun)).rejects.toThrow(
         'Organization list file not found',
       );
+      expect(mockRun).not.toHaveBeenCalled();
     });
 
-    it('should throw error when file is empty', async () => {
+    it('should throw error when org list file is empty', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
       vi.mocked(readFileSync).mockReturnValue('');
+      const mockRun = vi.fn();
 
       const args: Partial<Arguments> = {
         orgList: 'empty.txt',
       };
-      await expect(runMultiOrg(args as Arguments)).rejects.toThrow(
+
+      await expect(runMultiOrg(args as Arguments, mockRun)).rejects.toThrow(
         'No organizations found',
       );
+      expect(mockRun).not.toHaveBeenCalled();
     });
 
     it('should throw error when file contains only comments and empty lines', async () => {
@@ -111,72 +94,263 @@ describe('Multi-Org Validation and Logic', () => {
 
 # Comment 3
 `);
+      const mockRun = vi.fn();
 
       const args: Partial<Arguments> = {
         orgList: 'only-comments.txt',
       };
-      await expect(runMultiOrg(args as Arguments)).rejects.toThrow(
+
+      await expect(runMultiOrg(args as Arguments, mockRun)).rejects.toThrow(
         'No organizations found',
+      );
+      expect(mockRun).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Organization processing', () => {
+    it('should process multiple organizations sequentially', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(readFileSync).mockReturnValue('org1\norg2\norg3');
+
+      const mockRun = vi.fn().mockResolvedValue(undefined);
+      const args: Partial<Arguments> = {
+        orgList: 'orgs.txt',
+        delayBetweenOrgs: 0, // No delay for fast test
+      };
+
+      await runMultiOrg(args as Arguments, mockRun);
+
+      // Verify run was called 3 times with correct org names
+      expect(mockRun).toHaveBeenCalledTimes(3);
+      expect(mockRun).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ orgName: 'org1' }),
+      );
+      expect(mockRun).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ orgName: 'org2' }),
+      );
+      expect(mockRun).toHaveBeenNthCalledWith(
+        3,
+        expect.objectContaining({ orgName: 'org3' }),
+      );
+    });
+
+    it('should filter out comments and empty lines', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(readFileSync).mockReturnValue(`
+# This is a comment
+org1
+
+org2
+# Another comment
+
+org3
+`);
+
+      const mockRun = vi.fn().mockResolvedValue(undefined);
+      const args: Partial<Arguments> = {
+        orgList: 'orgs.txt',
+        delayBetweenOrgs: 0,
+      };
+
+      await runMultiOrg(args as Arguments, mockRun);
+
+      // Should only process the 3 actual org names
+      expect(mockRun).toHaveBeenCalledTimes(3);
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({ orgName: 'org1' }),
+      );
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({ orgName: 'org2' }),
+      );
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({ orgName: 'org3' }),
+      );
+    });
+
+    it('should pass options to each org run and clear orgList', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(readFileSync).mockReturnValue('org1\norg2');
+
+      const mockRun = vi.fn().mockResolvedValue(undefined);
+      const args: Partial<Arguments> = {
+        orgList: 'orgs.txt',
+        delayBetweenOrgs: 0,
+        verbose: true,
+        pageSize: 50,
+      };
+
+      await runMultiOrg(args as Arguments, mockRun);
+
+      // Verify each call receives the base options but orgList is cleared
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orgName: 'org1',
+          verbose: true,
+          pageSize: 50,
+          orgList: undefined,
+        }),
+      );
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orgName: 'org2',
+          verbose: true,
+          pageSize: 50,
+          orgList: undefined,
+        }),
       );
     });
   });
 
-  describe('Default values and configuration', () => {
-    it('should use default delay of 5 seconds when not specified', () => {
-      const opts: Partial<Arguments> = {
-        orgList: 'test.txt',
-        // delayBetweenOrgs not specified
+  describe('Error handling', () => {
+    it('should stop on first error when continueOnError is false', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(readFileSync).mockReturnValue('org1\norg2\norg3');
+
+      const mockRun = vi
+        .fn()
+        .mockResolvedValueOnce(undefined) // org1 succeeds
+        .mockRejectedValueOnce(new Error('Processing failed')) // org2 fails
+        .mockResolvedValueOnce(undefined); // org3 would succeed
+
+      const args: Partial<Arguments> = {
+        orgList: 'orgs.txt',
+        delayBetweenOrgs: 0,
+        continueOnError: false,
       };
 
-      // Default is set in repo-stats-command.ts via commander
-      // The command option has .default('5')
-      expect(opts.delayBetweenOrgs).toBeUndefined(); // Will be set by commander
+      await expect(runMultiOrg(args as Arguments, mockRun)).rejects.toThrow(
+        'Processing failed',
+      );
+
+      // Should only call org1 and org2, not org3
+      expect(mockRun).toHaveBeenCalledTimes(2);
     });
 
-    it('should accept custom delay values', () => {
-      const testCases = [
-        { delay: 0, expected: 0 },
-        { delay: 1, expected: 1 },
-        { delay: 10, expected: 10 },
-        { delay: 60, expected: 60 },
-      ];
+    it('should continue processing when continueOnError is true', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(readFileSync).mockReturnValue('org1\norg2\norg3');
 
-      testCases.forEach(({ delay, expected }) => {
-        const opts: Partial<Arguments> = {
-          orgList: 'test.txt',
-          delayBetweenOrgs: delay,
-        };
+      const mockRun = vi
+        .fn()
+        .mockResolvedValueOnce(undefined) // org1 succeeds
+        .mockRejectedValueOnce(new Error('Processing failed')) // org2 fails
+        .mockResolvedValueOnce(undefined); // org3 succeeds
 
-        expect(opts.delayBetweenOrgs).toBe(expected);
-      });
-    });
-
-    it('should default continueOnError to false', () => {
-      const opts: Partial<Arguments> = {
-        orgList: 'test.txt',
-        // continueOnError not specified
-      };
-
-      // When not provided, should be falsy (undefined or false)
-      expect(opts.continueOnError).toBeFalsy();
-    });
-
-    it('should accept continueOnError as true', () => {
-      const opts: Partial<Arguments> = {
-        orgList: 'test.txt',
+      const args: Partial<Arguments> = {
+        orgList: 'orgs.txt',
+        delayBetweenOrgs: 0,
         continueOnError: true,
       };
 
-      expect(opts.continueOnError).toBe(true);
+      // Should not throw, continues to process all orgs
+      await runMultiOrg(args as Arguments, mockRun);
+
+      // All 3 orgs should be attempted
+      expect(mockRun).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe('Delay handling', () => {
+    it('should wait specified delay between organizations', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(readFileSync).mockReturnValue('org1\norg2');
+      vi.useFakeTimers();
+
+      const mockRun = vi.fn().mockResolvedValue(undefined);
+      const delaySeconds = 2;
+      const args: Partial<Arguments> = {
+        orgList: 'orgs.txt',
+        delayBetweenOrgs: delaySeconds,
+      };
+
+      const promise = runMultiOrg(args as Arguments, mockRun);
+
+      // Fast-forward through all timers
+      await vi.runAllTimersAsync();
+
+      await promise;
+
+      // Verify both orgs were processed
+      expect(mockRun).toHaveBeenCalledTimes(2);
+
+      vi.useRealTimers();
     });
 
-    it('should handle delay of 0 for no waiting between orgs', () => {
-      const opts: Partial<Arguments> = {
-        orgList: 'test.txt',
+    it('should not delay after the last organization', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(readFileSync).mockReturnValue('org1\norg2');
+      vi.useFakeTimers();
+
+      const mockRun = vi.fn().mockResolvedValue(undefined);
+      const args: Partial<Arguments> = {
+        orgList: 'orgs.txt',
+        delayBetweenOrgs: 5,
+      };
+
+      const startTime = Date.now();
+      const promise = runMultiOrg(args as Arguments, mockRun);
+
+      // Process both orgs
+      await vi.runAllTimersAsync();
+      await promise;
+
+      // Total time should be 1 delay (between org1 and org2), not 2
+      const elapsed = Date.now() - startTime;
+      expect(elapsed).toBeLessThan(10000); // Less than 2 delays worth
+
+      vi.useRealTimers();
+    });
+
+    it('should skip delay when delayBetweenOrgs is 0', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(readFileSync).mockReturnValue('org1\norg2\norg3');
+
+      const mockRun = vi.fn().mockResolvedValue(undefined);
+      const args: Partial<Arguments> = {
+        orgList: 'orgs.txt',
         delayBetweenOrgs: 0,
       };
 
-      expect(opts.delayBetweenOrgs).toBe(0);
+      const startTime = Date.now();
+      await runMultiOrg(args as Arguments, mockRun);
+      const elapsed = Date.now() - startTime;
+
+      // Should complete quickly without delays
+      expect(mockRun).toHaveBeenCalledTimes(3);
+      expect(elapsed).toBeLessThan(1000); // Should be very fast
+    });
+
+    it('should delay even after errors when continueOnError is true', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(readFileSync).mockReturnValue('org1\norg2\norg3');
+      vi.useFakeTimers();
+
+      const mockRun = vi
+        .fn()
+        .mockResolvedValueOnce(undefined) // org1 succeeds
+        .mockRejectedValueOnce(new Error('Failed')) // org2 fails
+        .mockResolvedValueOnce(undefined); // org3 succeeds
+
+      const delaySeconds = 3;
+      const args: Partial<Arguments> = {
+        orgList: 'orgs.txt',
+        delayBetweenOrgs: delaySeconds,
+        continueOnError: true,
+      };
+
+      const promise = runMultiOrg(args as Arguments, mockRun);
+
+      // Fast-forward through all timers
+      await vi.runAllTimersAsync();
+
+      await promise;
+
+      // Verify all 3 orgs were processed (including the failed one)
+      expect(mockRun).toHaveBeenCalledTimes(3);
+
+      vi.useRealTimers();
     });
   });
 });
