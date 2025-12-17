@@ -9,7 +9,8 @@ export interface Logger {
 
 export interface Arguments {
   // context
-  orgName: string;
+  orgName?: string;
+  orgList?: string;
 
   // octokit
   baseUrl: string;
@@ -48,6 +49,10 @@ export interface Arguments {
 
   repoList?: string;
   autoProcessMissing?: boolean;
+
+  // multi-org options
+  delayBetweenOrgs?: number;
+  continueOnError?: boolean;
 }
 
 export type AuthResponse = {

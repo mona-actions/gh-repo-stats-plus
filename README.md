@@ -17,8 +17,9 @@ A GitHub CLI extension for gathering comprehensive repository statistics from Gi
    ```
 
 3. **Collect repository statistics**:
+
    ```bash
-   gh repo-stats-plus repo-stats --organization my-org
+   gh repo-stats-plus repo-stats --org-name my-org
    ```
 
 The tool will generate a CSV file with comprehensive repository statistics in the `./output/` directory (or a custom directory you specify).
@@ -84,40 +85,72 @@ gh repo-stats-plus repo-stats --organization my-org
 
 ### Multiple Organizations
 
+Process multiple organizations from a single file:
+
+```bash
+# Create an org list file (one org per line)
+cat > orgs.txt << EOF
+Org1
+Org2
+Org3
+EOF
+
+# Process all organizations with a single command
+gh repo-stats-plus repo-stats --org-list orgs.txt
+
+# Add delays between organizations (default: 5 seconds)
+gh repo-stats-plus repo-stats --org-list orgs.txt --delay-between-orgs 10
+
+# Continue processing other orgs if one fails
+gh repo-stats-plus repo-stats --org-list orgs.txt --continue-on-error
+
+# Combine options
+gh repo-stats-plus repo-stats \
+  --org-list orgs.txt \
+  --delay-between-orgs 10 \
+  --continue-on-error \
+  --output-dir ./reports
+```
+
+> [!NOTE]
+> Organizations are processed strictly sequentially. This design choice is intentional to respect GitHub API rate limits and provide predictable resource usage. For large organization lists, consider the configurable delay between organizations and the estimated processing time logged at startup.
+
+Or process organizations individually:
+
 ```bash
 # Process multiple organizations sequentially (each maintains its own state)
-gh repo-stats-plus repo-stats --organization org1
-gh repo-stats-plus repo-stats --organization org2
-gh repo-stats-plus repo-stats --organization org3
+gh repo-stats-plus repo-stats --org-name org1
+gh repo-stats-plus repo-stats --org-name org2
+gh repo-stats-plus repo-stats --org-name org3
 
 # Use custom output directory (state files are stored here too)
-gh repo-stats-plus repo-stats --organization my-org --output-dir ./reports
+gh repo-stats-plus repo-stats --org-name my-org --output-dir ./reports
 
 # Clean up state file after successful completion
-gh repo-stats-plus repo-stats --organization my-org --clean-state
+gh repo-stats-plus repo-stats --org-name my-org --clean-state
 ```
 
 ### Custom Output Directory
 
 ```bash
 # Save output files to a custom directory
-gh repo-stats-plus repo-stats --organization my-org --output-dir /path/to/my/reports
+gh repo-stats-plus repo-stats --org-name my-org --output-dir /path/to/my/reports
 
 # Use relative path from current directory
-gh repo-stats-plus repo-stats --organization my-org --output-dir reports
+gh repo-stats-plus repo-stats --org-name my-org --output-dir reports
 ```
 
 ### Resume Long-Running Collection
 
 ```bash
-gh repo-stats-plus repo-stats --organization my-org --resume-from-last-save
+gh repo-stats-plus repo-stats --org-name my-org --resume-from-last-save
 ```
 
 ### High-Volume Processing with GitHub App
 
 ```bash
 gh repo-stats-plus repo-stats \
-  --organization my-org \
+  --org-name my-org \
   --app-id 12345 \
   --private-key-file app.pem \
   --app-installation-id 67890 \
@@ -128,33 +161,127 @@ gh repo-stats-plus repo-stats \
 
 ```bash
 # Check for missing repositories (looks for CSV in ./output/ by default)
-gh repo-stats-plus missing-repos --organization my-org --file results.csv
+gh repo-stats-plus missing-repos --org-name my-org --file results.csv
 
 # Use custom output directory for missing repos check
 gh repo-stats-plus missing-repos \
-  --organization my-org \
+  --org-name my-org \
   --file results.csv \
   --output-dir /path/to/reports
 
 # Auto-process missing repositories
-gh repo-stats-plus repo-stats --organization my-org --auto-process-missing
+gh repo-stats-plus repo-stats --org-name my-org --auto-process-missing
 ```
 
-## Development
+#### Repo Stats Options
 
-```bash
-git clone https://github.com/mona-actions/gh-repo-stats-plus.git
-cd gh-repo-stats-plus
-npm install
-npm run build
-npm test
-```
+**Organization Selection** (one required):
 
-See the [Development Guide](docs/development.md) for detailed setup instructions.
+- `-o, --org-name <org>`: Process a single organization
+- `--org-list <file>`: Process multiple organizations from a file (one org per line)
 
-## Requirements
+**Multi-Organization Options**:
 
-````
+- `--delay-between-orgs <seconds>`: Delay between processing organizations (Default: 5)
+- `--continue-on-error`: Continue processing other organizations if one fails
+
+**Authentication**:
+
+- `-t, --access-token <token>`: GitHub access token
+- `--app-id <id>`: GitHub App ID
+- `--private-key <key>`: GitHub App private key
+- `--private-key-file <file>`: Path to GitHub App private key file
+- `--app-installation-id <id>`: GitHub App installation ID
+
+**Processing Options**:
+
+- `--resume-from-last-save`: Resume from the last saved state
+- `--repo-list <file>`: Path to file containing list of repositories to process (format: owner/repo_name)
+- `--auto-process-missing`: Automatically process any missing repositories when main processing is complete
+- `--clean-state`: Remove state file after successful completion
+
+**Configuration**:
+
+- `-u, --base-url <url>`: GitHub API base URL (Default: <https://api.github.com>)
+- `--proxy-url <url>`: Proxy URL if required
+- `--output-dir <dir>`: Output directory for generated files (Default: ./output)
+- `-v, --verbose`: Enable verbose logging
+
+**Performance Tuning**:
+
+- `--page-size <size>`: Number of items per page (Default: 10)
+- `--extra-page-size <size>`: Extra page size (Default: 50)
+- `--rate-limit-check-interval <seconds>`: Interval for rate limit checks (Default: 60)
+- `--retry-max-attempts <attempts>`: Maximum number of retry attempts (Default: 3)
+- `--retry-initial-delay <milliseconds>`: Initial delay for retry (Default: 1000)
+- `--retry-max-delay <milliseconds>`: Maximum delay for retry (Default: 30000)
+- `--retry-backoff-factor <factor>`: Backoff factor for retry delays (Default: 2)
+- `--retry-success-threshold <count>`: Successful operations before resetting retry count (Default: 5)
+
+## Permissions
+
+The permissions needed by repo-stats-ts depends on the authentication method:
+
+### For Personal Access Token (PAT)
+
+- `repo`: Full control of private repositories
+- `read:org`: Read organization membership
+- `read:user`: Read user information
+
+### For GitHub App
+
+The app requires `Read-only` permissions to the following:
+
+- Repository Administration
+- Repository Contents
+- Repository Issues
+- Repository Metadata
+- Repository Projects
+- Repository Pull requests
+- Organization Members
+
+## Output
+
+The tool generates:
+
+1. A CSV file with repository statistics
+2. A `last_known_state.json` file with the current processing state
+3. Log files in the `logs/` directory
+
+### CSV Output Columns
+
+The CSV output includes detailed information about each repository:
+
+- `Org_Name`: Organization login
+- `Repo_Name`: Repository name
+- `Is_Empty`: Whether the repository is empty
+- `Last_Push`: Date/time when a push was last made
+- `Last_Update`: Date/time when an update was last made
+- `isFork`: Whether the repository is a fork
+- `isArchived`: Whether the repository is archived
+- `Repo_Size_mb`: Size of the repository in megabytes
+- `Record_Count`: Total number of database records this repository represents
+- `Collaborator_Count`: Number of users who have contributed to this repository
+- `Protected_Branch_Count`: Number of branch protection rules on this repository
+- `PR_Review_Count`: Number of pull request reviews
+- `Milestone_Count`: Number of issue milestones
+- `Issue_Count`: Number of issues
+- `PR_Count`: Number of pull requests
+- `PR_Review_Comment_Count`: Number of pull request review comments
+- `Commit_Comment_Count`: Number of commit comments
+- `Issue_Comment_Count`: Number of issue comments
+- `Issue_Event_Count`: Number of issue events
+- `Release_Count`: Number of releases
+- `Project_Count`: Number of projects
+- `Branch_Count`: Number of branches
+- `Tag_Count`: Number of tags
+- `Discussion_Count`: Number of discussions
+- `Has_Wiki`: Whether the repository has wiki feature enabled
+- `Full_URL`: Repository URL
+- `Migration_Issue`: Indicates whether the repository might have problems during migration due to:
+  - 60,000 or more objects being imported
+  - 1.5 GB or larger size on disk
+- `Created`: Date/time when the repository was created
 
 ## 🛠️ Development Quick Start
 
@@ -164,7 +291,7 @@ cd gh-repo-stats-plus
 npm install
 npm run build
 npm test
-````
+```
 
 See the [Development Guide](docs/development.md) for detailed setup instructions.
 

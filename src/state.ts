@@ -102,14 +102,6 @@ export class StateManager {
           error instanceof Error ? error.message : String(error)
         }`,
       );
-      const stateFilePath = this.getStateFilePath();
-      this.logger.debug(
-        `State file contents: ${
-          existsSync(stateFilePath)
-            ? readFileSync(stateFilePath, 'utf-8')
-            : 'file not found'
-        }`,
-      );
     }
     return null;
   }
