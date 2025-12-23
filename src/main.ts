@@ -34,6 +34,7 @@ import {
 import { parse } from 'csv-parse/sync';
 
 interface ProcessingContext {
+  opts: Arguments;
   logger: Logger;
   client: OctokitClient;
   fileName: string;
@@ -101,6 +102,7 @@ const _init = async (
   };
 
   return {
+    opts,
     logger,
     client,
     fileName,
