@@ -206,7 +206,7 @@ export function parseNewlineSeparatedOption(
  * @example
  * // With Commander.js option
  * new Option('--org-list <file>', 'Path to file containing organizations')
- *   .argParser(parseFileAsNewlineSeparated)
+ *   .argParser(parseFileAsNewlineSeparatedOption)
  *
  * @example
  * // File contents (orgs.txt):
@@ -214,14 +214,14 @@ export function parseNewlineSeparatedOption(
  * // # this is a comment
  * // org2
  * // org3
- * parseFileAsNewlineSeparated('orgs.txt') // ['org1', 'org2', 'org3']
+ * parseFileAsNewlineSeparatedOption('orgs.txt') // ['org1', 'org2', 'org3']
  *
  * @example
  * // Accumulator pattern (multiple --org-list flags)
  * // --org-list file1.txt --org-list file2.txt
- * parseFileAsNewlineSeparated('file2.txt', ['org1', 'org2']) // ['org1', 'org2', 'org3', 'org4']
+ * parseFileAsNewlineSeparatedOption('file2.txt', ['org1', 'org2']) // ['org1', 'org2', 'org3', 'org4']
  */
-export function parseFileAsNewlineSeparated(
+export function parseFileAsNewlineSeparatedOption(
   filePath: string,
   previous?: string[],
 ): string[] {
@@ -237,43 +237,5 @@ export function parseFileAsNewlineSeparated(
 
   const fileContent = readFileSync(resolvedPath, 'utf-8');
   return parseNewlineSeparatedOption(fileContent, previous);
-}
-
-/**
- * Reads a file and parses its contents as comma-separated values.
- * Designed to be used as a Commander.js argParser for options that accept
- * a file path containing comma-separated items.
- *
- * @param filePath - Path to a file containing comma-separated values
- * @param previous - Optional array of previously parsed values (for Commander.js accumulator pattern)
- * @returns An array of trimmed strings from the file.
- * @throws Error if the file does not exist or cannot be read
- *
- * @example
- * // With Commander.js option
- * new Option('--repos-file <file>', 'Path to file containing repositories')
- *   .argParser(parseFileAsCommaSeparated)
- *
- * @example
- * // File contents (repos.txt):
- * // repo1, repo2, repo3
- * parseFileAsCommaSeparated('repos.txt') // ['repo1', 'repo2', 'repo3']
- */
-export function parseFileAsCommaSeparated(
-  filePath: string,
-  previous?: string[],
-): string[] {
-  if (!filePath) {
-    return previous ?? [];
-  }
-
-  const resolvedPath = resolve(process.cwd(), filePath);
-
-  if (!existsSync(resolvedPath)) {
-    throw new Error(`File not found: ${filePath}`);
-  }
-
-  const fileContent = readFileSync(resolvedPath, 'utf-8');
-  return parseCommaSeparatedOption(fileContent, previous);
 }
 
