@@ -236,23 +236,32 @@ export async function runMultiOrg(
 
   if (!orgList) {
     throw new Error(
-      'Organization list file path is required for multi-org processing',
+      'Organization list is required for multi-org processing',
     );
   }
 
-  // Validate that the org list file exists
-  if (!existsSync(orgList)) {
-    throw new Error(`Organization list file not found: ${orgList}`);
+  // Support both file path (string) and pre-parsed array (string[])
+  let orgListContent: string[];
+
+  if (Array.isArray(orgList)) {
+    // Already an array of org names
+    orgListContent = orgList
+      .map((line) => line.trim())
+      .filter((line) => line !== '' && !line.startsWith('#'));
+  } else {
+    // It's a file path, validate and read
+    if (!existsSync(orgList)) {
+      throw new Error(`Organization list file not found: ${orgList}`);
+    }
+
+    orgListContent = readFileSync(orgList, 'utf-8')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line !== '' && !line.startsWith('#'));
   }
 
-  // Read and parse the organization list
-  const orgListContent = readFileSync(orgList, 'utf-8')
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line !== '' && !line.startsWith('#')); // Filter empty lines and comments
-
   if (orgListContent.length === 0) {
-    throw new Error(`No organizations found in file: ${orgList}`);
+    throw new Error('No organizations found in the provided list');
   }
 
   // Create a summary logger for the multi-org process
@@ -695,17 +704,20 @@ async function processRepositoriesFromFile({
   logger.info(`Processing repositories from list: ${opts.repoList}`);
 
   if (!opts.repoList) {
-    throw new Error('Repository list file path is required');
+    throw new Error('Repository list is required');
   }
-
-  const repoList = readFileSync(opts.repoList, 'utf-8')
-    .split('\n')
-    .filter((line) => line.trim() !== '')
-    .map((line) => {
-      const [owner, repo] = line.trim().split('/');
-      return { owner, repo };
-    });
-
+ 
+  let repoListRaw = Array.isArray(opts.repoList)
+    ? opts.repoList
+    : readFileSync(opts.repoList, 'utf-8').split('\n');
+  
+  let repoList = repoListRaw 
+      .filter((line) => line.trim() !== '' && !line.trim().startsWith('#'))
+      .map((line) => {
+        const [owner, repo] = line.trim().split('/');
+        return { owner, repo };
+      });
+ 
   let processedCount = 0;
 
   for (const { owner, repo } of repoList) {

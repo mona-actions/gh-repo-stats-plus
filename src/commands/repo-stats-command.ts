@@ -2,12 +2,13 @@ import * as commander from 'commander';
 import {
   parseFloatOption,
   parseIntOption,
-  parseBooleanOption,
+  parseBooleanOption, 
+  parseFileAsNewlineSeparatedOption,
 } from '../utils.js';
 import { Arguments } from '../types.js';
 import VERSION from '../version.js';
 
-import { run, runMultiOrg } from '../main.js';
+import { run, runMultiOrg } from '../main.js'; 
 
 const repoStatsCommand = new commander.Command();
 const { Option } = commander;
@@ -28,7 +29,9 @@ repoStatsCommand
     new Option(
       '--org-list <file>',
       'Path to file containing list of organizations to process (one org per line)',
-    ).env('ORG_LIST'),
+    )
+    .env('ORG_LIST')
+    .argParser(parseFileAsNewlineSeparatedOption),
   )
   .addOption(
     new Option('-t, --access-token <token>', 'GitHub access token').env(
@@ -142,7 +145,9 @@ repoStatsCommand
     new Option(
       '--repo-list <file>',
       'Path to file containing list of repositories to process (format: owner/repo_name)',
-    ).env('REPO_LIST'),
+    )
+    .env('REPO_LIST')
+    .argParser(parseFileAsNewlineSeparatedOption),
   )
   .addOption(
     new Option(
@@ -191,12 +196,12 @@ repoStatsCommand
     // Validate that either org-name or org-list is provided
     if (!options.orgName && !options.orgList) {
       console.error('Error: Either --org-name or --org-list must be provided');
-      process.exit(1);
+      throw new Error('Invalid command usage');
     }
 
     if (options.orgName && options.orgList) {
       console.error('Error: Cannot specify both --org-name and --org-list');
-      process.exit(1);
+      throw new Error('Invalid command usage'); 
     }
 
     console.log('Starting repo-stats...');

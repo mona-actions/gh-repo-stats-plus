@@ -9,8 +9,8 @@ export interface Logger {
 
 export interface Arguments {
   // context
-  orgName?: string;
-  orgList?: string;
+  orgName: string | undefined;
+  orgList: string[] | string | undefined;
 
   // octokit
   baseUrl: string;
@@ -47,7 +47,7 @@ export interface Arguments {
   // state management
   cleanState?: boolean;
 
-  repoList?: string;
+  repoList: string[] | string | undefined;
   autoProcessMissing?: boolean;
 
   // multi-org options
