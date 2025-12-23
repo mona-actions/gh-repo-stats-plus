@@ -111,3 +111,83 @@ export async function resolveOutputPath(
 
   return resolve(fullOutputDir, fileName);
 }
+
+/**
+ * Parses a comma-separated string into an array of trimmed strings.
+ * Designed to be used as a Commander.js argParser for options that accept
+ * comma-separated values or can be specified multiple times.
+ *
+ * @param value - A comma-separated string of values (e.g., "item1, item2, item3")
+ * @param previous - Optional array of previously parsed values (for Commander.js accumulator pattern)
+ * @returns An array of trimmed strings. Returns empty array if value is empty/undefined.
+ *
+ * @example
+ * // Basic usage
+ * parseCommaSeparatedOption('foo, bar, baz') // ['foo', 'bar', 'baz']
+ *
+ * @example
+ * // With Commander.js option
+ * new Option('--repos <repos>', 'Repositories to process')
+ *   .argParser(parseCommaSeparatedOption)
+ *
+ * @example
+ * // Accumulator pattern (multiple --repos flags)
+ * // --repos repo1,repo2 --repos repo3
+ * parseCommaSeparatedOption('repo3', ['repo1', 'repo2']) // ['repo1', 'repo2', 'repo3']
+ */
+export function parseCommaSeparatedOption(
+  value: string,
+  previous?: string[],
+): string[] {
+  if (!value) {
+    return previous ?? [];
+  }
+
+  const parsed = value
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => item !== '');
+  return previous ? [...previous, ...parsed] : parsed;
+}
+
+/**
+ * Parses a newline-separated string into an array of trimmed strings.
+ * Designed to be used as a Commander.js argParser for options that accept
+ * newline-separated values (e.g., from file contents or multi-line input).
+ * Handles both Unix (\n) and Windows (\r\n) line endings.
+ *
+ * @param value - A newline-separated string of values
+ * @param previous - Optional array of previously parsed values (for Commander.js accumulator pattern)
+ * @returns An array of trimmed strings. Returns empty array if value is empty/undefined.
+ *
+ * @example
+ * // Basic usage
+ * parseNewlineSeparatedOption('foo\nbar\nbaz') // ['foo', 'bar', 'baz']
+ *
+ * @example
+ * // With Commander.js option (useful for reading from files)
+ * new Option('--org-list <orgs>', 'Organizations to process')
+ *   .argParser(parseNewlineSeparatedOption)
+ *
+ * @example
+ * // Handles Windows line endings
+ * parseNewlineSeparatedOption('foo\r\nbar\r\nbaz') // ['foo', 'bar', 'baz']
+ *
+ * @example
+ * // Filters comments (lines starting with #) and empty lines
+ * parseNewlineSeparatedOption('org1\n# comment\norg2\n\norg3') // ['org1', 'org2', 'org3']
+ */
+export function parseNewlineSeparatedOption(
+  value: string,
+  previous?: string[],
+): string[] {
+  if (!value) {
+    return previous ?? [];
+  }
+
+  const parsed = value
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter((item) => item !== '' && !item.startsWith('#'));
+  return previous ? [...previous, ...parsed] : parsed;
+}
