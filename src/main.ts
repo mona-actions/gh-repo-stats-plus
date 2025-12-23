@@ -113,14 +113,13 @@ const _init = async (
 };
 
 export async function run(opts: Arguments): Promise<void> {
-  const {
-    logger,
-    client,
-    fileName,
-    processedState,
-    retryConfig,
-    stateManager,
-  } = await _init(opts);
+  const context = await _init(opts); 
+  await _runWithContext(context);
+}
+
+async function _runWithContext(context: ProcessingContext): Promise<void> {
+  const { opts, logger, client, fileName, processedState, retryConfig, stateManager } = context;
+
   const startTime = new Date();
   logger.info(`Started processing at: ${startTime.toISOString()}`);
 
