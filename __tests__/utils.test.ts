@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   generateRepoStatsFileName,
   convertKbToMb,
@@ -9,7 +9,19 @@ import {
   parseBooleanOption,
   parseCommaSeparatedOption,
   parseNewlineSeparatedOption,
+  parseFileAsNewlineSeparated,
+  parseFileAsCommaSeparated,
 } from '../src/utils.js';
+import { existsSync, readFileSync } from 'fs';
+
+vi.mock('fs', async () => {
+  const actual = await vi.importActual<typeof import('fs')>('fs');
+  return {
+    ...actual,
+    existsSync: vi.fn(),
+    readFileSync: vi.fn(),
+  };
+});
 
 describe('Utils', () => {
   describe('generateRepoStatsFileName', () => {
@@ -352,6 +364,103 @@ describe('Utils', () => {
 
     it('should handle previous as undefined', () => {
       expect(parseNewlineSeparatedOption('foo\nbar', undefined)).toEqual(['foo', 'bar']);
+    });
+  });
+
+  describe('parseFileAsNewlineSeparated', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    afterEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should read file and parse newline-separated values', () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(readFileSync).mockReturnValue('org1\norg2\norg3');
+
+      expect(parseFileAsNewlineSeparated('orgs.txt')).toEqual(['org1', 'org2', 'org3']);
+    });
+
+    it('should filter comments and empty lines from file', () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(readFileSync).mockReturnValue('org1\n# comment\n\norg2');
+
+      expect(parseFileAsNewlineSeparated('orgs.txt')).toEqual(['org1', 'org2']);
+    });
+
+    it('should throw error if file does not exist', () => {
+      vi.mocked(existsSync).mockReturnValue(false);
+
+      expect(() => parseFileAsNewlineSeparated('nonexistent.txt')).toThrow(
+        'File not found: nonexistent.txt',
+      );
+    });
+
+    it('should return empty array for empty filePath', () => {
+      expect(parseFileAsNewlineSeparated('')).toEqual([]);
+    });
+
+    it('should return previous values for empty filePath', () => {
+      expect(parseFileAsNewlineSeparated('', ['existing'])).toEqual(['existing']);
+    });
+
+    it('should support accumulator pattern with previous values', () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(readFileSync).mockReturnValue('org3\norg4');
+
+      expect(parseFileAsNewlineSeparated('orgs.txt', ['org1', 'org2'])).toEqual([
+        'org1',
+        'org2',
+        'org3',
+        'org4',
+      ]);
+    });
+  });
+
+  describe('parseFileAsCommaSeparated', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    afterEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should read file and parse comma-separated values', () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(readFileSync).mockReturnValue('repo1, repo2, repo3');
+
+      expect(parseFileAsCommaSeparated('repos.txt')).toEqual(['repo1', 'repo2', 'repo3']);
+    });
+
+    it('should throw error if file does not exist', () => {
+      vi.mocked(existsSync).mockReturnValue(false);
+
+      expect(() => parseFileAsCommaSeparated('nonexistent.txt')).toThrow(
+        'File not found: nonexistent.txt',
+      );
+    });
+
+    it('should return empty array for empty filePath', () => {
+      expect(parseFileAsCommaSeparated('')).toEqual([]);
+    });
+
+    it('should return previous values for empty filePath', () => {
+      expect(parseFileAsCommaSeparated('', ['existing'])).toEqual(['existing']);
+    });
+
+    it('should support accumulator pattern with previous values', () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(readFileSync).mockReturnValue('repo3,repo4');
+
+      expect(parseFileAsCommaSeparated('repos.txt', ['repo1', 'repo2'])).toEqual([
+        'repo1',
+        'repo2',
+        'repo3',
+        'repo4',
+      ]);
     });
   });
 });
