@@ -33,16 +33,18 @@ import {
 } from './utils.js';
 import { parse } from 'csv-parse/sync';
 
-const _init = async (
-  opts: Arguments,
-): Promise<{
+interface ProcessingContext {
   logger: Logger;
   client: OctokitClient;
   fileName: string;
   processedState: ProcessedPageState;
   retryConfig: RetryConfig;
   stateManager: StateManager;
-}> => {
+}
+
+const _init = async (
+  opts: Arguments,
+): Promise<ProcessingContext> => {
   const logFileName = `${opts.orgName!}-repo-stats-${
     new Date().toISOString().split('T')[0]
   }.log`;
