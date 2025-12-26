@@ -163,7 +163,14 @@ repoStatsCommand
     console.log('Version:', VERSION);
 
     console.log('Starting repo-stats...');
-    await run(options);
+
+    // Create logger once at the command level
+    const { createLogger } = await import('../logger.js');
+    const logFileName = `${options.orgName!}-repo-stats-${new Date().toISOString().split('T')[0]}.log`;
+    const logger = await createLogger(options.verbose, logFileName);
+
+    await run(options, logger);
+
     console.log('Repo-stats completed.');
   });
 

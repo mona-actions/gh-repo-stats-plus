@@ -12,7 +12,7 @@ import {
   ProcessedPageState,
   RepoProcessingResult,
 } from './types.js';
-import { createLogger, logInitialization } from './logger.js';
+import { logInitialization } from './logger.js';
 import { createAuthConfig } from './auth.js';
 import { StateManager } from './state.js';
 import { appendFileSync, existsSync, writeFileSync, unlinkSync } from 'fs';
@@ -29,18 +29,14 @@ import { parse } from 'csv-parse/sync';
 
 const _init = async (
   opts: Arguments,
+  logger: Logger,
 ): Promise<{
-  logger: Logger;
   client: OctokitClient;
   fileName: string;
   processedState: ProcessedPageState;
   retryConfig: RetryConfig;
   stateManager: StateManager;
 }> => {
-  const logFileName = `${opts.orgName}-repo-stats-${
-    new Date().toISOString().split('T')[0]
-  }.log`;
-  const logger = await createLogger(opts.verbose, logFileName);
   logInitialization.start(logger);
 
   logInitialization.auth(logger);
@@ -91,7 +87,6 @@ const _init = async (
   };
 
   return {
-    logger,
     client,
     fileName,
     processedState,
@@ -100,15 +95,9 @@ const _init = async (
   };
 };
 
-export async function run(opts: Arguments): Promise<void> {
-  const {
-    logger,
-    client,
-    fileName,
-    processedState,
-    retryConfig,
-    stateManager,
-  } = await _init(opts);
+export async function run(opts: Arguments, logger: Logger): Promise<void> {
+  const { client, fileName, processedState, retryConfig, stateManager } =
+    await _init(opts, logger);
   const startTime = new Date();
   logger.info(`Started processing at: ${startTime.toISOString()}`);
 
@@ -216,6 +205,7 @@ async function processMissingRepositories({
   const missingReposResult = await checkForMissingRepos({
     opts,
     processedFile: fileName,
+    logger,
   });
 
   const missingReposCount = missingReposResult.missingRepos.length;
@@ -1021,18 +1011,15 @@ async function analyzePullRequests({
 export async function checkForMissingRepos({
   opts,
   processedFile,
+  logger,
 }: {
   opts: Arguments;
   processedFile: string;
+  logger: Logger;
 }): Promise<{
   missingRepos: string[];
 }> {
-  // Initialize only what we need - logger and client
-  const logFileName = `${opts.orgName}-missing-repos-check-${
-    new Date().toISOString().split('T')[0]
-  }.log`;
-  const logger = await createLogger(opts.verbose, logFileName);
-
+  // Initialize only what we need - client
   const authConfig = createAuthConfig({ ...opts, logger: logger });
   const octokit = createOctokit(
     authConfig,

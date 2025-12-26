@@ -8,6 +8,24 @@ vi.mock('../src/main.js', () => ({
   checkForMissingRepos: vi.fn(),
 }));
 
+// Mock the logger module
+vi.mock('../src/logger.js', () => ({
+  createLogger: vi.fn().mockResolvedValue({
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    child: vi.fn(function (this: any) {
+      return this;
+    }),
+  }),
+  logInitialization: {
+    start: vi.fn(),
+    auth: vi.fn(),
+    octokit: vi.fn(),
+  },
+}));
+
 describe('Commands', () => {
   describe('repo-stats-command', () => {
     it('should be defined with correct name and description', () => {
@@ -173,6 +191,18 @@ describe('Commands', () => {
       expect(missingReposCommand).toBeDefined();
       expect(typeof missingReposCommand.parse).toBe('function');
       expect(typeof missingReposCommand.parseAsync).toBe('function');
+    });
+
+    it('should have logger module properly mocked for dependency injection', async () => {
+      const { createLogger } = await import('../src/logger.js');
+
+      // Verify createLogger mock returns a logger-shaped object
+      const logger = await createLogger(false, 'test.log');
+      expect(logger).toHaveProperty('info');
+      expect(logger).toHaveProperty('debug');
+      expect(logger).toHaveProperty('warn');
+      expect(logger).toHaveProperty('error');
+      expect(logger).toHaveProperty('child');
     });
   });
 });

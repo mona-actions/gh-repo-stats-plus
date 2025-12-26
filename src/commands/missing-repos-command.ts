@@ -86,9 +86,15 @@ missingReposCommand
       );
     }
 
+    // Create logger once at the command level
+    const { createLogger } = await import('../logger.js');
+    const logFileName = `${options.orgName!}-missing-repos-check-${new Date().toISOString().split('T')[0]}.log`;
+    const logger = await createLogger(options.verbose, logFileName);
+
     const result = await checkForMissingRepos({
       opts: options,
       processedFile: processedFilePath,
+      logger,
     });
 
     const missing = result.missingRepos;
