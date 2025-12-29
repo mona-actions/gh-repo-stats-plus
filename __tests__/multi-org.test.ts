@@ -135,7 +135,6 @@ describe('Multi-Org Processing', () => {
     });
   });
 
-
   describe('Organization processing', () => {
     it('should process multiple organizations from orgList array', async () => {
       const args: Partial<Arguments> = {
@@ -171,7 +170,6 @@ describe('Multi-Org Processing', () => {
       );
     });
   });
-
 
   describe('Error handling', () => {
     it('should stop on first error when continueOnError is false', async () => {
@@ -246,7 +244,6 @@ describe('Multi-Org Processing', () => {
       // If we get here without throwing, the test passes
     });
   });
-
 
   describe('Delay handling', () => {
     it('should wait for the specified delay between organizations', async () => {
@@ -324,9 +321,15 @@ describe('Multi-Org Processing', () => {
         .mock.calls.map((call) => call[0]);
 
       // Check for multi-org processing indicators
-      expect(infoMessages.some((msg) => msg.includes('Organizations to process'))).toBe(true);
+      expect(
+        infoMessages.some((msg) => msg.includes('Organizations to process')),
+      ).toBe(true);
       expect(infoMessages.some((msg) => msg.includes('SUMMARY'))).toBe(true);
-      expect(infoMessages.some((msg) => msg.includes('Total organizations processed'))).toBe(true);
+      expect(
+        infoMessages.some((msg) =>
+          msg.includes('Total organizations processed'),
+        ),
+      ).toBe(true);
     });
 
     it('should log success rate in summary', async () => {
@@ -351,7 +354,9 @@ describe('Multi-Org Processing', () => {
         .mocked(mockLogger.info)
         .mock.calls.map((call) => call[0]);
 
-      expect(infoMessages.some((msg) => msg.includes('Success rate'))).toBe(true);
+      expect(infoMessages.some((msg) => msg.includes('Success rate'))).toBe(
+        true,
+      );
     });
 
     it('should log single-org summary when processing one org', async () => {
@@ -376,7 +381,9 @@ describe('Multi-Org Processing', () => {
         .mock.calls.map((call) => call[0]);
 
       // Should show "ORG PROCESSING SUMMARY" not "MULTI-ORG"
-      expect(infoMessages.some((msg) => msg.includes('ORG PROCESSING SUMMARY'))).toBe(true);
+      expect(
+        infoMessages.some((msg) => msg.includes('ORG PROCESSING SUMMARY')),
+      ).toBe(true);
     });
 
     it('should warn when some orgs fail', async () => {
@@ -424,7 +431,7 @@ describe('Multi-Org Processing', () => {
 
       // Verify warning was logged
       expect(mockLogger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('organization(s) failed processing')
+        expect.stringContaining('organization(s) failed processing'),
       );
     });
 
@@ -455,7 +462,9 @@ describe('Multi-Org Processing', () => {
         .mock.calls.map((call) => call[0]);
 
       // Should log estimated time information
-      expect(infoMessages.some((msg) => msg.includes('Estimated minimum time'))).toBe(true);
+      expect(
+        infoMessages.some((msg) => msg.includes('Estimated minimum time')),
+      ).toBe(true);
       expect(infoMessages.some((msg) => msg.includes('minutes'))).toBe(true);
     });
   });

@@ -55,8 +55,14 @@ export class StateManager {
         mkdirSync(this.outputDir, { recursive: true });
       }
 
+      // Ensure organizationName is set in the state
+      const stateToSave = {
+        ...state,
+        organizationName: this.organizationName,
+      };
+
       const stateFilePath = this.getStateFilePath();
-      writeFileSync(stateFilePath, JSON.stringify(state, null, 2));
+      writeFileSync(stateFilePath, JSON.stringify(stateToSave, null, 2));
       this.logger.debug(`Saved last state to ${stateFilePath}`);
     } catch (error) {
       this.logger.error(`Failed to save last state: ${error}`);
@@ -87,6 +93,8 @@ export class StateManager {
 
         return {
           ...parsedState,
+          organizationName:
+            parsedState.organizationName || this.organizationName,
           currentCursor: parsedState.currentCursor || null,
           lastSuccessfulCursor: parsedState.lastSuccessfulCursor || null,
           lastProcessedRepo: parsedState.lastProcessedRepo || null,
@@ -111,6 +119,7 @@ export class StateManager {
     resumeFromLastState: boolean;
   } {
     let processedState: ProcessedPageState = {
+      organizationName: this.organizationName,
       currentCursor: null,
       processedRepos: [],
       lastSuccessfulCursor: null,

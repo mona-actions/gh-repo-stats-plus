@@ -304,6 +304,7 @@ export interface RetryableOperation<T> {
 }
 
 export interface ProcessedPageState {
+  organizationName: string;
   completedSuccessfully: boolean;
   outputFileName: string | null;
   currentCursor: string | null;

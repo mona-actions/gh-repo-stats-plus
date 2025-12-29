@@ -170,7 +170,7 @@ export async function run(opts: Arguments): Promise<void> {
   }
 
   // Log final summary
-  logger.info('\n' + '='.repeat(80));
+  logger.info('='.repeat(80));
   logger.info(
     `${orgsToProcess.length > 1 ? 'MULTI-ORG' : 'ORG'} PROCESSING SUMMARY`,
   );
@@ -185,12 +185,12 @@ export async function run(opts: Arguments): Promise<void> {
     `Success rate: ${((totalSuccessful / results.length) * 100).toFixed(2)}%`,
   );
 
-  logger.info('\nDetailed Results:');
+  logger.info('Detailed Results:');
   for (const result of results) {
     const duration = result.elapsedTime || 'N/A';
     const status = result.success ? '✅ SUCCESS' : '❌ FAILED';
     const errorInfo = result.error ? ` - ${result.error}` : '';
-    logger.info(`  ${result.orgName}: ${status} (${duration})${errorInfo}`);
+    logger.info(`- ${result.orgName}: ${status} (${duration})${errorInfo}`);
   }
   logger.info('='.repeat(80));
 
@@ -302,7 +302,7 @@ async function _runWithOrg(
   orgName: string,
   context: ProcessingContext,
 ): Promise<OrgProcessingResult> {
-  const { logger } = context;
+  const { logger, opts } = context;
 
   logger.debug(`Starting processing for organization: ${orgName}`);
 
@@ -317,7 +317,40 @@ async function _runWithOrg(
 
   try {
     result.startTime = new Date();
-    await _runWithContext({ ...context, opts: { ...context.opts, orgName } });
+
+    // Create a new StateManager for this specific org
+    const outputDir = opts.outputDir || 'output';
+    const stateManager = new StateManager(outputDir, orgName, logger);
+
+    const { processedState, resumeFromLastState } = stateManager.initialize(
+      opts.resumeFromLastSave || false,
+    );
+
+    let fileName = '';
+    if (resumeFromLastState) {
+      fileName = processedState.outputFileName || '';
+      logger.info(`Resuming from last state. Using existing file: ${fileName}`);
+    } else {
+      const baseFileName = generateRepoStatsFileName(orgName);
+      fileName = await resolveOutputPath(opts.outputDir, baseFileName);
+
+      initializeCsvFile(fileName, logger);
+      logger.info(`Results will be saved to file: ${fileName}`);
+
+      processedState.outputFileName = fileName;
+      stateManager.update(processedState, {});
+    }
+
+    // Create a new context for this org with the new stateManager
+    const orgContext: ProcessingContext = {
+      ...context,
+      opts: { ...opts, orgName },
+      fileName,
+      processedState,
+      stateManager,
+    };
+
+    await _runWithContext(orgContext);
     result.endTime = new Date();
 
     result.elapsedTime = formatElapsedTime(result.startTime, result.endTime);
@@ -326,13 +359,13 @@ async function _runWithOrg(
     logger.info(
       `Successfully completed processing for organization: ${orgName} in ${result.elapsedTime}`,
     );
+
+    logger.debug(`Completed processing for organization: ${orgName}`);
   } catch (e) {
     result.success = false;
     result.error = e instanceof Error ? e.message : String(e);
     logger.error(`Error processing organization ${orgName}: ${result.error}`);
   }
-
-  logger.debug(`Completed processing for organization: ${orgName}`);
 
   return result;
 }
@@ -549,7 +582,6 @@ async function handleRepoProcessingSuccess({
   client,
   logger,
   processedCount,
-  currentCursor = null,
   stateManager,
 }: {
   result: RepoStatsResult;
@@ -559,7 +591,6 @@ async function handleRepoProcessingSuccess({
   client: OctokitClient;
   logger: Logger;
   processedCount: number;
-  currentCursor?: string | null;
   stateManager: StateManager;
 }): Promise<void> {
   const successThreshold = opts.retrySuccessThreshold || 5;
@@ -576,7 +607,7 @@ async function handleRepoProcessingSuccess({
 
   stateManager.update(processedState, {
     repoName: result.Repo_Name,
-    lastSuccessfulCursor: currentCursor,
+    lastSuccessfulCursor: processedState.currentCursor,
   });
 
   // Check rate limits after configured interval
@@ -757,7 +788,6 @@ async function processRepositories({
           client,
           logger,
           processedCount: ++processedCount,
-          currentCursor: processedState.currentCursor,
           stateManager,
         });
       } catch (error) {

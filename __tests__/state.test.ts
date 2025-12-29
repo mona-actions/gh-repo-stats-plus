@@ -53,6 +53,7 @@ describe('StateManager', () => {
 
       expect(resumeFromLastState).toBe(false);
       expect(processedState).toEqual({
+        organizationName: 'test-org',
         currentCursor: null,
         processedRepos: [],
         lastSuccessfulCursor: null,
