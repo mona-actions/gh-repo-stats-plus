@@ -2,23 +2,27 @@ import * as commander from 'commander';
 import {
   parseFloatOption,
   parseIntOption,
-  parseBooleanOption, 
+  parseBooleanOption,
   parseFileAsNewlineSeparatedOption,
 } from '../utils.js';
 import { Arguments } from '../types.js';
 import VERSION from '../version.js';
 
-import { run } from '../main.js'; 
+import { run } from '../main.js';
 
 const { Option } = commander;
 
 function validate(opts: Arguments) {
   if (!opts.orgName && !opts.orgList) {
-    throw new Error('Either orgName (-o, --org-name <org>) or orgList (--org-list <file>) must be provided');
+    throw new Error(
+      'Either orgName (-o, --org-name <org>) or orgList (--org-list <file>) must be provided',
+    );
   }
 
   if (opts.orgName && opts.orgList) {
-    throw new Error('Cannot specify both orgName (-o, --org-name <org>) and orgList (--org-list <file>)');
+    throw new Error(
+      'Cannot specify both orgName (-o, --org-name <org>) and orgList (--org-list <file>)',
+    );
   }
 }
 
@@ -41,8 +45,8 @@ repoStatsCommand
       '--org-list <file>',
       'Path to file containing list of organizations to process (one org per line)',
     )
-    .env('ORG_LIST')
-    .argParser(parseFileAsNewlineSeparatedOption),
+      .env('ORG_LIST')
+      .argParser(parseFileAsNewlineSeparatedOption),
   )
   .addOption(
     new Option('-t, --access-token <token>', 'GitHub access token').env(
@@ -157,8 +161,8 @@ repoStatsCommand
       '--repo-list <file>',
       'Path to file containing list of repositories to process (format: owner/repo_name)',
     )
-    .env('REPO_LIST')
-    .argParser(parseFileAsNewlineSeparatedOption),
+      .env('REPO_LIST')
+      .argParser(parseFileAsNewlineSeparatedOption),
   )
   .addOption(
     new Option(
@@ -203,12 +207,12 @@ repoStatsCommand
   )
   .action(async (options: Arguments) => {
     console.log('Version:', VERSION);
- 
+
     console.log('Validating options...');
     validate(options);
 
-    console.log('Starting repo-stats...'); 
-    await run(options);  
+    console.log('Starting repo-stats...');
+    await run(options);
     console.log('Repo-stats completed.');
   });
 

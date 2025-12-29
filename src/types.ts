@@ -322,7 +322,6 @@ export interface RepoProcessingResult {
   retryCount: number;
 }
 
-
 export interface OrgProcessingResult {
   orgName: string;
   success: boolean;

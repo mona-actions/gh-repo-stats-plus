@@ -229,7 +229,11 @@ describe('Utils', () => {
 
   describe('parseCommaSeparatedOption', () => {
     it('should parse comma-separated values into an array', () => {
-      expect(parseCommaSeparatedOption('foo,bar,baz')).toEqual(['foo', 'bar', 'baz']);
+      expect(parseCommaSeparatedOption('foo,bar,baz')).toEqual([
+        'foo',
+        'bar',
+        'baz',
+      ]);
       expect(parseCommaSeparatedOption('a, b, c')).toEqual(['a', 'b', 'c']);
     });
 
@@ -239,7 +243,10 @@ describe('Utils', () => {
         'bar',
         'baz',
       ]);
-      expect(parseCommaSeparatedOption('item1 , item2')).toEqual(['item1', 'item2']);
+      expect(parseCommaSeparatedOption('item1 , item2')).toEqual([
+        'item1',
+        'item2',
+      ]);
     });
 
     it('should handle single value', () => {
@@ -248,7 +255,9 @@ describe('Utils', () => {
 
     it('should return empty array for empty or undefined input', () => {
       expect(parseCommaSeparatedOption('')).toEqual([]);
-      expect(parseCommaSeparatedOption(undefined as unknown as string)).toEqual([]);
+      expect(parseCommaSeparatedOption(undefined as unknown as string)).toEqual(
+        [],
+      );
       expect(parseCommaSeparatedOption(null as unknown as string)).toEqual([]);
     });
 
@@ -282,22 +291,37 @@ describe('Utils', () => {
     });
 
     it('should handle previous as undefined', () => {
-      expect(parseCommaSeparatedOption('foo,bar', undefined)).toEqual(['foo', 'bar']);
+      expect(parseCommaSeparatedOption('foo,bar', undefined)).toEqual([
+        'foo',
+        'bar',
+      ]);
     });
   });
 
   describe('parseNewlineSeparatedOption', () => {
     it('should parse newline-separated values into an array', () => {
-      expect(parseNewlineSeparatedOption('foo\nbar\nbaz')).toEqual(['foo', 'bar', 'baz']);
+      expect(parseNewlineSeparatedOption('foo\nbar\nbaz')).toEqual([
+        'foo',
+        'bar',
+        'baz',
+      ]);
       expect(parseNewlineSeparatedOption('a\nb\nc')).toEqual(['a', 'b', 'c']);
     });
 
     it('should handle Windows line endings (CRLF)', () => {
-      expect(parseNewlineSeparatedOption('foo\r\nbar\r\nbaz')).toEqual(['foo', 'bar', 'baz']);
+      expect(parseNewlineSeparatedOption('foo\r\nbar\r\nbaz')).toEqual([
+        'foo',
+        'bar',
+        'baz',
+      ]);
     });
 
     it('should handle mixed line endings', () => {
-      expect(parseNewlineSeparatedOption('foo\nbar\r\nbaz')).toEqual(['foo', 'bar', 'baz']);
+      expect(parseNewlineSeparatedOption('foo\nbar\r\nbaz')).toEqual([
+        'foo',
+        'bar',
+        'baz',
+      ]);
     });
 
     it('should trim whitespace from values', () => {
@@ -314,29 +338,37 @@ describe('Utils', () => {
 
     it('should return empty array for empty or undefined input', () => {
       expect(parseNewlineSeparatedOption('')).toEqual([]);
-      expect(parseNewlineSeparatedOption(undefined as unknown as string)).toEqual([]);
-      expect(parseNewlineSeparatedOption(null as unknown as string)).toEqual([]);
+      expect(
+        parseNewlineSeparatedOption(undefined as unknown as string),
+      ).toEqual([]);
+      expect(parseNewlineSeparatedOption(null as unknown as string)).toEqual(
+        [],
+      );
     });
 
     it('should filter out empty lines', () => {
       expect(parseNewlineSeparatedOption('foo\n\nbar')).toEqual(['foo', 'bar']);
-      expect(parseNewlineSeparatedOption('\nfoo\nbar\n')).toEqual(['foo', 'bar']);
-      expect(parseNewlineSeparatedOption('a\n\nb\n\nc')).toEqual(['a', 'b', 'c']);
+      expect(parseNewlineSeparatedOption('\nfoo\nbar\n')).toEqual([
+        'foo',
+        'bar',
+      ]);
+      expect(parseNewlineSeparatedOption('a\n\nb\n\nc')).toEqual([
+        'a',
+        'b',
+        'c',
+      ]);
     });
 
     it('should filter out comment lines starting with #', () => {
-      expect(parseNewlineSeparatedOption('foo\n# this is a comment\nbar')).toEqual([
-        'foo',
-        'bar',
-      ]);
-      expect(parseNewlineSeparatedOption('# comment at start\nfoo\nbar')).toEqual([
-        'foo',
-        'bar',
-      ]);
-      expect(parseNewlineSeparatedOption('foo\nbar\n# comment at end')).toEqual([
-        'foo',
-        'bar',
-      ]);
+      expect(
+        parseNewlineSeparatedOption('foo\n# this is a comment\nbar'),
+      ).toEqual(['foo', 'bar']);
+      expect(
+        parseNewlineSeparatedOption('# comment at start\nfoo\nbar'),
+      ).toEqual(['foo', 'bar']);
+      expect(parseNewlineSeparatedOption('foo\nbar\n# comment at end')).toEqual(
+        ['foo', 'bar'],
+      );
     });
 
     it('should support Commander.js accumulator pattern with previous values', () => {
@@ -362,7 +394,10 @@ describe('Utils', () => {
     });
 
     it('should handle previous as undefined', () => {
-      expect(parseNewlineSeparatedOption('foo\nbar', undefined)).toEqual(['foo', 'bar']);
+      expect(parseNewlineSeparatedOption('foo\nbar', undefined)).toEqual([
+        'foo',
+        'bar',
+      ]);
     });
   });
 
@@ -379,22 +414,29 @@ describe('Utils', () => {
       vi.mocked(existsSync).mockReturnValue(true);
       vi.mocked(readFileSync).mockReturnValue('org1\norg2\norg3');
 
-      expect(parseFileAsNewlineSeparatedOption('orgs.txt')).toEqual(['org1', 'org2', 'org3']);
+      expect(parseFileAsNewlineSeparatedOption('orgs.txt')).toEqual([
+        'org1',
+        'org2',
+        'org3',
+      ]);
     });
 
     it('should filter comments and empty lines from file', () => {
       vi.mocked(existsSync).mockReturnValue(true);
       vi.mocked(readFileSync).mockReturnValue('org1\n# comment\n\norg2');
 
-      expect(parseFileAsNewlineSeparatedOption('orgs.txt')).toEqual(['org1', 'org2']);
+      expect(parseFileAsNewlineSeparatedOption('orgs.txt')).toEqual([
+        'org1',
+        'org2',
+      ]);
     });
 
     it('should throw error if file does not exist', () => {
       vi.mocked(existsSync).mockReturnValue(false);
 
-      expect(() => parseFileAsNewlineSeparatedOption('nonexistent.txt')).toThrow(
-        'File not found: nonexistent.txt',
-      );
+      expect(() =>
+        parseFileAsNewlineSeparatedOption('nonexistent.txt'),
+      ).toThrow('File not found: nonexistent.txt');
     });
 
     it('should return empty array for empty filePath', () => {
@@ -402,19 +444,18 @@ describe('Utils', () => {
     });
 
     it('should return previous values for empty filePath', () => {
-      expect(parseFileAsNewlineSeparatedOption('', ['existing'])).toEqual(['existing']);
+      expect(parseFileAsNewlineSeparatedOption('', ['existing'])).toEqual([
+        'existing',
+      ]);
     });
 
     it('should support accumulator pattern with previous values', () => {
       vi.mocked(existsSync).mockReturnValue(true);
       vi.mocked(readFileSync).mockReturnValue('org3\norg4');
 
-      expect(parseFileAsNewlineSeparatedOption('orgs.txt', ['org1', 'org2'])).toEqual([
-        'org1',
-        'org2',
-        'org3',
-        'org4',
-      ]);
+      expect(
+        parseFileAsNewlineSeparatedOption('orgs.txt', ['org1', 'org2']),
+      ).toEqual(['org1', 'org2', 'org3', 'org4']);
     });
   });
 });

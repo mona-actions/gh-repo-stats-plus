@@ -44,9 +44,7 @@ interface ProcessingContext {
   stateManager: StateManager;
 }
 
-const _init = async (
-  opts: Arguments,
-): Promise<ProcessingContext> => {
+const _init = async (opts: Arguments): Promise<ProcessingContext> => {
   const logFileName = `${opts.orgName!}-repo-stats-${
     new Date().toISOString().split('T')[0]
   }.log`;
@@ -114,16 +112,21 @@ const _init = async (
 };
 
 export async function run(opts: Arguments): Promise<void> {
-  const context = await _init(opts);  
+  const context = await _init(opts);
 
-  const { orgList, orgName, delayBetweenOrgs = 5, continueOnError = false } = opts;
+  const {
+    orgList,
+    orgName,
+    delayBetweenOrgs = 5,
+    continueOnError = false,
+  } = opts;
   const { logger } = context;
 
   const hasOrgList = orgList && Array.isArray(orgList) && orgList.length > 0;
-  const singleOrg = orgName && !hasOrgList ? [orgName] : []; 
-  
+  const singleOrg = orgName && !hasOrgList ? [orgName] : [];
+
   const orgsToProcess = hasOrgList ? orgList : singleOrg;
-  if(orgsToProcess.length === 0) {
+  if (orgsToProcess.length === 0) {
     throw new Error('Either orgName or orgList must be provided');
   }
 
@@ -139,9 +142,9 @@ export async function run(opts: Arguments): Promise<void> {
       `Note: Actual processing time will be longer depending on repository counts`,
     );
   }
-   
+
   const results: OrgProcessingResult[] = [];
-  for (const orgName of orgsToProcess) { 
+  for (const orgName of orgsToProcess) {
     const isLastToProcess = results.length === orgsToProcess.length - 1;
 
     // Process each organization
@@ -149,28 +152,38 @@ export async function run(opts: Arguments): Promise<void> {
     results.push(result);
 
     // If not continuing on error, and this org failed, stop processing
-    if(!continueOnError && !result.success) {
-      throw new Error(`Stopping processing due to error (use --continue-on-error to continue)`);
+    if (!continueOnError && !result.success) {
+      throw new Error(
+        `Stopping processing due to error (use --continue-on-error to continue)`,
+      );
     }
-  
+
     // Add delay between organizations (except for the last one)
     if (!isLastToProcess && delayBetweenOrgs > 0) {
-      logger.info(`Waiting for ${delayBetweenOrgs} seconds before processing the next organization...`);
-      await new Promise((resolve) => setTimeout(resolve, delayBetweenOrgs * 1000));
-    } 
+      logger.info(
+        `Waiting for ${delayBetweenOrgs} seconds before processing the next organization...`,
+      );
+      await new Promise((resolve) =>
+        setTimeout(resolve, delayBetweenOrgs * 1000),
+      );
+    }
   }
-  
+
   // Log final summary
   logger.info('\n' + '='.repeat(80));
-  logger.info(`${orgsToProcess.length > 1 ? 'MULTI-ORG' : 'ORG'} PROCESSING SUMMARY`);
+  logger.info(
+    `${orgsToProcess.length > 1 ? 'MULTI-ORG' : 'ORG'} PROCESSING SUMMARY`,
+  );
   logger.info('='.repeat(80));
   logger.info(`Total organizations processed: ${results.length}`);
-  
-  const totalSuccessful = results.filter(r => r.success).length;
-  const totalFailed = results.filter(r => !r.success).length;
+
+  const totalSuccessful = results.filter((r) => r.success).length;
+  const totalFailed = results.filter((r) => !r.success).length;
   logger.info(`Successful: ${totalSuccessful}`);
   logger.info(`Failed: ${totalFailed}`);
-  logger.info(`Success rate: ${((totalSuccessful / results.length) * 100).toFixed(2)}%`);
+  logger.info(
+    `Success rate: ${((totalSuccessful / results.length) * 100).toFixed(2)}%`,
+  );
 
   logger.info('\nDetailed Results:');
   for (const result of results) {
@@ -182,12 +195,22 @@ export async function run(opts: Arguments): Promise<void> {
   logger.info('='.repeat(80));
 
   if (totalFailed > 0) {
-    logger.warn(`⚠️  ${totalFailed} organization(s) failed processing. Check individual logs for details.`);
+    logger.warn(
+      `⚠️  ${totalFailed} organization(s) failed processing. Check individual logs for details.`,
+    );
   }
 }
 
 async function _runWithContext(context: ProcessingContext): Promise<void> {
-  const { opts, logger, client, fileName, processedState, retryConfig, stateManager } = context;
+  const {
+    opts,
+    logger,
+    client,
+    fileName,
+    processedState,
+    retryConfig,
+    stateManager,
+  } = context;
 
   const startTime = new Date();
   logger.info(`Started processing at: ${startTime.toISOString()}`);
@@ -275,7 +298,10 @@ async function _runWithContext(context: ProcessingContext): Promise<void> {
   );
 }
 
-async function _runWithOrg(orgName: string, context: ProcessingContext): Promise<OrgProcessingResult> { 
+async function _runWithOrg(
+  orgName: string,
+  context: ProcessingContext,
+): Promise<OrgProcessingResult> {
   const { logger } = context;
 
   logger.debug(`Starting processing for organization: ${orgName}`);
@@ -286,18 +312,20 @@ async function _runWithOrg(orgName: string, context: ProcessingContext): Promise
     error: undefined,
     startTime: undefined,
     endTime: undefined,
-    elapsedTime: undefined
-  }; 
+    elapsedTime: undefined,
+  };
 
   try {
-    result.startTime = new Date(); 
-    await _runWithContext({ ...context, opts: { ...context.opts, orgName } }); 
+    result.startTime = new Date();
+    await _runWithContext({ ...context, opts: { ...context.opts, orgName } });
     result.endTime = new Date();
 
-    result.elapsedTime = formatElapsedTime(result.startTime, result.endTime); 
+    result.elapsedTime = formatElapsedTime(result.startTime, result.endTime);
     result.success = true;
 
-    logger.info(`Successfully completed processing for organization: ${orgName} in ${result.elapsedTime}`);
+    logger.info(
+      `Successfully completed processing for organization: ${orgName} in ${result.elapsedTime}`,
+    );
   } catch (e) {
     result.success = false;
     result.error = e instanceof Error ? e.message : String(e);
@@ -589,18 +617,18 @@ async function processRepositoriesFromFile({
   if (!opts.repoList) {
     throw new Error('Repository list is required');
   }
- 
+
   let repoListRaw = Array.isArray(opts.repoList)
     ? opts.repoList
     : readFileSync(opts.repoList, 'utf-8').split('\n');
-  
-  let repoList = repoListRaw 
-      .filter((line) => line.trim() !== '' && !line.trim().startsWith('#'))
-      .map((line) => {
-        const [owner, repo] = line.trim().split('/');
-        return { owner, repo };
-      });
- 
+
+  let repoList = repoListRaw
+    .filter((line) => line.trim() !== '' && !line.trim().startsWith('#'))
+    .map((line) => {
+      const [owner, repo] = line.trim().split('/');
+      return { owner, repo };
+    });
+
   let processedCount = 0;
 
   for (const { owner, repo } of repoList) {

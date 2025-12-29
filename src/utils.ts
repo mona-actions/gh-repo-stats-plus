@@ -238,4 +238,3 @@ export function parseFileAsNewlineSeparatedOption(
   const fileContent = readFileSync(resolvedPath, 'utf-8');
   return parseNewlineSeparatedOption(fileContent, previous);
 }
-
