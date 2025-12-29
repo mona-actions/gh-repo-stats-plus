@@ -8,10 +8,21 @@ import {
 import { Arguments } from '../types.js';
 import VERSION from '../version.js';
 
-import { run, runMultiOrg } from '../main.js'; 
+import { run } from '../main.js'; 
+
+const { Option } = commander;
+
+function validate(opts: Arguments) {
+  if (!opts.orgName && !opts.orgList) {
+    throw new Error('Either orgName (-o, --org-name <org>) or orgList (--org-list <file>) must be provided');
+  }
+
+  if (opts.orgName && opts.orgList) {
+    throw new Error('Cannot specify both orgName (-o, --org-name <org>) and orgList (--org-list <file>)');
+  }
+}
 
 const repoStatsCommand = new commander.Command();
-const { Option } = commander;
 
 repoStatsCommand
   .name('repo-stats')
@@ -192,28 +203,12 @@ repoStatsCommand
   )
   .action(async (options: Arguments) => {
     console.log('Version:', VERSION);
+ 
+    console.log('Validating options...');
+    validate(options);
 
-    // Validate that either org-name or org-list is provided
-    if (!options.orgName && !options.orgList) {
-      console.error('Error: Either --org-name or --org-list must be provided');
-      throw new Error('Invalid command usage');
-    }
-
-    if (options.orgName && options.orgList) {
-      console.error('Error: Cannot specify both --org-name and --org-list');
-      throw new Error('Invalid command usage'); 
-    }
-
-    console.log('Starting repo-stats...');
-
-    if (options.orgList) {
-      // Multi-org processing
-      await runMultiOrg(options);
-    } else {
-      // Single org processing
-      await run(options);
-    }
-
+    console.log('Starting repo-stats...'); 
+    await run(options);  
     console.log('Repo-stats completed.');
   });
 

@@ -321,3 +321,13 @@ export interface RepoProcessingResult {
   successCount: number;
   retryCount: number;
 }
+
+
+export interface OrgProcessingResult {
+  orgName: string;
+  success: boolean;
+  error?: string;
+  startTime?: Date;
+  endTime?: Date;
+  elapsedTime?: string;
+}

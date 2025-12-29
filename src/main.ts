@@ -11,6 +11,7 @@ import {
   RepoStatsResult,
   ProcessedPageState,
   RepoProcessingResult,
+  OrgProcessingResult,
 } from './types.js';
 import { createLogger, logInitialization } from './logger.js';
 import { createAuthConfig } from './auth.js';
@@ -113,8 +114,76 @@ const _init = async (
 };
 
 export async function run(opts: Arguments): Promise<void> {
-  const context = await _init(opts); 
-  await _runWithContext(context);
+  const context = await _init(opts);  
+
+  const { orgList, orgName, delayBetweenOrgs = 5, continueOnError = false } = opts;
+  const { logger } = context;
+
+  const hasOrgList = orgList && Array.isArray(orgList) && orgList.length > 0;
+  const singleOrg = orgName && !hasOrgList ? [orgName] : []; 
+  
+  const orgsToProcess = hasOrgList ? orgList : singleOrg;
+  if(orgsToProcess.length === 0) {
+    throw new Error('Either orgName or orgList must be provided');
+  }
+
+  logger.info(`Organizations to process: ${orgsToProcess.join(', ')}`);
+  if (orgsToProcess.length > 1 && delayBetweenOrgs > 0) {
+    const estimatedDelayMinutes = Math.ceil(
+      ((orgsToProcess.length - 1) * delayBetweenOrgs) / 60,
+    );
+    logger.info(
+      `Estimated minimum time (delays only): ${estimatedDelayMinutes} minutes`,
+    );
+    logger.info(
+      `Note: Actual processing time will be longer depending on repository counts`,
+    );
+  }
+   
+  const results: OrgProcessingResult[] = [];
+  for (const orgName of orgsToProcess) { 
+    const isLastToProcess = results.length === orgsToProcess.length - 1;
+
+    // Process each organization
+    const result = await _runWithOrg(orgName, context);
+    results.push(result);
+
+    // If not continuing on error, and this org failed, stop processing
+    if(!continueOnError && !result.success) {
+      throw new Error(`Stopping processing due to error (use --continue-on-error to continue)`);
+    }
+  
+    // Add delay between organizations (except for the last one)
+    if (!isLastToProcess && delayBetweenOrgs > 0) {
+      logger.info(`Waiting for ${delayBetweenOrgs} seconds before processing the next organization...`);
+      await new Promise((resolve) => setTimeout(resolve, delayBetweenOrgs * 1000));
+    } 
+  }
+  
+  // Log final summary
+  logger.info('\n' + '='.repeat(80));
+  logger.info(`${orgsToProcess.length > 1 ? 'MULTI-ORG' : 'ORG'} PROCESSING SUMMARY`);
+  logger.info('='.repeat(80));
+  logger.info(`Total organizations processed: ${results.length}`);
+  
+  const totalSuccessful = results.filter(r => r.success).length;
+  const totalFailed = results.filter(r => !r.success).length;
+  logger.info(`Successful: ${totalSuccessful}`);
+  logger.info(`Failed: ${totalFailed}`);
+  logger.info(`Success rate: ${((totalSuccessful / results.length) * 100).toFixed(2)}%`);
+
+  logger.info('\nDetailed Results:');
+  for (const result of results) {
+    const duration = result.elapsedTime || 'N/A';
+    const status = result.success ? '✅ SUCCESS' : '❌ FAILED';
+    const errorInfo = result.error ? ` - ${result.error}` : '';
+    logger.info(`  ${result.orgName}: ${status} (${duration})${errorInfo}`);
+  }
+  logger.info('='.repeat(80));
+
+  if (totalFailed > 0) {
+    logger.warn(`⚠️  ${totalFailed} organization(s) failed processing. Check individual logs for details.`);
+  }
 }
 
 async function _runWithContext(context: ProcessingContext): Promise<void> {
@@ -206,224 +275,38 @@ async function _runWithContext(context: ProcessingContext): Promise<void> {
   );
 }
 
-/**
- * Processes multiple GitHub organizations sequentially, collecting repository statistics for each.
- *
- * Reads a list of organizations from a file, then for each organization:
- *   - Runs the main processing logic (see `run` function) for that organization.
- *   - Waits for a configurable delay between organizations.
- *   - Handles errors according to the `continueOnError` option.
- *
- * @param {Arguments} opts - The options for multi-organization processing.
- * @param {string} opts.orgList - Path to a file containing a list of organizations (one per line).
- * @param {number} [opts.delayBetweenOrgs=5] - Delay in seconds between processing each organization.
- * @param {boolean} [opts.continueOnError=false] - Whether to continue processing remaining organizations if an error occurs.
- * @param {Function} [runFn=run] - Function to process each organization. Defaults to `run`. Used primarily for testing.
- * @throws {Error} If the organization list file is missing or empty.
- * @returns {Promise<void>} Resolves when all organizations have been processed.
- *
- * Notes:
- * - The function logs progress and errors using the logger.
- * - Organization list file may contain comments (lines starting with '#') and empty lines, which are ignored.
- * - Each organization's processing is isolated; errors can be skipped or halt the process based on options.
- * - Organizations are processed strictly sequentially to respect rate limits and provide predictable resource usage.
- */
-export async function runMultiOrg(
-  opts: Arguments,
-  runFn: (opts: Arguments) => Promise<void> = run,
-): Promise<void> {
-  const { orgList, delayBetweenOrgs = 5, continueOnError = false } = opts;
+async function _runWithOrg(orgName: string, context: ProcessingContext): Promise<OrgProcessingResult> { 
+  const { logger } = context;
 
-  if (!orgList) {
-    throw new Error(
-      'Organization list is required for multi-org processing',
-    );
+  logger.debug(`Starting processing for organization: ${orgName}`);
+
+  const result: OrgProcessingResult = {
+    orgName,
+    success: false,
+    error: undefined,
+    startTime: undefined,
+    endTime: undefined,
+    elapsedTime: undefined
+  }; 
+
+  try {
+    result.startTime = new Date(); 
+    await _runWithContext({ ...context, opts: { ...context.opts, orgName } }); 
+    result.endTime = new Date();
+
+    result.elapsedTime = formatElapsedTime(result.startTime, result.endTime); 
+    result.success = true;
+
+    logger.info(`Successfully completed processing for organization: ${orgName} in ${result.elapsedTime}`);
+  } catch (e) {
+    result.success = false;
+    result.error = e instanceof Error ? e.message : String(e);
+    logger.error(`Error processing organization ${orgName}: ${result.error}`);
   }
 
-  // Support both file path (string) and pre-parsed array (string[])
-  let orgListContent: string[];
+  logger.debug(`Completed processing for organization: ${orgName}`);
 
-  if (Array.isArray(orgList)) {
-    // Already an array of org names
-    orgListContent = orgList
-      .map((line) => line.trim())
-      .filter((line) => line !== '' && !line.startsWith('#'));
-  } else {
-    // It's a file path, validate and read
-    if (!existsSync(orgList)) {
-      throw new Error(`Organization list file not found: ${orgList}`);
-    }
-
-    orgListContent = readFileSync(orgList, 'utf-8')
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line !== '' && !line.startsWith('#'));
-  }
-
-  if (orgListContent.length === 0) {
-    throw new Error('No organizations found in the provided list');
-  }
-
-  // Create a summary logger for the multi-org process
-  const summaryLogger = await createLogger(
-    opts.verbose || false,
-    `multi-org-summary-${new Date().toISOString().split('T')[0]}.log`,
-  );
-
-  summaryLogger.info(
-    `Starting processing of ${orgListContent.length} organizations`,
-  );
-  summaryLogger.info(`Organizations to process: ${orgListContent.join(', ')}`);
-
-  // Log estimated completion time based on delay between orgs
-  if (orgListContent.length > 1 && delayBetweenOrgs > 0) {
-    const estimatedDelayMinutes = Math.ceil(
-      ((orgListContent.length - 1) * delayBetweenOrgs) / 60,
-    );
-    summaryLogger.info(
-      `Estimated minimum time (delays only): ${estimatedDelayMinutes} minutes`,
-    );
-    summaryLogger.info(
-      `Note: Actual processing time will be longer depending on repository counts`,
-    );
-  }
-
-  const results: Array<{
-    org: string;
-    success: boolean;
-    error?: string;
-    startTime: Date;
-    endTime?: Date;
-  }> = [];
-
-  let totalSuccessful = 0;
-  let totalFailed = 0;
-
-  for (const [index, orgName] of orgListContent.entries()) {
-    const orgStartTime = new Date();
-    summaryLogger.info(
-      `[${index + 1}/${
-        orgListContent.length
-      }] Starting processing for organization: ${orgName}`,
-    );
-
-    try {
-      // Create organization-specific options
-      const orgOptions: Arguments = {
-        ...opts,
-        orgName: orgName,
-        orgList: undefined, // Clear orgList to prevent infinite recursion
-      };
-
-      // Process the organization using the injected function
-      await runFn(orgOptions);
-
-      const orgEndTime = new Date();
-      const duration = (orgEndTime.getTime() - orgStartTime.getTime()) / 1000;
-
-      results.push({
-        org: orgName,
-        success: true,
-        startTime: orgStartTime,
-        endTime: orgEndTime,
-      });
-
-      totalSuccessful++;
-      summaryLogger.info(
-        `[${index + 1}/${
-          orgListContent.length
-        }] Successfully completed processing for organization: ${orgName} (${duration}s)`,
-      );
-
-      // Add delay between organizations (except for the last one)
-      if (index < orgListContent.length - 1 && delayBetweenOrgs > 0) {
-        summaryLogger.info(
-          `Waiting ${delayBetweenOrgs} seconds before processing next organization...`,
-        );
-        await new Promise((resolve) =>
-          setTimeout(resolve, delayBetweenOrgs * 1000),
-        );
-      }
-    } catch (error) {
-      const orgEndTime = new Date();
-      const duration = (orgEndTime.getTime() - orgStartTime.getTime()) / 1000;
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-
-      results.push({
-        org: orgName,
-        success: false,
-        error: errorMessage,
-        startTime: orgStartTime,
-        endTime: orgEndTime,
-      });
-
-      totalFailed++;
-      summaryLogger.error(
-        `[${index + 1}/${
-          orgListContent.length
-        }] Failed to process organization: ${orgName} (${duration}s) - Error: ${errorMessage}`,
-      );
-
-      if (!continueOnError) {
-        summaryLogger.error(
-          'Stopping processing due to error (use --continue-on-error to continue)',
-        );
-        throw error;
-      } else {
-        summaryLogger.warn(
-          'Continuing with next organization due to --continue-on-error flag',
-        );
-
-        // Still add delay even after error (except for the last one)
-        if (index < orgListContent.length - 1 && delayBetweenOrgs > 0) {
-          summaryLogger.info(
-            `Waiting ${delayBetweenOrgs} seconds before processing next organization...`,
-          );
-          await new Promise((resolve) =>
-            setTimeout(resolve, delayBetweenOrgs * 1000),
-          );
-        }
-      }
-    }
-  }
-
-  // Log final summary
-  const totalProcessed = totalSuccessful + totalFailed;
-  summaryLogger.info('\n' + '='.repeat(80));
-  summaryLogger.info('MULTI-ORG PROCESSING SUMMARY');
-  summaryLogger.info('='.repeat(80));
-  summaryLogger.info(`Total organizations processed: ${totalProcessed}`);
-  summaryLogger.info(`Successful: ${totalSuccessful}`);
-  summaryLogger.info(`Failed: ${totalFailed}`);
-  summaryLogger.info(
-    totalProcessed > 0
-      ? `Success rate: ${((totalSuccessful / totalProcessed) * 100).toFixed(1)}%`
-      : 'Success rate: N/A',
-  );
-  summaryLogger.info('\nDetailed Results:');
-
-  for (const result of results) {
-    const duration = result.endTime
-      ? (
-          (result.endTime.getTime() - result.startTime.getTime()) /
-          1000
-        ).toFixed(1)
-      : 'N/A';
-    const status = result.success ? '✅ SUCCESS' : '❌ FAILED';
-    const errorInfo = result.error ? ` - ${result.error}` : '';
-
-    summaryLogger.info(`  ${result.org}: ${status} (${duration}s)${errorInfo}`);
-  }
-
-  summaryLogger.info('='.repeat(80));
-
-  // If there were failures and we continued, inform about them
-  if (totalFailed > 0 && continueOnError) {
-    summaryLogger.warn(
-      `⚠️  ${totalFailed} organization(s) failed processing. Check individual logs for details.`,
-    );
-  }
+  return result;
 }
 
 async function processMissingRepositories({
