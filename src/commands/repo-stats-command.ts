@@ -158,6 +158,15 @@ repoStatsCommand
   )
   .addOption(
     new Option(
+      '--force-fresh-start [value]',
+      'Force a fresh start, ignoring any existing state (overrides resume-from-last-save)',
+    )
+      .env('FORCE_FRESH_START')
+      .default('false')
+      .argParser(parseBooleanOption),
+  )
+  .addOption(
+    new Option(
       '--repo-list <file>',
       'Path to file containing list of repositories to process (format: owner/repo_name)',
     )

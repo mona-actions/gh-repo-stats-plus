@@ -39,6 +39,7 @@ export interface Arguments {
   retrySuccessThreshold?: number;
 
   resumeFromLastSave?: boolean;
+  forceFreshStart?: boolean;
 
   // output
   outputFileName?: string;

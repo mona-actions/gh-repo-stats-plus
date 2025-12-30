@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdirSync,
   unlinkSync,
+  readdirSync,
 } from 'fs';
 import { join } from 'path';
 import { Logger, ProcessedPageState } from './types.js';
@@ -43,6 +44,39 @@ export class StateManager {
         `Found legacy state file '${LEGACY_STATE_FILE}' without organization suffix. ` +
           `This file will not be used. Organization-specific state files are now used (e.g., '${this.getStateFileName()}'). ` +
           `Please manually remove '${LEGACY_STATE_FILE}' to avoid confusion.`,
+      );
+    }
+  }
+
+  private cleanupOldMissingReposFiles(): void {
+    try {
+      if (!existsSync(this.outputDir)) {
+        return;
+      }
+
+      const sanitizedOrg = this.sanitizeFilename(this.organizationName);
+      const pattern = `${sanitizedOrg}-missing-repos-`;
+
+      const files = readdirSync(this.outputDir);
+      const missingReposFiles = files.filter(
+        (file) => file.startsWith(pattern) && file.endsWith('.csv'),
+      );
+
+      if (missingReposFiles.length > 0) {
+        this.logger.debug(
+          `Cleaning up ${missingReposFiles.length} old missing repos file(s) for ${this.organizationName}`,
+        );
+        for (const file of missingReposFiles) {
+          const filePath = join(this.outputDir, file);
+          unlinkSync(filePath);
+          this.logger.debug(`Removed old missing repos file: ${file}`);
+        }
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Failed to cleanup old missing repos files: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
       );
     }
   }
@@ -114,7 +148,10 @@ export class StateManager {
     return null;
   }
 
-  public initialize(resumeFromLastSave?: boolean): {
+  public initialize(
+    resumeFromLastSave?: boolean,
+    forceFreshStart?: boolean,
+  ): {
     processedState: ProcessedPageState;
     resumeFromLastState: boolean;
   } {
@@ -131,6 +168,17 @@ export class StateManager {
 
     // Check for legacy state file and warn user
     this.checkLegacyStateFile();
+
+    // Clean up old missing repos files from previous runs
+    this.cleanupOldMissingReposFiles();
+
+    // Force fresh start if requested
+    if (forceFreshStart) {
+      this.logger.info(
+        'Force fresh start requested. Ignoring any existing state.',
+      );
+      return { processedState, resumeFromLastState: false };
+    }
 
     let resumeFromLastState = false;
     const stateFilePath = this.getStateFilePath();

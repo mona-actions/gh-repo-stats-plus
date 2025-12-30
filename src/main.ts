@@ -408,6 +408,7 @@ async function _runWithOrg(
 
     const { processedState, resumeFromLastState } = stateManager.initialize(
       opts.resumeFromLastSave || false,
+      opts.forceFreshStart || false,
     );
 
     let fileName = '';
