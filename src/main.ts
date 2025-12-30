@@ -16,6 +16,7 @@ import {
 import { createLogger, logInitialization } from './logger.js';
 import { createAuthConfig } from './auth.js';
 import { StateManager } from './state.js';
+import { SessionManager } from './session.js';
 import {
   appendFileSync,
   existsSync,
@@ -39,13 +40,34 @@ interface ProcessingContext {
   logger: Logger;
   client: OctokitClient;
   fileName: string;
+  processedState?: ProcessedPageState;
+  retryConfig: RetryConfig;
+  stateManager?: StateManager;
+  orgsToProcess: string[];
+  sessionManager?: SessionManager;
+  resumeFromOrgIndex: number;
+}
+
+interface OrgProcessingContext {
+  opts: Arguments;
+  logger: Logger;
+  client: OctokitClient;
+  fileName: string;
   processedState: ProcessedPageState;
   retryConfig: RetryConfig;
   stateManager: StateManager;
 }
 
 const _init = async (opts: Arguments): Promise<ProcessingContext> => {
-  const logFileName = `${opts.orgName!}-repo-stats-${
+  // Determine which orgs to process first
+  const { orgList, orgName } = opts;
+  const hasOrgList = orgList && Array.isArray(orgList) && orgList.length > 0;
+  const singleOrg = orgName && !hasOrgList ? [orgName] : [];
+  const orgsToProcess = hasOrgList ? orgList : singleOrg;
+
+  // Use first org name for log file, or 'multi-org' if processing multiple
+  const orgForLog = orgsToProcess.length === 1 ? orgsToProcess[0] : 'multi-org';
+  const logFileName = `${orgForLog}-repo-stats-${
     new Date().toISOString().split('T')[0]
   }.log`;
   const logger = await createLogger(opts.verbose, logFileName);
@@ -64,32 +86,40 @@ const _init = async (opts: Arguments): Promise<ProcessingContext> => {
 
   const client = new OctokitClient(octokit);
 
-  const outputDir = opts.outputDir || 'output';
-  const stateManager = new StateManager(outputDir, opts.orgName!, logger);
-
-  logger.debug(
-    `resumeFromLastSave option value: ${
-      opts.resumeFromLastSave
-    } (type: ${typeof opts.resumeFromLastSave})`,
-  );
-
-  const { processedState, resumeFromLastState } = stateManager.initialize(
-    opts.resumeFromLastSave || false,
-  );
-
+  // Only initialize StateManager for single-org mode
+  let stateManager: StateManager | undefined;
+  let processedState: ProcessedPageState | undefined;
   let fileName = '';
-  if (resumeFromLastState) {
-    fileName = processedState.outputFileName || '';
-    logger.info(`Resuming from last state. Using existing file: ${fileName}`);
-  } else {
-    const baseFileName = generateRepoStatsFileName(opts.orgName!);
-    fileName = await resolveOutputPath(opts.outputDir, baseFileName);
 
-    initializeCsvFile(fileName, logger);
-    logger.info(`Results will be saved to file: ${fileName}`);
+  if (orgsToProcess.length === 1 && orgName) {
+    const outputDir = opts.outputDir || 'output';
+    stateManager = new StateManager(outputDir, orgName, logger);
 
-    processedState.outputFileName = fileName;
-    stateManager.update(processedState, {});
+    logger.debug(
+      `resumeFromLastSave option value: ${
+        opts.resumeFromLastSave
+      } (type: ${typeof opts.resumeFromLastSave})`,
+    );
+
+    const initResult = stateManager.initialize(
+      opts.resumeFromLastSave || false,
+    );
+    processedState = initResult.processedState;
+    const resumeFromLastState = initResult.resumeFromLastState;
+
+    if (resumeFromLastState) {
+      fileName = processedState.outputFileName || '';
+      logger.info(`Resuming from last state. Using existing file: ${fileName}`);
+    } else {
+      const baseFileName = generateRepoStatsFileName(orgName);
+      fileName = await resolveOutputPath(opts.outputDir, baseFileName);
+
+      initializeCsvFile(fileName, logger);
+      logger.info(`Results will be saved to file: ${fileName}`);
+
+      processedState.outputFileName = fileName;
+      stateManager.update(processedState, {});
+    }
   }
 
   const retryConfig: RetryConfig = {
@@ -100,6 +130,30 @@ const _init = async (opts: Arguments): Promise<ProcessingContext> => {
     successThreshold: opts.retrySuccessThreshold || 5,
   };
 
+  // Initialize SessionManager for multi-org coordination
+  let sessionManager: SessionManager | undefined;
+  let resumeFromOrgIndex = 0;
+  if (orgsToProcess.length > 1) {
+    const outputDir = opts.outputDir || 'output';
+    sessionManager = new SessionManager(outputDir, logger);
+    const sessionSettings = {
+      delayBetweenOrgs: opts.delayBetweenOrgs || 5,
+      continueOnError: opts.continueOnError || false,
+      outputDir,
+    };
+    const sessionInit = sessionManager.initialize(
+      orgsToProcess,
+      sessionSettings,
+      opts.resumeFromLastSave,
+    );
+    resumeFromOrgIndex = sessionInit.currentOrgIndex;
+    if (sessionInit.canResume) {
+      logger.info(
+        `Resuming session from organization ${resumeFromOrgIndex + 1} of ${orgsToProcess.length}`,
+      );
+    }
+  }
+
   return {
     opts,
     logger,
@@ -108,24 +162,18 @@ const _init = async (opts: Arguments): Promise<ProcessingContext> => {
     processedState,
     retryConfig,
     stateManager,
+    orgsToProcess,
+    sessionManager,
+    resumeFromOrgIndex,
   };
 };
 
 export async function run(opts: Arguments): Promise<void> {
   const context = await _init(opts);
 
-  const {
-    orgList,
-    orgName,
-    delayBetweenOrgs = 5,
-    continueOnError = false,
-  } = opts;
-  const { logger } = context;
+  const { delayBetweenOrgs = 5, continueOnError = false } = opts;
+  const { logger, orgsToProcess, sessionManager, resumeFromOrgIndex } = context;
 
-  const hasOrgList = orgList && Array.isArray(orgList) && orgList.length > 0;
-  const singleOrg = orgName && !hasOrgList ? [orgName] : [];
-
-  const orgsToProcess = hasOrgList ? orgList : singleOrg;
   if (orgsToProcess.length === 0) {
     throw new Error('Either orgName or orgList must be provided');
   }
@@ -144,12 +192,48 @@ export async function run(opts: Arguments): Promise<void> {
   }
 
   const results: OrgProcessingResult[] = [];
-  for (const orgName of orgsToProcess) {
-    const isLastToProcess = results.length === orgsToProcess.length - 1;
+  for (let i = 0; i < orgsToProcess.length; i++) {
+    const orgName = orgsToProcess[i];
+    const isLastToProcess = i === orgsToProcess.length - 1;
+
+    // Skip orgs before resume index when resuming
+    if (sessionManager && i < resumeFromOrgIndex) {
+      logger.debug(
+        `Skipping org ${orgName} (before resume index ${resumeFromOrgIndex})`,
+      );
+      continue;
+    }
+
+    // Skip already completed orgs
+    if (sessionManager) {
+      const orgRef = sessionManager.getOrCreateOrgReference(orgName);
+      if (orgRef.status === 'completed') {
+        logger.info(`Organization ${orgName} already completed, skipping`);
+        continue;
+      }
+    }
+
+    // Update session: org is starting
+    if (sessionManager) {
+      sessionManager.updateOrgReference(orgName, {
+        status: 'in-progress',
+        startTime: new Date().toISOString(),
+      });
+    }
 
     // Process each organization
     const result = await _runWithOrg(orgName, context);
     results.push(result);
+
+    // Update session: org completed or failed
+    if (sessionManager) {
+      sessionManager.updateOrgReference(orgName, {
+        status: result.success ? 'completed' : 'failed',
+        endTime: new Date().toISOString(),
+        error: result.error || null,
+        reposProcessed: result.reposProcessed || 0,
+      });
+    }
 
     // If not continuing on error, and this org failed, stop processing
     if (!continueOnError && !result.success) {
@@ -201,7 +285,7 @@ export async function run(opts: Arguments): Promise<void> {
   }
 }
 
-async function _runWithContext(context: ProcessingContext): Promise<void> {
+async function _runWithContext(context: OrgProcessingContext): Promise<void> {
   const {
     opts,
     logger,
@@ -302,7 +386,7 @@ async function _runWithOrg(
   orgName: string,
   context: ProcessingContext,
 ): Promise<OrgProcessingResult> {
-  const { logger, opts } = context;
+  const { logger, opts, client, retryConfig } = context;
 
   logger.debug(`Starting processing for organization: ${orgName}`);
 
@@ -342,11 +426,13 @@ async function _runWithOrg(
     }
 
     // Create a new context for this org with the new stateManager
-    const orgContext: ProcessingContext = {
-      ...context,
+    const orgContext: OrgProcessingContext = {
       opts: { ...opts, orgName },
+      logger,
+      client,
       fileName,
       processedState,
+      retryConfig,
       stateManager,
     };
 
@@ -405,6 +491,13 @@ async function processMissingRepositories({
     `Found ${missingReposCount} missing repositories that need to be processed`,
   );
 
+  // Reset completedSuccessfully flag since we're now processing additional repos
+  processedState.completedSuccessfully = false;
+  stateManager.update(processedState, {});
+  logger.debug(
+    'Reset completedSuccessfully flag for missing repositories processing',
+  );
+
   // Create temporary file with missing repos
   const missingReposFile = `${opts.orgName!}-missing-repos-${new Date().getTime()}.txt`;
   writeFileSync(
@@ -438,6 +531,15 @@ async function processMissingRepositories({
         logger.info(
           `Completed processing ${missingResult.processedCount} out of ${missingReposCount} missing repositories`,
         );
+
+        // Mark as complete if all missing repos were processed
+        if (missingResult.isComplete) {
+          processedState.completedSuccessfully = true;
+          stateManager.update(processedState, {});
+          logger.info(
+            'All missing repositories processed successfully. Marking state as complete.',
+          );
+        }
 
         return missingResult;
       },
@@ -645,8 +747,8 @@ async function processRepositoriesFromFile({
 }): Promise<RepoProcessingResult> {
   logger.info(`Processing repositories from list: ${opts.repoList}`);
 
-  if (!opts.repoList) {
-    throw new Error('Repository list is required');
+  if (!opts.repoList || opts.repoList.length === 0) {
+    throw new Error('Repository list is required and cannot be empty');
   }
 
   let repoListRaw = Array.isArray(opts.repoList)
@@ -734,7 +836,7 @@ async function processRepositories({
     `Starting/Resuming from cursor: ${processedState.currentCursor}`,
   );
 
-  if (opts.repoList) {
+  if (opts.repoList && opts.repoList.length > 0) {
     return processRepositoriesFromFile({
       client,
       logger,

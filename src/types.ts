@@ -303,6 +303,37 @@ export interface RetryableOperation<T> {
   shouldRetry?: (error: Error) => boolean;
 }
 
+// Organization processing status
+export type OrgStatus = 'pending' | 'in-progress' | 'completed' | 'failed';
+
+// Reference to an org's state file in session
+export interface OrgReference {
+  stateFile: string; // filename only, assumes same directory
+  status: OrgStatus;
+  outputFile: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  reposProcessed: number;
+  error: string | null;
+}
+
+// Session state for multi-org processing
+export interface SessionState {
+  version: string;
+  sessionId: string;
+  mode: 'multi-org';
+  sessionStartTime: string;
+  orgList: string[];
+  currentOrgIndex: number;
+  settings: {
+    delayBetweenOrgs: number;
+    continueOnError: boolean;
+    outputDir: string;
+  };
+  orgReferences: Record<string, OrgReference>; // key = org name
+  lastUpdated: string;
+}
+
 export interface ProcessedPageState {
   organizationName: string;
   completedSuccessfully: boolean;
@@ -330,4 +361,5 @@ export interface OrgProcessingResult {
   startTime?: Date;
   endTime?: Date;
   elapsedTime?: string;
+  reposProcessed?: number;
 }

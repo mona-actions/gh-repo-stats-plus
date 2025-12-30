@@ -150,14 +150,6 @@ export class StateManager {
       return { processedState, resumeFromLastState };
     }
 
-    // Check if previous run completed successfully
-    if (lastState.completedSuccessfully) {
-      this.logger.info(
-        'Previous run completed successfully. Starting fresh run.',
-      );
-      return { processedState, resumeFromLastState };
-    }
-
     // Check if user wants to resume
     if (!resumeFromLastSave) {
       this.logger.info(
@@ -166,12 +158,31 @@ export class StateManager {
       return { processedState, resumeFromLastState };
     }
 
+    // Check if previous run completed successfully with no repos processed
+    // (meaning it was an empty run, so there's nothing to resume from)
+    if (
+      lastState.completedSuccessfully &&
+      (!lastState.processedRepos || lastState.processedRepos.length === 0)
+    ) {
+      this.logger.info(
+        'Previous run completed successfully with no repositories processed. Starting fresh run.',
+      );
+      return { processedState, resumeFromLastState };
+    }
+
     // Resume from last state
     processedState = lastState;
     resumeFromLastState = true;
-    this.logger.info(
-      `Resuming from last state (last updated: ${lastState.lastUpdated})`,
-    );
+
+    if (lastState.completedSuccessfully) {
+      this.logger.info(
+        `Resuming from completed state with ${lastState.processedRepos.length} previously processed repositories (will skip them)`,
+      );
+    } else {
+      this.logger.info(
+        `Resuming from incomplete state (last updated: ${lastState.lastUpdated})`,
+      );
+    }
 
     return { processedState, resumeFromLastState };
   }
