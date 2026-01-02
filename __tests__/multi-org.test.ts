@@ -69,6 +69,7 @@ vi.mock('../src/state.js', () => ({
 vi.mock('../src/service.js', () => ({
   OctokitClient: vi.fn().mockImplementation(() => ({
     getOrgRepoStats: vi.fn().mockReturnValue({
+      // eslint-disable-next-line require-yield
       async *[Symbol.asyncIterator]() {
         // Empty iterator for testing
         return;
@@ -172,6 +173,7 @@ describe('Multi-Org Processing', () => {
             throw new Error('Processing failed for org2');
           }
           return {
+            // eslint-disable-next-line require-yield
             async *[Symbol.asyncIterator]() {
               return;
             },
@@ -207,6 +209,7 @@ describe('Multi-Org Processing', () => {
             throw new Error('Processing failed for org2');
           }
           return {
+            // eslint-disable-next-line require-yield
             async *[Symbol.asyncIterator]() {
               return;
             },
@@ -395,6 +398,7 @@ describe('Multi-Org Processing', () => {
             throw new Error('Processing failed for org2');
           }
           return {
+            // eslint-disable-next-line require-yield
             async *[Symbol.asyncIterator]() {
               return;
             },

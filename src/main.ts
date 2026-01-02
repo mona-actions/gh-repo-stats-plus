@@ -754,11 +754,11 @@ async function processRepositoriesFromFile({
     throw new Error('Repository list is required and cannot be empty');
   }
 
-  let repoListRaw = Array.isArray(opts.repoList)
+  const repoListRaw = Array.isArray(opts.repoList)
     ? opts.repoList
     : readFileSync(opts.repoList, 'utf-8').split('\n');
 
-  let repoList = repoListRaw
+  const repoList = repoListRaw
     .filter((line) => line.trim() !== '' && !line.trim().startsWith('#'))
     .map((line) => {
       const [owner, repo] = line.trim().split('/');
