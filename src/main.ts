@@ -1352,16 +1352,41 @@ export async function checkForMissingRepos({
     baseMissingReposFileName,
   );
 
-  logger.info('Checking for missing repositories in the organization');
+  logger.info('Checking for missing repositories');
   const missingRepos = [];
-  for await (const repo of client.listReposForOrg(org, per_page)) {
-    if (processedReposSet.has(repo.name.toLowerCase())) {
-      continue;
-    } else {
-      missingRepos.push(repo.name);
-      // write to csv file append
-      const csvRow = `${repo.name}\n`;
-      appendFileSync(missingReposFileName, csvRow);
+
+  if (opts.repoList && opts.repoList.length > 0) {
+    // Check missing repos from the provided repo list
+    logger.info('Checking against provided repo list');
+    const repoListRaw = Array.isArray(opts.repoList)
+      ? opts.repoList
+      : readFileSync(opts.repoList, 'utf-8').split('\n');
+
+    const repoList = repoListRaw
+      .filter((line) => line.trim() !== '' && !line.trim().startsWith('#'))
+      .map((line) => {
+        const parts = line.trim().split('/');
+        return parts.length > 1 ? parts[1] : parts[0];
+      });
+
+    for (const repoName of repoList) {
+      if (!processedReposSet.has(repoName.toLowerCase())) {
+        missingRepos.push(repoName);
+        const csvRow = `${repoName}\n`;
+        appendFileSync(missingReposFileName, csvRow);
+      }
+    }
+  } else {
+    // Check missing repos from all org repos
+    logger.info('Checking against all organization repositories');
+    for await (const repo of client.listReposForOrg(org, per_page)) {
+      if (processedReposSet.has(repo.name.toLowerCase())) {
+        continue;
+      } else {
+        missingRepos.push(repo.name);
+        const csvRow = `${repo.name}\n`;
+        appendFileSync(missingReposFileName, csvRow);
+      }
     }
   }
   logger.info(`Found ${missingRepos.length} missing repositories`);
