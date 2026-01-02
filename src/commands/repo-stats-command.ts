@@ -153,7 +153,6 @@ repoStatsCommand
       'Resume from the last saved state',
     )
       .env('RESUME_FROM_LAST_SAVE')
-      .default('false')
       .argParser(parseBooleanOption),
   )
   .addOption(
@@ -162,7 +161,6 @@ repoStatsCommand
       'Force a fresh start, ignoring any existing state (overrides resume-from-last-save)',
     )
       .env('FORCE_FRESH_START')
-      .default('false')
       .argParser(parseBooleanOption),
   )
   .addOption(
@@ -179,7 +177,6 @@ repoStatsCommand
       'Automatically process any missing repositories when main processing is complete',
     )
       .env('AUTO_PROCESS_MISSING')
-      .default('false')
       .argParser(parseBooleanOption),
   )
   .addOption(
@@ -193,7 +190,6 @@ repoStatsCommand
       'Remove state file after successful completion',
     )
       .env('CLEAN_STATE')
-      .default('false')
       .argParser(parseBooleanOption),
   )
   .addOption(
@@ -211,7 +207,6 @@ repoStatsCommand
       'Continue processing other organizations if one fails (for multi-org mode)',
     )
       .env('CONTINUE_ON_ERROR')
-      .default('false')
       .argParser(parseBooleanOption),
   )
   .action(async (options: Arguments) => {
