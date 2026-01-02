@@ -3,14 +3,30 @@ import {
   parseFloatOption,
   parseIntOption,
   parseBooleanOption,
+  parseFileAsNewlineSeparatedOption,
 } from '../utils.js';
 import { Arguments } from '../types.js';
 import VERSION from '../version.js';
 
-import { run, runMultiOrg } from '../main.js';
+import { run } from '../main.js';
+
+const { Option } = commander;
+
+function validate(opts: Arguments) {
+  if (!opts.orgName && !opts.orgList) {
+    throw new Error(
+      'Either orgName (-o, --org-name <org>) or orgList (--org-list <file>) must be provided',
+    );
+  }
+
+  if (opts.orgName && opts.orgList) {
+    throw new Error(
+      'Cannot specify both orgName (-o, --org-name <org>) and orgList (--org-list <file>)',
+    );
+  }
+}
 
 const repoStatsCommand = new commander.Command();
-const { Option } = commander;
 
 repoStatsCommand
   .name('repo-stats')
@@ -28,7 +44,9 @@ repoStatsCommand
     new Option(
       '--org-list <file>',
       'Path to file containing list of organizations to process (one org per line)',
-    ).env('ORG_LIST'),
+    )
+      .env('ORG_LIST')
+      .argParser(parseFileAsNewlineSeparatedOption),
   )
   .addOption(
     new Option('-t, --access-token <token>', 'GitHub access token').env(
@@ -135,14 +153,23 @@ repoStatsCommand
       'Resume from the last saved state',
     )
       .env('RESUME_FROM_LAST_SAVE')
-      .default('false')
+      .argParser(parseBooleanOption),
+  )
+  .addOption(
+    new Option(
+      '--force-fresh-start [value]',
+      'Force a fresh start, ignoring any existing state (overrides resume-from-last-save)',
+    )
+      .env('FORCE_FRESH_START')
       .argParser(parseBooleanOption),
   )
   .addOption(
     new Option(
       '--repo-list <file>',
       'Path to file containing list of repositories to process (format: owner/repo_name)',
-    ).env('REPO_LIST'),
+    )
+      .env('REPO_LIST')
+      .argParser(parseFileAsNewlineSeparatedOption),
   )
   .addOption(
     new Option(
@@ -150,7 +177,6 @@ repoStatsCommand
       'Automatically process any missing repositories when main processing is complete',
     )
       .env('AUTO_PROCESS_MISSING')
-      .default('false')
       .argParser(parseBooleanOption),
   )
   .addOption(
@@ -164,7 +190,6 @@ repoStatsCommand
       'Remove state file after successful completion',
     )
       .env('CLEAN_STATE')
-      .default('false')
       .argParser(parseBooleanOption),
   )
   .addOption(
@@ -182,33 +207,16 @@ repoStatsCommand
       'Continue processing other organizations if one fails (for multi-org mode)',
     )
       .env('CONTINUE_ON_ERROR')
-      .default('false')
       .argParser(parseBooleanOption),
   )
   .action(async (options: Arguments) => {
     console.log('Version:', VERSION);
 
-    // Validate that either org-name or org-list is provided
-    if (!options.orgName && !options.orgList) {
-      console.error('Error: Either --org-name or --org-list must be provided');
-      process.exit(1);
-    }
-
-    if (options.orgName && options.orgList) {
-      console.error('Error: Cannot specify both --org-name and --org-list');
-      process.exit(1);
-    }
+    console.log('Validating options...');
+    validate(options);
 
     console.log('Starting repo-stats...');
-
-    if (options.orgList) {
-      // Multi-org processing
-      await runMultiOrg(options);
-    } else {
-      // Single org processing
-      await run(options);
-    }
-
+    await run(options);
     console.log('Repo-stats completed.');
   });
 
