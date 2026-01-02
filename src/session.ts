@@ -11,7 +11,7 @@ import { randomBytes } from 'crypto';
 
 const SESSION_FILE_NAME = 'current_session.json';
 
-function generateSessionId(): string {  
+function generateSessionId(): string {
   // Timestamp-based ID with cryptographically secure random suffix
   const randomPart = randomBytes(16).toString('hex');
   return `session-${Date.now()}-${randomPart}`;
