@@ -53,6 +53,7 @@ describe('StateManager', () => {
 
       expect(resumeFromLastState).toBe(false);
       expect(processedState).toEqual({
+        organizationName: 'test-org',
         currentCursor: null,
         processedRepos: [],
         lastSuccessfulCursor: null,
@@ -66,7 +67,7 @@ describe('StateManager', () => {
       );
     });
 
-    it('should not resume from last state if completedSuccessfully is true', () => {
+    it('should resume from last state even if completedSuccessfully is true when repos were processed', () => {
       vi.mocked(existsSync).mockReturnValue(true);
       vi.mocked(readFileSync).mockReturnValue(
         JSON.stringify({
@@ -87,10 +88,38 @@ describe('StateManager', () => {
       const { processedState, resumeFromLastState } =
         stateManager.initialize(true);
 
+      expect(resumeFromLastState).toBe(true);
+      expect(processedState.processedRepos).toEqual(['repo1', 'repo2']);
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Resuming from completed state with 2 previously processed repositories (will skip them)',
+      );
+    });
+
+    it('should not resume from completed state with no repos processed', () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(readFileSync).mockReturnValue(
+        JSON.stringify({
+          completedSuccessfully: true,
+          processedRepos: [],
+          currentCursor: null,
+          lastSuccessfulCursor: null,
+          lastProcessedRepo: null,
+          lastUpdated: '2025-03-19T12:00:00Z',
+        }),
+      );
+
+      const stateManager = new StateManager(
+        outputDir,
+        organizationName,
+        mockLogger,
+      );
+      const { processedState, resumeFromLastState } =
+        stateManager.initialize(true);
+
       expect(resumeFromLastState).toBe(false);
       expect(processedState.processedRepos).toEqual([]);
       expect(mockLogger.info).toHaveBeenCalledWith(
-        'Previous run completed successfully. Starting fresh run.',
+        'Previous run completed successfully with no repositories processed. Starting fresh run.',
       );
     });
 
@@ -126,7 +155,7 @@ describe('StateManager', () => {
       expect(processedState.completedSuccessfully).toBe(false);
 
       expect(mockLogger.info).toHaveBeenCalledWith(
-        'Resuming from last state (last updated: 2025-03-19T12:00:00Z)',
+        'Resuming from incomplete state (last updated: 2025-03-19T12:00:00Z)',
       );
     });
 

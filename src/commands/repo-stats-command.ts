@@ -3,24 +3,50 @@ import {
   parseFloatOption,
   parseIntOption,
   parseBooleanOption,
+  parseFileAsNewlineSeparatedOption,
 } from '../utils.js';
 import { Arguments } from '../types.js';
 import VERSION from '../version.js';
 
 import { run } from '../main.js';
 
-const repoStatsCommand = new commander.Command();
 const { Option } = commander;
+
+function validate(opts: Arguments) {
+  if (!opts.orgName && !opts.orgList) {
+    throw new Error(
+      'Either orgName (-o, --org-name <org>) or orgList (--org-list <file>) must be provided',
+    );
+  }
+
+  if (opts.orgName && opts.orgList) {
+    throw new Error(
+      'Cannot specify both orgName (-o, --org-name <org>) and orgList (--org-list <file>)',
+    );
+  }
+}
+
+const repoStatsCommand = new commander.Command();
 
 repoStatsCommand
   .name('repo-stats')
-  .description('Gathers repo-stats for all repositories in an organization')
+  .description(
+    'Gathers repo-stats for all repositories in an organization or multiple organizations',
+  )
   .version(VERSION)
   .addOption(
     new Option(
       '-o, --org-name <org>',
       'The name of the organization to process',
     ).env('ORG_NAME'),
+  )
+  .addOption(
+    new Option(
+      '--org-list <file>',
+      'Path to file containing list of organizations to process (one org per line)',
+    )
+      .env('ORG_LIST')
+      .argParser(parseFileAsNewlineSeparatedOption),
   )
   .addOption(
     new Option('-t, --access-token <token>', 'GitHub access token').env(
@@ -127,14 +153,23 @@ repoStatsCommand
       'Resume from the last saved state',
     )
       .env('RESUME_FROM_LAST_SAVE')
-      .default('false')
+      .argParser(parseBooleanOption),
+  )
+  .addOption(
+    new Option(
+      '--force-fresh-start [value]',
+      'Force a fresh start, ignoring any existing state (overrides resume-from-last-save)',
+    )
+      .env('FORCE_FRESH_START')
       .argParser(parseBooleanOption),
   )
   .addOption(
     new Option(
       '--repo-list <file>',
       'Path to file containing list of repositories to process (format: owner/repo_name)',
-    ).env('REPO_LIST'),
+    )
+      .env('REPO_LIST')
+      .argParser(parseFileAsNewlineSeparatedOption),
   )
   .addOption(
     new Option(
@@ -142,7 +177,6 @@ repoStatsCommand
       'Automatically process any missing repositories when main processing is complete',
     )
       .env('AUTO_PROCESS_MISSING')
-      .default('false')
       .argParser(parseBooleanOption),
   )
   .addOption(
@@ -156,11 +190,30 @@ repoStatsCommand
       'Remove state file after successful completion',
     )
       .env('CLEAN_STATE')
-      .default('false')
+      .argParser(parseBooleanOption),
+  )
+  .addOption(
+    new Option(
+      '--delay-between-orgs <seconds>',
+      'Delay between processing organizations in seconds (for multi-org mode)',
+    )
+      .env('DELAY_BETWEEN_ORGS')
+      .default('5')
+      .argParser(parseIntOption),
+  )
+  .addOption(
+    new Option(
+      '--continue-on-error [value]',
+      'Continue processing other organizations if one fails (for multi-org mode)',
+    )
+      .env('CONTINUE_ON_ERROR')
       .argParser(parseBooleanOption),
   )
   .action(async (options: Arguments) => {
     console.log('Version:', VERSION);
+
+    console.log('Validating options...');
+    validate(options);
 
     console.log('Starting repo-stats...');
     await run(options);
