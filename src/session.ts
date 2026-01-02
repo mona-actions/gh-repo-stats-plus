@@ -7,12 +7,14 @@ import {
 } from 'fs';
 import { join } from 'path';
 import { Logger, SessionState, OrgReference, OrgStatus } from './types.js';
+import { randomBytes } from 'crypto';
 
 const SESSION_FILE_NAME = 'current_session.json';
 
-function generateSessionId(): string {
-  // Simple timestamp-based ID
-  return `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+function generateSessionId(): string {  
+  // Timestamp-based ID with cryptographically secure random suffix
+  const randomPart = randomBytes(16).toString('hex');
+  return `session-${Date.now()}-${randomPart}`;
 }
 
 export class SessionManager {
