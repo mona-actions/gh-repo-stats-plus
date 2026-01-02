@@ -4,13 +4,7 @@ import { SessionState, OrgStatus } from '../src/types.js';
 import { createMockLogger } from './test-utils.js';
 
 // Import fs functions individually
-import {
-  existsSync,
-  readFileSync,
-  writeFileSync,
-  mkdirSync,
-  unlinkSync,
-} from 'fs';
+import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
 
 // Mock the fs module
 vi.mock('fs', () => ({
@@ -349,18 +343,6 @@ describe('SessionManager', () => {
       expect(state).not.toBeNull();
       expect(state?.orgList).toEqual(['org1', 'org2', 'org3']);
       expect(state?.currentOrgIndex).toBe(0);
-    });
-
-    it('should update current org index', () => {
-      vi.mocked(existsSync).mockReturnValue(false);
-
-      const manager = new SessionManager(outputDir, mockLogger);
-      manager.initialize(orgList, settings, false);
-
-      manager.updateCurrentOrgIndex(2);
-
-      const state = manager.getState();
-      expect(state?.currentOrgIndex).toBe(2);
     });
   });
 

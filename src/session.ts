@@ -215,18 +215,6 @@ export class SessionManager {
 
     // Update lastUpdated
     this.sessionState.lastUpdated = new Date().toISOString();
-  }
-
-  /**
-   * Update the current org index
-   */
-  public updateCurrentOrgIndex(index: number): void {
-    if (!this.sessionState) {
-      throw new Error('Session not initialized');
-    }
-
-    this.sessionState.currentOrgIndex = index;
-    this.sessionState.lastUpdated = new Date().toISOString();
     this.save();
   }
 

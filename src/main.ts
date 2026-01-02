@@ -103,6 +103,7 @@ const _init = async (opts: Arguments): Promise<ProcessingContext> => {
 
     const initResult = stateManager.initialize(
       opts.resumeFromLastSave || false,
+      opts.forceFreshStart || false,
     );
     processedState = initResult.processedState;
     const resumeFromLastState = initResult.resumeFromLastState;
@@ -441,6 +442,7 @@ async function _runWithOrg(
     result.endTime = new Date();
 
     result.elapsedTime = formatElapsedTime(result.startTime, result.endTime);
+    result.reposProcessed = processedState.processedRepos.length;
     result.success = true;
 
     logger.info(

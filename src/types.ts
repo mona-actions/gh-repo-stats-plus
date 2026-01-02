@@ -10,7 +10,7 @@ export interface Logger {
 export interface Arguments {
   // context
   orgName: string | undefined;
-  orgList: string[] | string | undefined;
+  orgList: string[];
 
   // octokit
   baseUrl: string;

@@ -147,18 +147,6 @@ describe('Multi-Org Processing', () => {
       // Should complete without error - logs will show processing of all 3 orgs
     });
 
-    it('should prefer orgList over orgName when both are provided', async () => {
-      const args: Partial<Arguments> = {
-        orgName: 'single-org',
-        orgList: ['org1', 'org2'],
-        accessToken: 'token',
-        delayBetweenOrgs: 0,
-      };
-
-      await run(args as Arguments);
-      // orgList should take precedence
-    });
-
     it('should handle empty orgList array by throwing error', async () => {
       const args: Partial<Arguments> = {
         orgList: [],
