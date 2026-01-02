@@ -199,6 +199,7 @@ export class SessionManager {
 
   /**
    * Update org reference with new data
+   * Automatically advances currentOrgIndex when status changes to 'completed' or 'failed'
    */
   public updateOrgReference(
     orgName: string,
@@ -209,13 +210,41 @@ export class SessionManager {
     }
 
     const orgRef = this.getOrCreateOrgReference(orgName);
+    const previousStatus = orgRef.status;
 
     // Apply updates
     Object.assign(orgRef, updates);
 
+    // Advance currentOrgIndex when transitioning to a terminal state (completed or failed)
+    const isTerminalStatus =
+      updates.status === 'completed' || updates.status === 'failed';
+    const wasNotTerminal =
+      previousStatus !== 'completed' && previousStatus !== 'failed';
+
+    if (isTerminalStatus && wasNotTerminal) {
+      this.advanceOrgIndex();
+    }
+
     // Update lastUpdated
     this.sessionState.lastUpdated = new Date().toISOString();
     this.save();
+  }
+
+  /**
+   * Advance the current org index to the next organization
+   * This is called automatically by updateOrgReference when an org completes or fails
+   */
+  private advanceOrgIndex(): void {
+    if (!this.sessionState) {
+      throw new Error('Session not initialized');
+    }
+
+    if (this.sessionState.currentOrgIndex < this.sessionState.orgList.length) {
+      this.sessionState.currentOrgIndex++;
+      this.logger.debug(
+        `Advanced org index to ${this.sessionState.currentOrgIndex} of ${this.sessionState.orgList.length}`,
+      );
+    }
   }
 
   /**
