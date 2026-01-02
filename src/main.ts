@@ -761,7 +761,26 @@ async function processRepositoriesFromFile({
     .map((line) => {
       const [owner, repo] = line.trim().split('/');
       return { owner, repo };
-    });
+    })
+    .filter(({ owner }) => owner.toLowerCase() === opts.orgName!.toLowerCase());
+
+  logger.info(
+    `Filtered to ${repoList.length} repositories for organization: ${opts.orgName}`,
+  );
+
+  if (repoList.length === 0) {
+    logger.info(
+      `No repositories in the list belong to organization: ${opts.orgName}`,
+    );
+    return {
+      cursor: null,
+      processedRepos: processedState.processedRepos,
+      processedCount: 0,
+      isComplete: true,
+      successCount: state.successCount,
+      retryCount: state.retryCount,
+    };
+  }
 
   let processedCount = 0;
 
@@ -1366,10 +1385,16 @@ export async function checkForMissingRepos({
       .filter((line) => line.trim() !== '' && !line.trim().startsWith('#'))
       .map((line) => {
         const parts = line.trim().split('/');
-        return parts.length > 1 ? parts[1] : parts[0];
-      });
+        return {
+          owner: parts.length > 1 ? parts[0] : '',
+          repo: parts.length > 1 ? parts[1] : parts[0],
+        };
+      })
+      .filter(({ owner }) => !owner || owner.toLowerCase() === org);
 
-    for (const repoName of repoList) {
+    logger.info(`Found ${repoList.length} repos for ${org} in repo list`);
+
+    for (const { repo: repoName } of repoList) {
       if (!processedReposSet.has(repoName.toLowerCase())) {
         missingRepos.push(repoName);
         const csvRow = `${repoName}\n`;
