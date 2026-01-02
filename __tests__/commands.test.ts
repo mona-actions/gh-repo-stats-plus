@@ -13,7 +13,7 @@ describe('Commands', () => {
     it('should be defined with correct name and description', () => {
       expect(repoStatsCommand.name()).toBe('repo-stats');
       expect(repoStatsCommand.description()).toBe(
-        'Gathers repo-stats for all repositories in an organization',
+        'Gathers repo-stats for all repositories in an organization or multiple organizations',
       );
     });
 
@@ -31,6 +31,9 @@ describe('Commands', () => {
       expect(optionNames).toContain('--clean-state');
       expect(optionNames).toContain('--resume-from-last-save');
       expect(optionNames).toContain('--auto-process-missing');
+      expect(optionNames).toContain('--org-list');
+      expect(optionNames).toContain('--delay-between-orgs');
+      expect(optionNames).toContain('--continue-on-error');
     });
 
     it('should have default values for certain options', () => {
@@ -98,6 +101,31 @@ describe('Commands', () => {
         'Remove state file after successful completion',
       );
       expect(cleanStateOption?.envVar).toBe('CLEAN_STATE');
+    });
+
+    it('should have multi-org options properly configured', () => {
+      const orgListOption = repoStatsCommand.options.find(
+        (opt) => opt.long === '--org-list',
+      );
+      expect(orgListOption).toBeDefined();
+      expect(orgListOption?.description).toContain('list of organizations');
+      expect(orgListOption?.envVar).toBe('ORG_LIST');
+
+      const delayOption = repoStatsCommand.options.find(
+        (opt) => opt.long === '--delay-between-orgs',
+      );
+      expect(delayOption).toBeDefined();
+      expect(delayOption?.defaultValue).toBe('5');
+      expect(delayOption?.envVar).toBe('DELAY_BETWEEN_ORGS');
+
+      const continueOnErrorOption = repoStatsCommand.options.find(
+        (opt) => opt.long === '--continue-on-error',
+      );
+      expect(continueOnErrorOption).toBeDefined();
+      expect(continueOnErrorOption?.description).toContain(
+        'Continue processing',
+      );
+      expect(continueOnErrorOption?.envVar).toBe('CONTINUE_ON_ERROR');
     });
   });
 
@@ -173,6 +201,81 @@ describe('Commands', () => {
       expect(missingReposCommand).toBeDefined();
       expect(typeof missingReposCommand.parse).toBe('function');
       expect(typeof missingReposCommand.parseAsync).toBe('function');
+    });
+  });
+
+  describe('Command line integration - multi-org options', () => {
+    it('should parse --delay-between-orgs from command line', () => {
+      const option = repoStatsCommand.options.find(
+        (opt) => opt.long === '--delay-between-orgs',
+      );
+
+      expect(option).toBeDefined();
+      expect(option?.description).toContain('Delay between processing');
+      expect(option?.defaultValue).toBe('5');
+      expect(option?.argParser).toBeDefined(); // parseIntOption
+    });
+
+    it('should parse --continue-on-error flag correctly', () => {
+      const option = repoStatsCommand.options.find(
+        (opt) => opt.long === '--continue-on-error',
+      );
+
+      expect(option).toBeDefined();
+      expect(option?.description).toContain('Continue processing');
+    });
+
+    it('should read ORG_LIST from environment variable', () => {
+      const option = repoStatsCommand.options.find(
+        (opt) => opt.long === '--org-list',
+      );
+
+      expect(option).toBeDefined();
+      expect(option?.envVar).toBe('ORG_LIST');
+      expect(option?.description).toContain('list of organizations');
+    });
+
+    it('should read DELAY_BETWEEN_ORGS from environment variable', () => {
+      const option = repoStatsCommand.options.find(
+        (opt) => opt.long === '--delay-between-orgs',
+      );
+
+      expect(option).toBeDefined();
+      expect(option?.envVar).toBe('DELAY_BETWEEN_ORGS');
+    });
+
+    it('should read CONTINUE_ON_ERROR from environment variable', () => {
+      const option = repoStatsCommand.options.find(
+        (opt) => opt.long === '--continue-on-error',
+      );
+
+      expect(option).toBeDefined();
+      expect(option?.envVar).toBe('CONTINUE_ON_ERROR');
+    });
+
+    it('should use parseIntOption for delay parsing', () => {
+      const option = repoStatsCommand.options.find(
+        (opt) => opt.long === '--delay-between-orgs',
+      );
+
+      expect(option?.argParser).toBeDefined();
+      // The argParser is parseIntOption which converts string to int
+      // We just verify it's defined - the actual parsing is tested in utils.test.ts
+    });
+
+    it('should have all required multi-org options configured', () => {
+      const multiOrgOptions = [
+        '--org-list',
+        '--delay-between-orgs',
+        '--continue-on-error',
+      ];
+
+      multiOrgOptions.forEach((optionName) => {
+        const option = repoStatsCommand.options.find(
+          (opt) => opt.long === optionName,
+        );
+        expect(option).toBeDefined();
+      });
     });
   });
 });

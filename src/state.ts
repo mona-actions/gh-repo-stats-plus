@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdirSync,
   unlinkSync,
+  readdirSync,
 } from 'fs';
 import { join } from 'path';
 import { Logger, ProcessedPageState } from './types.js';
@@ -47,6 +48,39 @@ export class StateManager {
     }
   }
 
+  private cleanupOldMissingReposFiles(): void {
+    try {
+      if (!existsSync(this.outputDir)) {
+        return;
+      }
+
+      const sanitizedOrg = this.sanitizeFilename(this.organizationName);
+      const pattern = `${sanitizedOrg}-missing-repos-`;
+
+      const files = readdirSync(this.outputDir);
+      const missingReposFiles = files.filter(
+        (file) => file.startsWith(pattern) && file.endsWith('.csv'),
+      );
+
+      if (missingReposFiles.length > 0) {
+        this.logger.debug(
+          `Cleaning up ${missingReposFiles.length} old missing repos file(s) for ${this.organizationName}`,
+        );
+        for (const file of missingReposFiles) {
+          const filePath = join(this.outputDir, file);
+          unlinkSync(filePath);
+          this.logger.debug(`Removed old missing repos file: ${file}`);
+        }
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Failed to cleanup old missing repos files: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  }
+
   private save(state: ProcessedPageState): void {
     try {
       // Ensure output directory exists
@@ -55,8 +89,14 @@ export class StateManager {
         mkdirSync(this.outputDir, { recursive: true });
       }
 
+      // Ensure organizationName is set in the state
+      const stateToSave = {
+        ...state,
+        organizationName: this.organizationName,
+      };
+
       const stateFilePath = this.getStateFilePath();
-      writeFileSync(stateFilePath, JSON.stringify(state, null, 2));
+      writeFileSync(stateFilePath, JSON.stringify(stateToSave, null, 2));
       this.logger.debug(`Saved last state to ${stateFilePath}`);
     } catch (error) {
       this.logger.error(`Failed to save last state: ${error}`);
@@ -87,6 +127,8 @@ export class StateManager {
 
         return {
           ...parsedState,
+          organizationName:
+            parsedState.organizationName || this.organizationName,
           currentCursor: parsedState.currentCursor || null,
           lastSuccessfulCursor: parsedState.lastSuccessfulCursor || null,
           lastProcessedRepo: parsedState.lastProcessedRepo || null,
@@ -102,23 +144,19 @@ export class StateManager {
           error instanceof Error ? error.message : String(error)
         }`,
       );
-      const stateFilePath = this.getStateFilePath();
-      this.logger.debug(
-        `State file contents: ${
-          existsSync(stateFilePath)
-            ? readFileSync(stateFilePath, 'utf-8')
-            : 'file not found'
-        }`,
-      );
     }
     return null;
   }
 
-  public initialize(resumeFromLastSave?: boolean): {
+  public initialize(
+    resumeFromLastSave?: boolean,
+    forceFreshStart?: boolean,
+  ): {
     processedState: ProcessedPageState;
     resumeFromLastState: boolean;
   } {
     let processedState: ProcessedPageState = {
+      organizationName: this.organizationName,
       currentCursor: null,
       processedRepos: [],
       lastSuccessfulCursor: null,
@@ -130,6 +168,17 @@ export class StateManager {
 
     // Check for legacy state file and warn user
     this.checkLegacyStateFile();
+
+    // Clean up old missing repos files from previous runs
+    this.cleanupOldMissingReposFiles();
+
+    // Force fresh start if requested
+    if (forceFreshStart) {
+      this.logger.info(
+        'Force fresh start requested. Ignoring any existing state.',
+      );
+      return { processedState, resumeFromLastState: false };
+    }
 
     let resumeFromLastState = false;
     const stateFilePath = this.getStateFilePath();
@@ -149,14 +198,6 @@ export class StateManager {
       return { processedState, resumeFromLastState };
     }
 
-    // Check if previous run completed successfully
-    if (lastState.completedSuccessfully) {
-      this.logger.info(
-        'Previous run completed successfully. Starting fresh run.',
-      );
-      return { processedState, resumeFromLastState };
-    }
-
     // Check if user wants to resume
     if (!resumeFromLastSave) {
       this.logger.info(
@@ -165,12 +206,31 @@ export class StateManager {
       return { processedState, resumeFromLastState };
     }
 
+    // Check if previous run completed successfully with no repos processed
+    // (meaning it was an empty run, so there's nothing to resume from)
+    if (
+      lastState.completedSuccessfully &&
+      (!lastState.processedRepos || lastState.processedRepos.length === 0)
+    ) {
+      this.logger.info(
+        'Previous run completed successfully with no repositories processed. Starting fresh run.',
+      );
+      return { processedState, resumeFromLastState };
+    }
+
     // Resume from last state
     processedState = lastState;
     resumeFromLastState = true;
-    this.logger.info(
-      `Resuming from last state (last updated: ${lastState.lastUpdated})`,
-    );
+
+    if (lastState.completedSuccessfully) {
+      this.logger.info(
+        `Resuming from completed state with ${lastState.processedRepos.length} previously processed repositories (will skip them)`,
+      );
+    } else {
+      this.logger.info(
+        `Resuming from incomplete state (last updated: ${lastState.lastUpdated})`,
+      );
+    }
 
     return { processedState, resumeFromLastState };
   }
