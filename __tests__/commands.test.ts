@@ -45,17 +45,41 @@ describe('Commands', () => {
       const pageSizeOption = repoStatsCommand.options.find(
         (opt) => opt.long === '--page-size',
       );
-      expect(pageSizeOption?.defaultValue).toBe('10');
+      expect(pageSizeOption?.defaultValue).toBe(10);
 
       const extraPageSizeOption = repoStatsCommand.options.find(
         (opt) => opt.long === '--extra-page-size',
       );
-      expect(extraPageSizeOption?.defaultValue).toBe('25');
+      expect(extraPageSizeOption?.defaultValue).toBe(25);
 
       const outputDirOption = repoStatsCommand.options.find(
         (opt) => opt.long === '--output-dir',
       );
       expect(outputDirOption?.defaultValue).toBe('output');
+    });
+
+    it('should have numeric defaults as numbers not strings', () => {
+      // This test ensures defaults are properly typed as numbers
+      // If defaults were strings like '10', these would fail
+      const numericOptions = [
+        { name: '--page-size', expected: 10 },
+        { name: '--extra-page-size', expected: 25 },
+        { name: '--rate-limit-check-interval', expected: 60 },
+        { name: '--retry-max-attempts', expected: 3 },
+        { name: '--retry-initial-delay', expected: 1000 },
+        { name: '--retry-max-delay', expected: 30000 },
+        { name: '--retry-backoff-factor', expected: 2 },
+        { name: '--retry-success-threshold', expected: 5 },
+        { name: '--delay-between-orgs', expected: 5 },
+      ];
+
+      numericOptions.forEach(({ name, expected }) => {
+        const option = repoStatsCommand.options.find(
+          (opt) => opt.long === name,
+        );
+        expect(option?.defaultValue).toBe(expected);
+        expect(typeof option?.defaultValue).toBe('number');
+      });
     });
 
     it('should have environment variable mappings', () => {
@@ -115,7 +139,7 @@ describe('Commands', () => {
         (opt) => opt.long === '--delay-between-orgs',
       );
       expect(delayOption).toBeDefined();
-      expect(delayOption?.defaultValue).toBe('5');
+      expect(delayOption?.defaultValue).toBe(5);
       expect(delayOption?.envVar).toBe('DELAY_BETWEEN_ORGS');
 
       const continueOnErrorOption = repoStatsCommand.options.find(
@@ -202,6 +226,52 @@ describe('Commands', () => {
       expect(typeof missingReposCommand.parse).toBe('function');
       expect(typeof missingReposCommand.parseAsync).toBe('function');
     });
+
+    it('should parse default numeric options as numbers, not strings', () => {
+      // Use parseOptions to parse without triggering the action
+      // This tests the actual repoStatsCommand configuration
+      repoStatsCommand.parseOptions(['-o', 'test-org', '-t', 'test-token']);
+      const opts = repoStatsCommand.opts();
+
+      // Verify numeric defaults are numbers (would fail if defaults were strings like '10')
+      expect(opts.pageSize).toBeTypeOf('number');
+      expect(opts.extraPageSize).toBeTypeOf('number');
+      expect(opts.rateLimitCheckInterval).toBeTypeOf('number');
+      expect(opts.retryMaxAttempts).toBeTypeOf('number');
+      expect(opts.retryInitialDelay).toBeTypeOf('number');
+      expect(opts.retryMaxDelay).toBeTypeOf('number');
+      expect(opts.retryBackoffFactor).toBeTypeOf('number');
+      expect(opts.retrySuccessThreshold).toBeTypeOf('number');
+      expect(opts.delayBetweenOrgs).toBeTypeOf('number');
+
+      // String defaults should remain strings
+      expect(opts.baseUrl).toBeTypeOf('string');
+      expect(opts.baseUrl).toBeTypeOf('string');
+      expect(opts.outputDir).toBeTypeOf('string');
+      expect(opts.outputDir).toBeTypeOf('string');
+    });
+
+    it('should parse provided numeric arguments correctly', () => {
+      // Use parseOptions on the actual command with explicit values
+      repoStatsCommand.parseOptions([
+        '-o',
+        'test-org',
+        '-t',
+        'test-token',
+        '--page-size',
+        '50',
+        '--extra-page-size',
+        '100',
+      ]);
+      const opts = repoStatsCommand.opts();
+
+      // Verify the parsed values are numbers
+      expect(opts.pageSize).toBeTypeOf('number');
+      expect(opts.pageSize).toBe(50);
+
+      expect(opts.extraPageSize).toBeTypeOf('number');
+      expect(opts.extraPageSize).toBe(100);
+    });
   });
 
   describe('Command line integration - multi-org options', () => {
@@ -212,7 +282,7 @@ describe('Commands', () => {
 
       expect(option).toBeDefined();
       expect(option?.description).toContain('Delay between processing');
-      expect(option?.defaultValue).toBe('5');
+      expect(option?.defaultValue).toBe(5);
       expect(option?.argParser).toBeDefined(); // parseIntOption
     });
 
