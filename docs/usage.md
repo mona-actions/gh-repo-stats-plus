@@ -15,10 +15,10 @@ gh auth login
 gh repo-stats-plus --help
 
 # Gather repository statistics for an organization
-gh repo-stats-plus repo-stats --organization my-org
+gh repo-stats-plus repo-stats --org-name my-org
 
 # Find repositories missing from a CSV file
-gh repo-stats-plus missing-repos --organization my-org --file my-repos.csv
+gh repo-stats-plus missing-repos --org-name my-org --file my-repos.csv
 ```
 
 ## Common Scenarios
@@ -26,20 +26,20 @@ gh repo-stats-plus missing-repos --organization my-org --file my-repos.csv
 ### Basic Organization Analysis
 
 ```bash
-gh repo-stats-plus repo-stats --organization my-org
+gh repo-stats-plus repo-stats --org-name my-org
 ```
 
 ### Resume from Previous Run
 
 ```bash
-gh repo-stats-plus repo-stats --organization my-org --resume-from-last-save
+gh repo-stats-plus repo-stats --org-name my-org --resume-from-last-save
 ```
 
 ### Using GitHub App Authentication
 
 ```bash
 gh repo-stats-plus repo-stats \
-  --organization my-org \
+  --org-name my-org \
   --app-id YOUR_APP_ID \
   --private-key-file key.pem \
   --app-installation-id INSTALLATION_ID
@@ -48,8 +48,8 @@ gh repo-stats-plus repo-stats \
 ### Process Missing Repositories
 
 ```bash
-gh repo-stats-plus missing-repos --organization my-org --file output.csv
-gh repo-stats-plus repo-stats --organization my-org --auto-process-missing
+gh repo-stats-plus missing-repos --org-name my-org --file output.csv
+gh repo-stats-plus repo-stats --org-name my-org --auto-process-missing
 ```
 
 ### Multiple Organizations
@@ -57,35 +57,35 @@ gh repo-stats-plus repo-stats --organization my-org --auto-process-missing
 ```bash
 # Process multiple organizations sequentially
 # Each organization automatically maintains its own state file
-gh repo-stats-plus repo-stats --organization org1
-gh repo-stats-plus repo-stats --organization org2
-gh repo-stats-plus repo-stats --organization org3
+gh repo-stats-plus repo-stats --org-name org1
+gh repo-stats-plus repo-stats --org-name org2
+gh repo-stats-plus repo-stats --org-name org3
 
 # Use custom output directory (state files are stored here too)
 gh repo-stats-plus repo-stats \
-  --organization my-org \
+  --org-name my-org \
   --output-dir ./reports
 
 # Clean up state files after successful completion
 gh repo-stats-plus repo-stats \
-  --organization my-org \
+  --org-name my-org \
   --clean-state
 ```
 
 ```bash
-gh repo-stats-plus repo-stats --organization myorg --output-format json
+gh repo-stats-plus repo-stats --org-name myorg --output-format json
 ```
 
 ### Check for Missing Repositories
 
 ```bash
-gh repo-stats-plus missing-repos --organization myorg --file expected-repos.csv
+gh repo-stats-plus missing-repos --org-name myorg --file expected-repos.csv
 ```
 
 ### Resume from a Previous Run
 
 ```bash
-gh repo-stats-plus repo-stats --organization myorg --resume-from-last-save
+gh repo-stats-plus repo-stats --org-name myorg --resume-from-last-save
 ```
 
 ### Process Specific Repositories
@@ -97,13 +97,13 @@ owner/repo2
 owner/repo3" > repos-to-process.txt
 
 # Run the command
-gh repo-stats-plus repo-stats --organization myorg --repo-list repos-to-process.txt
+gh repo-stats-plus repo-stats --org-name myorg --repo-list repos-to-process.txt
 ```
 
 ### Auto-Process Missing Repositories
 
 ```bash
-gh repo-stats-plus repo-stats --organization myorg --auto-process-missing
+gh repo-stats-plus repo-stats --org-name myorg --auto-process-missing
 ```
 
 ## Authentication Methods
@@ -120,7 +120,7 @@ For GitHub App authentication, you can pass additional parameters:
 
 ```bash
 gh repo-stats-plus repo-stats \
-  --organization myorg \
+  --org-name myorg \
   --app-id 12345 \
   --private-key-file /path/to/key.pem \
   --app-installation-id 67890
@@ -135,7 +135,7 @@ For organizations with many repositories, consider these best practices:
 Always use the resume functionality for large organizations:
 
 ```bash
-gh repo-stats-plus repo-stats --organization large-org --resume-from-last-save
+gh repo-stats-plus repo-stats --org-name large-org --resume-from-last-save
 ```
 
 ### Monitor Progress
@@ -152,7 +152,7 @@ The extension automatically handles GitHub API rate limits, but you can adjust t
 
 ```bash
 gh repo-stats-plus repo-stats \
-  --organization myorg \
+  --org-name myorg \
   --rate-limit-check-interval 30 \
   --retry-max-attempts 5
 ```
