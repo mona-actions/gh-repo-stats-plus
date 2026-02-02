@@ -5,12 +5,12 @@
 Collects comprehensive statistics for all repositories in a GitHub organization.
 
 ```bash
-gh repo-stats-plus repo-stats --organization my-org
+gh repo-stats-plus repo-stats --org-name my-org
 ```
 
 ### Key Options
 
-- `--organization <org>`: GitHub organization name (required)
+- `--org-name <org>`: GitHub organization name (required)
 - `--access-token <token>`: GitHub personal access token
 - `--resume-from-last-save`: Resume from previous run
 - `--auto-process-missing`: Automatically process missing repositories
@@ -20,7 +20,7 @@ gh repo-stats-plus repo-stats --organization my-org
 
 ```bash
 gh repo-stats-plus repo-stats \
-  --organization my-org \
+  --org-name my-org \
   --app-id YOUR_APP_ID \
   --private-key-file key.pem \
   --app-installation-id INSTALLATION_ID
@@ -37,12 +37,12 @@ gh repo-stats-plus repo-stats \
 Identifies repositories in an organization that aren't in your CSV file.
 
 ```bash
-gh repo-stats-plus missing-repos --organization my-org --file output.csv
+gh repo-stats-plus missing-repos --org-name my-org --file output.csv
 ```
 
 ### Options
 
-- `--organization <org>`: GitHub organization name (required)
+- `--org-name <org>`: GitHub organization name (required)
 - `--file <path>`: CSV file to check against (required)
 - `--access-token <token>`: GitHub personal access token
 - `--verbose`: Enable detailed logging
@@ -82,20 +82,20 @@ Both commands generate:
 #### Basic Usage
 
 ```bash
-gh repo-stats-plus repo-stats --organization github
+gh repo-stats-plus repo-stats --org-name github
 ```
 
 #### With Personal Access Token
 
 ```bash
-gh repo-stats-plus repo-stats --organization github --access-token ghp_xxxxxxxxxxxx
+gh repo-stats-plus repo-stats --org-name github --access-token ghp_xxxxxxxxxxxx
 ```
 
 #### With GitHub App
 
 ```bash
 gh repo-stats-plus repo-stats \
-  --organization github \
+  --org-name github \
   --app-id 12345 \
   --private-key-file /path/to/key.pem \
   --app-installation-id 67890
@@ -104,14 +104,14 @@ gh repo-stats-plus repo-stats \
 #### Resume Processing
 
 ```bash
-gh repo-stats-plus repo-stats --organization github --resume-from-last-save
+gh repo-stats-plus repo-stats --org-name github --resume-from-last-save
 ```
 
 #### Process Specific Repositories
 
 ```bash
 gh repo-stats-plus repo-stats \
-  --organization github \
+  --org-name github \
   --repo-list my-repos.txt
 ```
 
@@ -119,7 +119,7 @@ gh repo-stats-plus repo-stats \
 
 ```bash
 gh repo-stats-plus repo-stats \
-  --organization github \
+  --org-name github \
   --page-size 20 \
   --retry-max-attempts 5 \
   --verbose
@@ -142,7 +142,7 @@ gh repo-stats-plus missing-repos [options]
 #### Core Options
 
 - `-f, --file <file>`: Repo Stats File to check repos against (Required)
-- `-o, --organization <org>`: The name of the organization to process
+- `-o, --org-name <org>`: The name of the organization to process
 - `-t, --access-token <token>`: GitHub access token
 - `-u, --base-url <url>`: GitHub API base URL (Default: https://api.github.com)
 - `--proxy-url <url>`: Proxy URL if required
@@ -165,7 +165,7 @@ gh repo-stats-plus missing-repos [options]
 
 ```bash
 gh repo-stats-plus missing-repos \
-  --organization github \
+  --org-name github \
   --file github-repo-stats.csv
 ```
 
@@ -173,7 +173,7 @@ gh repo-stats-plus missing-repos \
 
 ```bash
 gh repo-stats-plus missing-repos \
-  --organization github \
+  --org-name github \
   --file github-repo-stats.csv \
   --verbose
 ```
@@ -182,7 +182,7 @@ gh repo-stats-plus missing-repos \
 
 ```bash
 gh repo-stats-plus missing-repos \
-  --organization github \
+  --org-name github \
   --file github-repo-stats.csv \
   --app-id 12345 \
   --private-key-file /path/to/key.pem \
@@ -197,13 +197,13 @@ gh repo-stats-plus missing-repos \
 
 ```bash
 # 1. Initial run
-gh repo-stats-plus repo-stats --organization myorg
+gh repo-stats-plus repo-stats --org-name myorg
 
 # 2. Check for any missing repositories
-gh repo-stats-plus missing-repos --organization myorg --file myorg-repo-stats.csv
+gh repo-stats-plus missing-repos --org-name myorg --file myorg-repo-stats.csv
 
 # 3. If interrupted, resume the main process
-gh repo-stats-plus repo-stats --organization myorg --resume-from-last-save
+gh repo-stats-plus repo-stats --org-name myorg --resume-from-last-save
 ```
 
 ### Selective Processing
@@ -215,7 +215,7 @@ owner/repo2
 owner/repo3" > target-repos.txt
 
 # 2. Process only those repositories
-gh repo-stats-plus repo-stats --organization myorg --repo-list target-repos.txt
+gh repo-stats-plus repo-stats --org-name myorg --repo-list target-repos.txt
 ```
 
 ### High-Volume Processing
@@ -223,7 +223,7 @@ gh repo-stats-plus repo-stats --organization myorg --repo-list target-repos.txt
 ```bash
 # Optimized settings for large organizations
 gh repo-stats-plus repo-stats \
-  --organization large-org \
+  --org-name large-org \
   --page-size 20 \
   --rate-limit-check-interval 30 \
   --retry-max-attempts 5 \
@@ -236,17 +236,17 @@ gh repo-stats-plus repo-stats \
 ```bash
 # Process multiple organizations sequentially
 # Each organization maintains its own state file automatically
-gh repo-stats-plus repo-stats --organization org1
-gh repo-stats-plus repo-stats --organization org2
-gh repo-stats-plus repo-stats --organization org3
+gh repo-stats-plus repo-stats --org-name org1
+gh repo-stats-plus repo-stats --org-name org2
+gh repo-stats-plus repo-stats --org-name org3
 
 # Use custom output directory (state files stored here too)
 gh repo-stats-plus repo-stats \
-  --organization myorg \
+  --org-name myorg \
   --output-dir ./reports
 
 # Clean up state files after successful completion
 gh repo-stats-plus repo-stats \
-  --organization myorg \
+  --org-name myorg \
   --clean-state
 ```

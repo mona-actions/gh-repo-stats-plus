@@ -80,7 +80,7 @@ The extension is built using modern TypeScript patterns with:
 
 ```bash
 # Generate repository statistics (output saved to ./output/ directory)
-gh repo-stats-plus repo-stats --organization my-org
+gh repo-stats-plus repo-stats --org-name my-org
 ```
 
 ### Multiple Organizations
