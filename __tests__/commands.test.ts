@@ -246,8 +246,6 @@ describe('Commands', () => {
 
       // String defaults should remain strings
       expect(opts.baseUrl).toBeTypeOf('string');
-      expect(opts.baseUrl).toBeTypeOf('string');
-      expect(opts.outputDir).toBeTypeOf('string');
       expect(opts.outputDir).toBeTypeOf('string');
     });
 
