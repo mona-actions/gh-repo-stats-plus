@@ -84,13 +84,13 @@ repoStatsCommand
   .addOption(
     new Option('--page-size <size>', 'Number of items per page')
       .env('PAGE_SIZE')
-      .default('10')
+      .default(10)
       .argParser(parseIntOption),
   )
   .addOption(
     new Option('--extra-page-size <size>', 'Extra page size')
       .env('EXTRA_PAGE_SIZE')
-      .default('25')
+      .default(25)
       .argParser(parseIntOption),
   )
   .addOption(
@@ -99,7 +99,7 @@ repoStatsCommand
       'Interval for rate limit checks in seconds',
     )
       .env('RATE_LIMIT_CHECK_INTERVAL')
-      .default('60')
+      .default(60)
       .argParser(parseIntOption),
   )
   .addOption(
@@ -108,7 +108,7 @@ repoStatsCommand
       'Maximum number of retry attempts',
     )
       .env('RETRY_MAX_ATTEMPTS')
-      .default('3')
+      .default(3)
       .argParser(parseIntOption),
   )
   .addOption(
@@ -117,7 +117,7 @@ repoStatsCommand
       'Initial delay for retry in milliseconds',
     )
       .env('RETRY_INITIAL_DELAY')
-      .default('1000')
+      .default(1000)
       .argParser(parseIntOption),
   )
   .addOption(
@@ -126,7 +126,7 @@ repoStatsCommand
       'Maximum delay for retry in milliseconds',
     )
       .env('RETRY_MAX_DELAY')
-      .default('30000')
+      .default(30000)
       .argParser(parseIntOption),
   )
   .addOption(
@@ -135,7 +135,7 @@ repoStatsCommand
       'Backoff factor for retry delays',
     )
       .env('RETRY_BACKOFF_FACTOR')
-      .default('2')
+      .default(2)
       .argParser(parseFloatOption),
   )
   .addOption(
@@ -144,7 +144,7 @@ repoStatsCommand
       'Number of successful operations before resetting retry count',
     )
       .env('RETRY_SUCCESS_THRESHOLD')
-      .default('5')
+      .default(5)
       .argParser(parseIntOption),
   )
   .addOption(
@@ -198,7 +198,7 @@ repoStatsCommand
       'Delay between processing organizations in seconds (for multi-org mode)',
     )
       .env('DELAY_BETWEEN_ORGS')
-      .default('5')
+      .default(5)
       .argParser(parseIntOption),
   )
   .addOption(
