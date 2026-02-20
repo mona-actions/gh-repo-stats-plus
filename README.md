@@ -226,6 +226,7 @@ The permissions needed by repo-stats-ts depends on the authentication method:
 
 - `repo`: Full control of private repositories
 - `read:org`: Read organization membership
+- `read:project`: Read project information
 - `read:user`: Read user information
 
 ### For GitHub App
