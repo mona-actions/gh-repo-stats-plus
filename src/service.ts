@@ -11,6 +11,12 @@ import {
   RepositoryStats,
   RepoStatsGraphQLResponse,
 } from './types.js';
+import {
+  ORG_REPO_STATS_QUERY,
+  SINGLE_REPO_STATS_QUERY,
+  REPO_ISSUES_QUERY,
+  REPO_PULL_REQUESTS_QUERY,
+} from './queries.js';
 
 type Repository = components['schemas']['repository'];
 
@@ -57,111 +63,14 @@ export class OctokitClient {
     per_page: number,
     cursor: string | null = null,
   ): AsyncGenerator<RepositoryStats, void, unknown> {
-    const query = `
-      query orgRepoStats($login: String!, $pageSize: Int!, $cursor: String) {
-        organization(login: $login) {
-          repositories(first: $pageSize, after: $cursor, orderBy: {field: NAME, direction: ASC}) {
-            pageInfo {
-              endCursor
-              hasNextPage
-              startCursor
-            }
-            nodes {
-              branches: refs(refPrefix:"refs/heads/") {
-                totalCount
-              }
-              branchProtectionRules {
-                totalCount
-              }
-              commitComments {
-                totalCount
-              }
-              collaborators {
-                totalCount
-              }
-              createdAt
-              diskUsage
-              discussions {
-                totalCount
-              }
-              hasWikiEnabled
-              isFork
-              isArchived
-              issues(first: $pageSize) {
-                totalCount
-                pageInfo {
-                  endCursor
-                  hasNextPage
-                }
-                nodes {
-                  timeline {
-                    totalCount
-                  }
-                  comments {
-                    totalCount
-                  }
-                }
-              }
-              milestones {
-                totalCount
-              }
-              name
-              owner {
-                login
-              }
-              projectsV2 {
-                totalCount
-              }
-              pullRequests(first: $pageSize) {
-                totalCount
-                pageInfo {
-                  endCursor
-                  hasNextPage
-                }
-                nodes {
-                  comments {
-                    totalCount
-                  }
-                  commits {
-                    totalCount
-                  }
-                  number
-                  reviews(first: $pageSize) {
-                    totalCount
-                    pageInfo {
-                      endCursor
-                      hasNextPage
-                    }
-                    nodes {
-                      comments {
-                        totalCount
-                      }
-                    }
-                  }
-                  timeline {
-                    totalCount
-                  }
-                }
-              }
-              pushedAt
-              releases {
-                totalCount
-              }
-              tags: refs(refPrefix: "refs/tags/") {
-                totalCount
-              }
-              updatedAt
-              url
-            }
-          }
-        }
-      }`;
-
-    const iterator = this.octokit.graphql.paginate.iterator(query, {
-      login: org,
-      pageSize: per_page,
-      cursor,
-    });
+    const iterator = this.octokit.graphql.paginate.iterator(
+      ORG_REPO_STATS_QUERY,
+      {
+        login: org,
+        pageSize: per_page,
+        cursor,
+      },
+    );
 
     for await (const response of iterator) {
       const repos = response.organization.repositories.nodes;
@@ -179,99 +88,8 @@ export class OctokitClient {
     repo: string,
     per_page: number,
   ): Promise<RepositoryStats> {
-    const query = `
-      query repoStats($owner: String!, $name: String!, $pageSize: Int!) {
-        repository(owner: $owner, name: $name) {
-          branches: refs(refPrefix:"refs/heads/") {
-            totalCount
-          }
-          branchProtectionRules {
-            totalCount
-          }
-          commitComments {
-            totalCount
-          }
-          collaborators {
-            totalCount
-          }
-          createdAt
-          diskUsage
-          discussions {
-            totalCount
-          }
-          hasWikiEnabled
-          isFork
-          isArchived
-          issues(first: $pageSize) {
-            totalCount
-            pageInfo {
-              endCursor
-              hasNextPage
-            }
-            nodes {
-              timeline {
-                totalCount
-              }
-              comments {
-                totalCount
-              }
-            }
-          }
-          milestones {
-            totalCount
-          }
-          name
-          owner {
-            login
-          }
-          projectsV2 {
-            totalCount
-          }
-          pullRequests(first: $pageSize) {
-            totalCount
-            pageInfo {
-              endCursor
-              hasNextPage
-            }
-            nodes {
-              comments {
-                totalCount
-              }
-              commits {
-                totalCount
-              }
-              number
-              reviews(first: $pageSize) {
-                totalCount
-                pageInfo {
-                  endCursor
-                  hasNextPage
-                }
-                nodes {
-                  comments {
-                    totalCount
-                  }
-                }
-              }
-              timeline {
-                totalCount
-              }
-            }
-          }
-          pushedAt
-          releases {
-            totalCount
-          }
-          tags: refs(refPrefix: "refs/tags/") {
-            totalCount
-          }
-          updatedAt
-          url
-        }
-      }`;
-
     const response = await this.octokit.graphql<RepoStatsGraphQLResponse>(
-      query,
+      SINGLE_REPO_STATS_QUERY,
       {
         owner,
         name: repo,
@@ -295,28 +113,8 @@ export class OctokitClient {
     per_page: number,
     cursor: string | null = null,
   ): AsyncGenerator<IssueStats, void, unknown> {
-    const query = `
-      query repoIssues($owner: String!, $repo: String!, $pageSize: Int!, $cursor: String) {
-        repository(owner: $owner, name: $repo) {
-          issues(first: $pageSize, after: $cursor) {
-            pageInfo {
-              endCursor
-              hasNextPage
-            }
-            nodes {
-              timeline {
-                totalCount
-              }
-              comments {
-                totalCount
-              }
-            }
-          }
-        }
-      }`;
-
     const iterator = this.octokit.graphql.paginate.iterator<IssuesResponse>(
-      query,
+      REPO_ISSUES_QUERY,
       {
         owner,
         repo,
@@ -339,44 +137,15 @@ export class OctokitClient {
     per_page: number,
     cursor: string | null = null,
   ): AsyncGenerator<PullRequestNode, void, unknown> {
-    const query = `
-      query repoPullRequests($owner: String!, $repo: String!, $pageSize: Int!, $cursor: String) {
-        repository(owner: $owner, name: $repo) {
-          pullRequests(first: $pageSize, after: $cursor) {
-            pageInfo {
-              endCursor
-              hasNextPage
-            }
-            nodes {
-              number
-              timeline {
-                totalCount
-              }
-              comments {
-                totalCount
-              }
-              commits {
-                totalCount
-              }
-              reviews(first: $pageSize) {
-                totalCount
-                nodes {
-                  comments {
-                    totalCount
-                  }
-                }
-              }
-            }
-          }
-        }
-      }`;
-
-    const iterator = this.octokit.graphql.paginate.iterator(query, {
-      owner,
-      repo,
-      pageSize: per_page,
-      cursor,
-    });
+    const iterator = this.octokit.graphql.paginate.iterator(
+      REPO_PULL_REQUESTS_QUERY,
+      {
+        owner,
+        repo,
+        pageSize: per_page,
+        cursor,
+      },
+    );
 
     for await (const response of iterator) {
       const prs = response.repository.pullRequests.nodes;

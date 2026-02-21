@@ -130,57 +130,83 @@ export interface RepositoryOwner {
   login: string;
 }
 
+export interface LanguageNode {
+  name: string;
+  color: string;
+}
+
+export interface LanguageEdge {
+  size: number;
+  node: LanguageNode;
+}
+
+export interface LanguageInfo {
+  totalCount: number;
+  totalSize: number;
+  edges: LanguageEdge[];
+}
+
+export interface LicenseInfo {
+  name: string;
+  spdxId: string;
+}
+
+export interface RepositoryTopic {
+  topic: {
+    name: string;
+  };
+}
+
+export interface RepositoryTopicsConnection {
+  totalCount: number;
+  nodes: RepositoryTopic[];
+}
+
 export interface RepositoryStats {
   pageInfo: PageInfo;
+  autoMergeAllowed: boolean;
   branches: TotalCount;
   branchProtectionRules: TotalCount;
   commitComments: TotalCount;
   collaborators: TotalCount;
   createdAt: string;
+  defaultBranchRef: { name: string } | null;
+  deleteBranchOnMerge: boolean;
+  description: string | null;
   diskUsage: number;
   discussions: TotalCount;
+  forkCount: number;
   hasWikiEnabled: boolean;
+  homepageUrl: string | null;
   isEmpty: boolean;
-  isFork: boolean;
   isArchived: boolean;
+  isFork: boolean;
+  isTemplate: boolean;
   issues: IssuesConnection;
+  languages: LanguageInfo;
+  licenseInfo: LicenseInfo | null;
+  mergeCommitAllowed: boolean;
   milestones: TotalCount;
   name: string;
   owner: RepositoryOwner;
+  primaryLanguage: { name: string } | null;
   projectsV2: TotalCount;
   pullRequests: PullRequestsConnection;
   pushedAt: string;
+  rebaseMergeAllowed: boolean;
   releases: TotalCount;
+  repositoryTopics: RepositoryTopicsConnection;
+  squashMergeAllowed: boolean;
+  stargazerCount: number;
   tags: TotalCount;
   updatedAt: string;
   url: string;
+  visibility: string;
+  watchers: TotalCount;
 }
 
 export interface RepoStatsGraphQLResponse {
-  repository: {
-    branches: TotalCount;
-    branchProtectionRules: TotalCount;
-    commitComments: TotalCount;
-    collaborators: TotalCount;
-    createdAt: string;
-    diskUsage: number;
-    discussions: TotalCount;
-    hasWikiEnabled: boolean;
-    isEmpty: boolean;
-    isFork: boolean;
-    isArchived: boolean;
-    issues: IssuesConnection;
-    milestones: TotalCount;
-    name: string;
-    owner: RepositoryOwner;
-    projectsV2: TotalCount;
-    pullRequests: PullRequestsConnection;
-    pushedAt: string;
-    releases: TotalCount;
-    tags: TotalCount;
-    updatedAt: string;
-    url: string;
-  };
+  repository: Omit<RepositoryStats, 'pageInfo'>;
 }
 
 export interface IssueStats {
@@ -239,6 +265,8 @@ export interface RepoStatsResult {
   Last_Update: string;
   isFork: boolean;
   isArchived: boolean;
+  isTemplate: boolean;
+  Visibility: string;
   Repo_Size_mb: number;
   Record_Count: number;
   Collaborator_Count: number;
@@ -256,7 +284,22 @@ export interface RepoStatsResult {
   Branch_Count: number;
   Tag_Count: number;
   Discussion_Count: number;
+  Star_Count: number;
+  Fork_Count: number;
+  Watcher_Count: number;
   Has_Wiki: boolean;
+  Default_Branch: string;
+  Primary_Language: string;
+  Languages: string;
+  License: string;
+  Topics: string;
+  Description: string;
+  Homepage_URL: string;
+  Auto_Merge_Allowed: boolean;
+  Delete_Branch_On_Merge: boolean;
+  Merge_Commit_Allowed: boolean;
+  Squash_Merge_Allowed: boolean;
+  Rebase_Merge_Allowed: boolean;
   Full_URL: string;
   Migration_Issue: boolean;
   Created: string;
