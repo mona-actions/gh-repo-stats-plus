@@ -64,7 +64,7 @@ missingReposCommand
   .addOption(
     new Option('--page-size <size>', 'Number of items per page')
       .env('PAGE_SIZE')
-      .default('10')
+      .default(10)
       .argParser(parseIntOption),
   )
   .addOption(
