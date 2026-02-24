@@ -567,7 +567,7 @@ async function processMissingRepositories({
   }
 }
 
-function initializeCsvFile(fileName: string, logger: Logger): void {
+export function initializeCsvFile(fileName: string, logger: Logger): void {
   const columns = [
     'Org_Name',
     'Repo_Name',
@@ -576,6 +576,8 @@ function initializeCsvFile(fileName: string, logger: Logger): void {
     'Last_Update',
     'isFork',
     'isArchived',
+    'isTemplate',
+    'Visibility',
     'Repo_Size_mb',
     'Record_Count',
     'Collaborator_Count',
@@ -593,7 +595,22 @@ function initializeCsvFile(fileName: string, logger: Logger): void {
     'Branch_Count',
     'Tag_Count',
     'Discussion_Count',
+    'Star_Count',
+    'Fork_Count',
+    'Watcher_Count',
     'Has_Wiki',
+    'Default_Branch',
+    'Primary_Language',
+    'Languages',
+    'License',
+    'Topics',
+    'Description',
+    'Homepage_URL',
+    'Auto_Merge_Allowed',
+    'Delete_Branch_On_Merge',
+    'Merge_Commit_Allowed',
+    'Squash_Merge_Allowed',
+    'Rebase_Merge_Allowed',
     'Full_URL',
     'Migration_Issue',
     'Created',
@@ -995,7 +1012,25 @@ async function checkAndHandleRateLimits({
   return false; // indicates rate limit was not reached
 }
 
-async function writeResultToCsv(
+/**
+ * Escapes a value for safe inclusion in a CSV field per RFC 4180.
+ * - Wraps in double quotes if the value contains commas, double quotes, or newlines
+ * - Escapes embedded double quotes by doubling them
+ */
+export function escapeCsvField(value: unknown): string {
+  const str = value?.toString() ?? '';
+  if (
+    str.includes(',') ||
+    str.includes('"') ||
+    str.includes('\n') ||
+    str.includes('\r')
+  ) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+export async function writeResultToCsv(
   result: RepoStatsResult,
   fileName: string,
   logger: Logger,
@@ -1006,7 +1041,18 @@ async function writeResultToCsv(
       Is_Empty: result.Is_Empty?.toString().toUpperCase() || 'FALSE',
       isFork: result.isFork?.toString().toUpperCase() || 'FALSE',
       isArchived: result.isArchived?.toString().toUpperCase() || 'FALSE',
+      isTemplate: result.isTemplate?.toString().toUpperCase() || 'FALSE',
       Has_Wiki: result.Has_Wiki?.toString().toUpperCase() || 'FALSE',
+      Auto_Merge_Allowed:
+        result.Auto_Merge_Allowed?.toString().toUpperCase() || 'FALSE',
+      Delete_Branch_On_Merge:
+        result.Delete_Branch_On_Merge?.toString().toUpperCase() || 'FALSE',
+      Merge_Commit_Allowed:
+        result.Merge_Commit_Allowed?.toString().toUpperCase() || 'FALSE',
+      Squash_Merge_Allowed:
+        result.Squash_Merge_Allowed?.toString().toUpperCase() || 'FALSE',
+      Rebase_Merge_Allowed:
+        result.Rebase_Merge_Allowed?.toString().toUpperCase() || 'FALSE',
       Migration_Issue:
         result.Migration_Issue?.toString().toUpperCase() || 'FALSE',
     };
@@ -1020,6 +1066,8 @@ async function writeResultToCsv(
       formattedResult.Last_Update,
       formattedResult.isFork,
       formattedResult.isArchived,
+      formattedResult.isTemplate,
+      formattedResult.Visibility,
       formattedResult.Repo_Size_mb,
       formattedResult.Record_Count,
       formattedResult.Collaborator_Count,
@@ -1037,14 +1085,26 @@ async function writeResultToCsv(
       formattedResult.Branch_Count,
       formattedResult.Tag_Count,
       formattedResult.Discussion_Count,
+      formattedResult.Star_Count,
+      formattedResult.Fork_Count,
+      formattedResult.Watcher_Count,
       formattedResult.Has_Wiki,
+      formattedResult.Default_Branch,
+      formattedResult.Primary_Language,
+      formattedResult.Languages,
+      formattedResult.License,
+      formattedResult.Topics,
+      formattedResult.Description,
+      formattedResult.Homepage_URL,
+      formattedResult.Auto_Merge_Allowed,
+      formattedResult.Delete_Branch_On_Merge,
+      formattedResult.Merge_Commit_Allowed,
+      formattedResult.Squash_Merge_Allowed,
+      formattedResult.Rebase_Merge_Allowed,
       formattedResult.Full_URL,
       formattedResult.Migration_Issue,
       formattedResult.Created,
-    ].map((value) =>
-      // Escape values containing commas with quotes
-      value?.toString().includes(',') ? `"${value}"` : (value ?? ''),
-    );
+    ].map((value) => escapeCsvField(value));
 
     const csvRow = `${values.join(',')}\n`;
     appendFileSync(fileName, csvRow);
@@ -1062,7 +1122,7 @@ async function writeResultToCsv(
   }
 }
 
-function mapToRepoStatsResult(
+export function mapToRepoStatsResult(
   repo: RepositoryStats,
   issueStats: IssueStatsResult,
   prStats: PullRequestStatsResult,
@@ -1074,6 +1134,22 @@ function mapToRepoStatsResult(
     totalRecordCount,
   });
 
+  // Format languages as a semicolon-separated list with percentages
+  const languagesStr =
+    repo.languages?.edges
+      ?.map((edge) => {
+        const pct =
+          repo.languages.totalSize > 0
+            ? ((edge.size / repo.languages.totalSize) * 100).toFixed(1)
+            : '0.0';
+        return `${edge.node.name}:${pct}%`;
+      })
+      .join(';') ?? '';
+
+  // Format topics as a semicolon-separated list
+  const topicsStr =
+    repo.repositoryTopics?.nodes?.map((t) => t.topic.name).join(';') ?? '';
+
   return {
     Org_Name: repo.owner.login.toLowerCase(),
     Repo_Name: repo.name.toLowerCase(),
@@ -1082,6 +1158,8 @@ function mapToRepoStatsResult(
     Last_Update: repo.updatedAt,
     isFork: repo.isFork,
     isArchived: repo.isArchived,
+    isTemplate: repo.isTemplate,
+    Visibility: repo.visibility ?? '',
     Repo_Size_mb: repoSizeMb,
     Record_Count: totalRecordCount,
     Collaborator_Count: repo.collaborators.totalCount,
@@ -1100,7 +1178,22 @@ function mapToRepoStatsResult(
       issueStats.issueCommentCount + prStats.issueCommentCount,
     Tag_Count: repo.tags.totalCount,
     Discussion_Count: repo.discussions.totalCount,
+    Star_Count: repo.stargazerCount ?? 0,
+    Fork_Count: repo.forkCount ?? 0,
+    Watcher_Count: repo.watchers?.totalCount ?? 0,
     Has_Wiki: repo.hasWikiEnabled,
+    Default_Branch: repo.defaultBranchRef?.name ?? '',
+    Primary_Language: repo.primaryLanguage?.name ?? '',
+    Languages: languagesStr,
+    License: repo.licenseInfo?.spdxId || repo.licenseInfo?.name || '',
+    Topics: topicsStr,
+    Description: repo.description ?? '',
+    Homepage_URL: repo.homepageUrl ?? '',
+    Auto_Merge_Allowed: repo.autoMergeAllowed ?? false,
+    Delete_Branch_On_Merge: repo.deleteBranchOnMerge ?? false,
+    Merge_Commit_Allowed: repo.mergeCommitAllowed ?? false,
+    Squash_Merge_Allowed: repo.squashMergeAllowed ?? false,
+    Rebase_Merge_Allowed: repo.rebaseMergeAllowed ?? false,
     Full_URL: repo.url,
     Migration_Issue: hasMigrationIssues,
     Created: repo.createdAt,

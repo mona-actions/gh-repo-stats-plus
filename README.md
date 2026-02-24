@@ -260,6 +260,8 @@ The CSV output includes detailed information about each repository:
 - `Last_Update`: Date/time when an update was last made
 - `isFork`: Whether the repository is a fork
 - `isArchived`: Whether the repository is archived
+- `isTemplate`: Whether the repository is a template repository
+- `Visibility`: Repository visibility (e.g., PUBLIC, PRIVATE, INTERNAL)
 - `Repo_Size_mb`: Size of the repository in megabytes
 - `Record_Count`: Total number of database records this repository represents
 - `Collaborator_Count`: Number of users who have contributed to this repository
@@ -277,7 +279,22 @@ The CSV output includes detailed information about each repository:
 - `Branch_Count`: Number of branches
 - `Tag_Count`: Number of tags
 - `Discussion_Count`: Number of discussions
+- `Star_Count`: Number of stargazers
+- `Fork_Count`: Number of forks
+- `Watcher_Count`: Number of watchers
 - `Has_Wiki`: Whether the repository has wiki feature enabled
+- `Default_Branch`: Name of the default branch
+- `Primary_Language`: Primary programming language of the repository
+- `Languages`: Semicolon-separated list of languages with usage percentages (e.g., `TypeScript:85.2%;JavaScript:14.8%`)
+- `License`: License identifier (SPDX ID or name)
+- `Topics`: Semicolon-separated list of repository topics
+- `Description`: Repository description
+- `Homepage_URL`: Repository homepage URL
+- `Auto_Merge_Allowed`: Whether auto-merge is enabled for pull requests
+- `Delete_Branch_On_Merge`: Whether branches are automatically deleted after merging
+- `Merge_Commit_Allowed`: Whether merge commits are allowed
+- `Squash_Merge_Allowed`: Whether squash merging is allowed
+- `Rebase_Merge_Allowed`: Whether rebase merging is allowed
 - `Full_URL`: Repository URL
 - `Migration_Issue`: Indicates whether the repository might have problems during migration due to:
   - 60,000 or more objects being imported
