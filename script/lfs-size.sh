@@ -12,6 +12,7 @@ set -e
 #   - git
 #   - git-lfs (https://git-lfs.com)
 #   - Network access to the repository
+#   - bc (for arithmetic; pre-installed on most systems)
 #
 # Usage:
 #   ./script/lfs-size.sh <repo-url>
@@ -23,6 +24,9 @@ set -e
 #                    If not provided, falls back to the GH_TOKEN environment
 #                    variable (set by `gh auth`). If neither is set, the
 #                    clone uses your default git credential helper.
+#
+#                    Security note: Prefer GH_TOKEN over --token to avoid
+#                    exposing the token in process listings (e.g. ps).
 #
 # Examples:
 #   ./script/lfs-size.sh https://github.com/owner/repo.git
@@ -43,6 +47,8 @@ usage() {
   echo "Options:"
   echo "  --token <PAT>  Personal Access Token for HTTPS authentication."
   echo "                 Falls back to GH_TOKEN env var if not provided."
+  echo "                 Note: Prefer GH_TOKEN env var over --token to avoid"
+  echo "                 exposing the token in process listings (e.g. ps)."
   echo ""
   echo "Examples:"
   echo "  $0 https://github.com/owner/repo.git"
@@ -124,6 +130,7 @@ fi
 
 check_dependency git
 check_dependency git-lfs
+check_dependency bc
 
 # ── clone & inspect ──────────────────────────────────────────────────
 

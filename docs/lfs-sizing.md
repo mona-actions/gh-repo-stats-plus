@@ -19,6 +19,7 @@ The `repo-stats` command includes a `Has_LFS` column that detects whether a repo
   ```
 
 - Network access to the target repository
+- **bc** (for arithmetic; pre-installed on most systems, may need to be installed in minimal containers)
 - Appropriate authentication for private repositories (e.g., SSH keys, `gh auth`, or a credential helper)
 
 ## Usage
@@ -51,6 +52,8 @@ GH_TOKEN=$(gh auth token) ./script/lfs-size.sh owner/repo
 > **Security note:** When using the `--token` flag, your shell history may capture the token value. Prefer using the `GH_TOKEN` environment variable (for example via `gh auth`) to avoid storing tokens in your history.
 
 The token is injected into the HTTPS clone URL as `x-access-token`, and the script itself does not echo it back to the console. However, underlying tools such as `git` may still include parts of the remote URL (and thus the token) in error messages or logs, so avoid sharing terminal output or logs produced while using a real token.
+
+> **Security note:** Prefer the `GH_TOKEN` environment variable over `--token`. Command-line arguments are visible in process listings (e.g., `ps`) and may be captured in shell history or logs.
 ## What It Does
 
 1. **Shallow bare clone** — Clones only the latest commit metadata (no file checkout, no LFS object download) into a temporary directory.
