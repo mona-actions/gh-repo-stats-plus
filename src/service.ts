@@ -4,6 +4,7 @@ import {
   AuthResponse,
   IssuesResponse,
   IssueStats,
+  OrgRepoNamesResponse,
   ProjectInfo,
   ProjectStatsResult,
   ProjectV2Node,
@@ -17,6 +18,7 @@ import {
 } from './types.js';
 import {
   ORG_REPO_STATS_QUERY,
+  ORG_REPO_NAMES_QUERY,
   SINGLE_REPO_STATS_QUERY,
   REPO_ISSUES_QUERY,
   REPO_PULL_REQUESTS_QUERY,
@@ -156,6 +158,32 @@ export class OctokitClient {
       const prs = response.repository.pullRequests.nodes;
       for (const pr of prs) {
         yield pr;
+      }
+    }
+  }
+
+  /**
+   * Lists repository names for an organization using GraphQL.
+   * This is a lightweight alternative to listReposForOrg (REST) that only
+   * fetches repo name and owner — avoiding REST API rate limits.
+   */
+  async *listOrgRepoNames(
+    org: string,
+    per_page: number,
+  ): AsyncGenerator<{ name: string; owner: { login: string } }, void, unknown> {
+    const iterator =
+      this.octokit.graphql.paginate.iterator<OrgRepoNamesResponse>(
+        ORG_REPO_NAMES_QUERY,
+        {
+          login: org,
+          pageSize: per_page,
+        },
+      );
+
+    for await (const response of iterator) {
+      const repos = response.organization.repositories.nodes;
+      for (const repo of repos) {
+        yield repo;
       }
     }
   }

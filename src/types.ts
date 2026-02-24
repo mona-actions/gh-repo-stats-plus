@@ -417,6 +417,18 @@ export interface ProjectV2Node {
   title: string;
 }
 
+export interface OrgRepoNamesResponse {
+  organization: {
+    repositories: {
+      pageInfo: PageInfo;
+      nodes: Array<{
+        name: string;
+        owner: { login: string };
+      }>;
+    };
+  };
+}
+
 export interface RepoProjectCountsResponse {
   repository: {
     issues: {

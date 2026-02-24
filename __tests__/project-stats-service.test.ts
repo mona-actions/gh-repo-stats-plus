@@ -323,3 +323,128 @@ describe('OctokitClient - getRepoProjectCounts', () => {
     expect(result.Projects_Linked_To_Repo).toBe(7);
   });
 });
+
+describe('OctokitClient - listOrgRepoNames', () => {
+  let mockOctokit: Record<string, unknown>;
+  let client: OctokitClient;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    mockOctokit = {
+      rest: {
+        repos: {
+          listForOrg: vi.fn(),
+        },
+      },
+      auth: vi.fn(),
+      graphql: vi.fn(),
+      paginate: {
+        iterator: vi.fn(),
+      },
+      request: vi.fn(),
+    };
+
+    (mockOctokit.graphql as Record<string, unknown>).paginate = {
+      iterator: vi.fn(),
+    };
+
+    client = new OctokitClient(mockOctokit as unknown as Octokit);
+  });
+
+  it('should yield repo names from a single page', async () => {
+    (
+      (mockOctokit.graphql as Record<string, unknown>).paginate as Record<
+        string,
+        unknown
+      >
+    ).iterator = vi.fn().mockReturnValue({
+      async *[Symbol.asyncIterator]() {
+        yield {
+          organization: {
+            repositories: {
+              pageInfo: { endCursor: null, hasNextPage: false },
+              nodes: [
+                { name: 'repo-a', owner: { login: 'test-org' } },
+                { name: 'repo-b', owner: { login: 'test-org' } },
+              ],
+            },
+          },
+        };
+      },
+    });
+
+    const repos: Array<{ name: string; owner: { login: string } }> = [];
+    for await (const repo of client.listOrgRepoNames('test-org', 100)) {
+      repos.push(repo);
+    }
+
+    expect(repos).toHaveLength(2);
+    expect(repos[0].name).toBe('repo-a');
+    expect(repos[1].name).toBe('repo-b');
+    expect(repos[0].owner.login).toBe('test-org');
+  });
+
+  it('should yield repos across multiple pages', async () => {
+    (
+      (mockOctokit.graphql as Record<string, unknown>).paginate as Record<
+        string,
+        unknown
+      >
+    ).iterator = vi.fn().mockReturnValue({
+      async *[Symbol.asyncIterator]() {
+        yield {
+          organization: {
+            repositories: {
+              pageInfo: { endCursor: 'cursor1', hasNextPage: true },
+              nodes: [{ name: 'repo-1', owner: { login: 'org1' } }],
+            },
+          },
+        };
+        yield {
+          organization: {
+            repositories: {
+              pageInfo: { endCursor: null, hasNextPage: false },
+              nodes: [{ name: 'repo-2', owner: { login: 'org1' } }],
+            },
+          },
+        };
+      },
+    });
+
+    const repos: Array<{ name: string; owner: { login: string } }> = [];
+    for await (const repo of client.listOrgRepoNames('org1', 10)) {
+      repos.push(repo);
+    }
+
+    expect(repos).toHaveLength(2);
+    expect(repos.map((r) => r.name)).toEqual(['repo-1', 'repo-2']);
+  });
+
+  it('should yield nothing for an org with no repos', async () => {
+    (
+      (mockOctokit.graphql as Record<string, unknown>).paginate as Record<
+        string,
+        unknown
+      >
+    ).iterator = vi.fn().mockReturnValue({
+      async *[Symbol.asyncIterator]() {
+        yield {
+          organization: {
+            repositories: {
+              pageInfo: { endCursor: null, hasNextPage: false },
+              nodes: [],
+            },
+          },
+        };
+      },
+    });
+
+    const repos: Array<{ name: string; owner: { login: string } }> = [];
+    for await (const repo of client.listOrgRepoNames('empty-org', 100)) {
+      repos.push(repo);
+    }
+
+    expect(repos).toHaveLength(0);
+  });
+});

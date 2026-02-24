@@ -250,6 +250,30 @@ export const REPO_PULL_REQUESTS_QUERY = `
 `;
 
 /**
+ * Lightweight query for listing repository names in an organization via GraphQL.
+ * Only fetches the repo name and owner login — no stats or extra fields.
+ * Used by project-stats to avoid REST API rate limits when iterating org repos.
+ */
+export const ORG_REPO_NAMES_QUERY = `
+  query orgRepoNames($login: String!, $pageSize: Int!, $cursor: String) {
+    organization(login: $login) {
+      repositories(first: $pageSize, after: $cursor, orderBy: { field: NAME, direction: ASC }) {
+        pageInfo {
+          endCursor
+          hasNextPage
+        }
+        nodes {
+          name
+          owner {
+            login
+          }
+        }
+      }
+    }
+  }
+`;
+
+/**
  * Query for counting ProjectsV2 linked to issues in a repository.
  * Paginates through issues and collects their linked projectsV2 nodes.
  * Also retrieves the total count of projects directly linked to the repository.

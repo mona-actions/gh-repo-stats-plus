@@ -296,7 +296,7 @@ async function processProjectStatsFromOrg({
     `[project-stats] Iterating repositories for organization: ${orgName}`,
   );
 
-  const reposIterator = client.listReposForOrg(orgName, pageSize);
+  const reposIterator = client.listOrgRepoNames(orgName, pageSize);
 
   let processedCount = 0;
 

@@ -238,7 +238,7 @@ describe('projects', () => {
         Projects_Linked_To_Repo: 3,
       });
 
-      const mockListReposForOrg = vi.fn().mockReturnValue({
+      const mockListOrgRepoNames = vi.fn().mockReturnValue({
         async *[Symbol.asyncIterator]() {
           yield { name: 'repo1', owner: { login: 'test-org' } };
         },
@@ -248,7 +248,7 @@ describe('projects', () => {
         () =>
           ({
             getRepoProjectCounts: mockGetRepoProjectCounts,
-            listReposForOrg: mockListReposForOrg,
+            listOrgRepoNames: mockListOrgRepoNames,
           }) as unknown as OctokitClient,
       );
 
