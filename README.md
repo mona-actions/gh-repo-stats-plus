@@ -72,6 +72,7 @@ The extension is built using modern TypeScript patterns with:
 | [Installation](docs/installation.md) | Prerequisites and installation methods |
 | [Usage Guide](docs/usage.md)         | Authentication and usage examples      |
 | [Commands](docs/commands.md)         | Complete command reference             |
+| [LFS Sizing](docs/lfs-sizing.md)     | Git LFS storage analysis per repo      |
 | [Development](docs/development.md)   | Setup and development workflow         |
 
 ## Common Usage Examples
@@ -310,8 +311,10 @@ The `Has_LFS` column indicates whether the repository's `.gitattributes` file on
 
 - **Default branch only**: The check reads `.gitattributes` from `HEAD` (the default branch). LFS tracking configured only on other branches will not be detected.
 - **Root `.gitattributes` only**: Nested `.gitattributes` files in subdirectories are not inspected.
-- **Detection, not sizing**: This column only indicates whether LFS is configured — it does not report the number or size of LFS objects. A dedicated `lfs-stats` command for deep LFS analysis is planned for a future release.
+- **Detection, not sizing**: This column only indicates whether LFS is configured — it does not report the number or size of LFS objects.
 - **Empty repositories**: Empty repositories will always report `FALSE` since there is no `.gitattributes` file to read.
+
+**For actual LFS sizing**, use the standalone `script/lfs-size.sh` script to inspect individual repositories where `Has_LFS` is `TRUE`. This performs a shallow bare clone and reports per-file LFS sizes and totals. See the [LFS Sizing Guide](docs/lfs-sizing.md) for prerequisites and usage.
 
 ## 🛠️ Development Quick Start
 
