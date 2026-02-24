@@ -3,6 +3,7 @@ import {
   generateRepoStatsFileName,
   convertKbToMb,
   checkIfHasMigrationIssues,
+  hasLfsTracking,
   formatElapsedTime,
   parseIntOption,
   parseFloatOption,
@@ -458,4 +459,50 @@ describe('Utils', () => {
       ).toEqual(['org1', 'org2', 'org3', 'org4']);
     });
   });
-});
+
+  describe('hasLfsTracking', () => {
+    it('should return false for null input', () => {
+      expect(hasLfsTracking(null)).toBe(false);
+    });
+
+    it('should return false for undefined input', () => {
+      expect(hasLfsTracking(undefined)).toBe(false);
+    });
+
+    it('should return false for empty string', () => {
+      expect(hasLfsTracking('')).toBe(false);
+    });
+
+    it('should return false for .gitattributes without LFS', () => {
+      const content = '*.md text\n*.png binary\n';
+      expect(hasLfsTracking(content)).toBe(false);
+    });
+
+    it('should return true for .gitattributes with filter=lfs', () => {
+      const content = '*.psd filter=lfs diff=lfs merge=lfs -text\n';
+      expect(hasLfsTracking(content)).toBe(true);
+    });
+
+    it('should return true when multiple patterns include filter=lfs', () => {
+      const content = [
+        '*.png filter=lfs diff=lfs merge=lfs -text',
+        '*.zip filter=lfs diff=lfs merge=lfs -text',
+        '*.md text',
+      ].join('\n');
+      expect(hasLfsTracking(content)).toBe(true);
+    });
+
+    it('should return true for filter=lfs among other lines', () => {
+      const content = [
+        '# Auto detect text files and perform LF normalization',
+        '* text=auto',
+        '*.jpg filter=lfs diff=lfs merge=lfs -text',
+      ].join('\n');
+      expect(hasLfsTracking(content)).toBe(true);
+    });
+
+    it('should handle Windows-style line endings', () => {
+      const content = '*.jpg filter=lfs diff=lfs merge=lfs -text\r\n*.png binary\r\n';
+      expect(hasLfsTracking(content)).toBe(true);
+    });
+  });

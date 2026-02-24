@@ -122,6 +122,7 @@ export function createMockRepositoryStats(
     url: 'https://github.com/TestOrg/test-repo',
     visibility: 'PUBLIC',
     watchers: { totalCount: 10 },
+    gitattributes: null,
     ...overrides,
   };
 }
@@ -167,6 +168,7 @@ export function createMockRepoStatsResult(
     Fork_Count: 3,
     Watcher_Count: 10,
     Has_Wiki: true,
+    Has_LFS: false,
     Default_Branch: 'main',
     Primary_Language: 'TypeScript',
     Languages: 'TypeScript:80.0%;JavaScript:20.0%',

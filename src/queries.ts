@@ -146,6 +146,11 @@ const REPO_STATS_FIELDS = `
   watchers {
     totalCount
   }
+  gitattributes: object(expression: "HEAD:.gitattributes") {
+    ... on Blob {
+      text
+    }
+  }
 `;
 
 /**
