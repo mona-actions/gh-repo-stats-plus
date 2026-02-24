@@ -10,6 +10,14 @@ export function generateRepoStatsFileName(orgName: string): string {
   return `${orgName.toLowerCase()}-all_repos-${timestamp}_ts.csv`;
 }
 
+export function generateProjectStatsFileName(orgName: string): string {
+  const timestamp = new Date()
+    .toISOString()
+    .replace(/[-:T\.Z]/g, '')
+    .slice(0, 12);
+  return `${orgName.toLowerCase()}-project-stats-${timestamp}_ts.csv`;
+}
+
 /**
  * Converts kilobytes to megabytes
  * @param kb Size in kilobytes, can be null or undefined
@@ -255,4 +263,22 @@ export function parseFileAsNewlineSeparatedOption(
 
   const fileContent = readFileSync(resolvedPath, 'utf-8');
   return parseNewlineSeparatedOption(fileContent, previous);
+}
+
+/**
+ * Escapes a value for safe inclusion in a CSV field per RFC 4180.
+ * - Wraps in double quotes if the value contains commas, double quotes, or newlines
+ * - Escapes embedded double quotes by doubling them
+ */
+export function escapeCsvField(value: unknown): string {
+  const str = value?.toString() ?? '';
+  if (
+    str.includes(',') ||
+    str.includes('"') ||
+    str.includes('\n') ||
+    str.includes('\r')
+  ) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
 }
