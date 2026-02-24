@@ -248,3 +248,34 @@ export const REPO_PULL_REQUESTS_QUERY = `
     }
   }
 `;
+
+/**
+ * Query for counting ProjectsV2 linked to issues in a repository.
+ * Paginates through issues and collects their linked projectsV2 nodes.
+ * Also retrieves the total count of projects directly linked to the repository.
+ *
+ * Based on the approach from https://github.com/jcantosz/Count-repo-projects
+ */
+export const REPO_PROJECT_COUNTS_QUERY = `
+  query repoProjectCounts($owner: String!, $repo: String!, $pageSize: Int!, $cursor: String) {
+    repository(owner: $owner, name: $repo) {
+      issues(first: $pageSize, after: $cursor) {
+        pageInfo {
+          endCursor
+          hasNextPage
+        }
+        nodes {
+          projectsV2(first: 100) {
+            nodes {
+              number
+              title
+            }
+          }
+        }
+      }
+      projectsV2(first: 100) {
+        totalCount
+      }
+    }
+  }
+`;
