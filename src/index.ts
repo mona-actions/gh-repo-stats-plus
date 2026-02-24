@@ -6,6 +6,7 @@ import * as commander from 'commander';
 import VERSION from './version.js';
 import repoStatsCommand from './commands/repo-stats-command.js';
 import missingReposCommand from './commands/missing-repos-command.js';
+import projectStatsCommand from './commands/project-stats-command.js';
 
 const program = new commander.Command();
 
@@ -15,6 +16,7 @@ program
   )
   .version(VERSION)
   .addCommand(repoStatsCommand)
-  .addCommand(missingReposCommand);
+  .addCommand(missingReposCommand)
+  .addCommand(projectStatsCommand);
 
 program.parse(process.argv);
