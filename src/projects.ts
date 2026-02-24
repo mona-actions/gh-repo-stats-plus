@@ -251,7 +251,6 @@ async function processProjectStatsFromFile({
         processedState,
         state,
         opts,
-        client,
         logger,
         processedCount: ++processedCount,
         stateManager,
@@ -325,7 +324,6 @@ async function processProjectStatsFromOrg({
         processedState,
         state,
         opts,
-        client,
         logger,
         processedCount: ++processedCount,
         stateManager,
@@ -356,7 +354,6 @@ function handleProjectStatsSuccess({
   processedState,
   state,
   opts,
-  client,
   logger,
   processedCount,
   stateManager,
@@ -365,7 +362,6 @@ function handleProjectStatsSuccess({
   processedState: ProcessedPageState;
   state: { successCount: number; retryCount: number };
   opts: Arguments;
-  client: OctokitClient;
   logger: Logger;
   processedCount: number;
   stateManager: StateManager;
