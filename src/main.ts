@@ -1170,7 +1170,7 @@ function mapToRepoStatsResult(
     Default_Branch: repo.defaultBranchRef?.name ?? '',
     Primary_Language: repo.primaryLanguage?.name ?? '',
     Languages: languagesStr,
-    License: repo.licenseInfo?.spdxId ?? repo.licenseInfo?.name ?? '',
+    License: repo.licenseInfo?.spdxId || repo.licenseInfo?.name || '',
     Topics: topicsStr,
     Description: repo.description ?? '',
     Homepage_URL: repo.homepageUrl ?? '',
