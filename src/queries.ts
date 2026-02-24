@@ -60,6 +60,8 @@ const REPO_STATS_FIELDS = `
       }
     }
   }
+  # Returns the top 10 languages by size; repos with more than 10
+  # will only show the largest ones, with percentages recalculated accordingly.
   languages(first: 10, orderBy: { field: SIZE, direction: DESC }) {
     totalCount
     totalSize

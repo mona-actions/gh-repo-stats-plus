@@ -1012,6 +1012,24 @@ async function checkAndHandleRateLimits({
   return false; // indicates rate limit was not reached
 }
 
+/**
+ * Escapes a value for safe inclusion in a CSV field per RFC 4180.
+ * - Wraps in double quotes if the value contains commas, double quotes, or newlines
+ * - Escapes embedded double quotes by doubling them
+ */
+export function escapeCsvField(value: unknown): string {
+  const str = value?.toString() ?? '';
+  if (
+    str.includes(',') ||
+    str.includes('"') ||
+    str.includes('\n') ||
+    str.includes('\r')
+  ) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
 export async function writeResultToCsv(
   result: RepoStatsResult,
   fileName: string,
@@ -1086,10 +1104,7 @@ export async function writeResultToCsv(
       formattedResult.Full_URL,
       formattedResult.Migration_Issue,
       formattedResult.Created,
-    ].map((value) =>
-      // Escape values containing commas with quotes
-      value?.toString().includes(',') ? `"${value}"` : (value ?? ''),
-    );
+    ].map((value) => escapeCsvField(value));
 
     const csvRow = `${values.join(',')}\n`;
     appendFileSync(fileName, csvRow);
