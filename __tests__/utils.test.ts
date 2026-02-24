@@ -502,7 +502,9 @@ describe('Utils', () => {
     });
 
     it('should handle Windows-style line endings', () => {
-      const content = '*.jpg filter=lfs diff=lfs merge=lfs -text\r\n*.png binary\r\n';
+      const content =
+        '*.jpg filter=lfs diff=lfs merge=lfs -text\r\n*.png binary\r\n';
       expect(hasLfsTracking(content)).toBe(true);
     });
   });
+});
