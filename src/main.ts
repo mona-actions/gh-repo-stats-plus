@@ -567,7 +567,7 @@ async function processMissingRepositories({
   }
 }
 
-function initializeCsvFile(fileName: string, logger: Logger): void {
+export function initializeCsvFile(fileName: string, logger: Logger): void {
   const columns = [
     'Org_Name',
     'Repo_Name',
@@ -1012,7 +1012,7 @@ async function checkAndHandleRateLimits({
   return false; // indicates rate limit was not reached
 }
 
-async function writeResultToCsv(
+export async function writeResultToCsv(
   result: RepoStatsResult,
   fileName: string,
   logger: Logger,
@@ -1107,7 +1107,7 @@ async function writeResultToCsv(
   }
 }
 
-function mapToRepoStatsResult(
+export function mapToRepoStatsResult(
   repo: RepositoryStats,
   issueStats: IssueStatsResult,
   prStats: PullRequestStatsResult,
