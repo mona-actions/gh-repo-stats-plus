@@ -272,6 +272,34 @@ async function processProjectStatsFromFile({
   };
 }
 
+function loadRepoNamesFromFile(filePath: string, logger: Logger): string[] {
+  logger.info(
+    `[project-stats] Loading repository names from file: ${filePath}`,
+  );
+
+  const content = readFileSync(filePath, 'utf-8');
+  const names = content
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line !== '' && !line.startsWith('#'));
+
+  logger.info(
+    `[project-stats] Loaded ${names.length} repository names from file`,
+  );
+
+  return names;
+}
+
+async function* repoNamesFromFileIterator(
+  filePath: string,
+  logger: Logger,
+): AsyncGenerator<{ name: string }> {
+  const names = loadRepoNamesFromFile(filePath, logger);
+  for (const name of names) {
+    yield { name };
+  }
+}
+
 async function processProjectStatsFromOrg({
   client,
   logger,
@@ -292,11 +320,21 @@ async function processProjectStatsFromOrg({
   const orgName = opts.orgName!;
   const pageSize = opts.pageSize != null ? Number(opts.pageSize) : 100;
 
-  logger.info(
-    `[project-stats] Iterating repositories for organization: ${orgName}`,
-  );
+  let reposIterator: AsyncGenerator<{ name: string }>;
 
-  const reposIterator = client.listOrgRepoNames(orgName, pageSize);
+  if (opts.repoNamesFile && existsSync(opts.repoNamesFile)) {
+    reposIterator = repoNamesFromFileIterator(opts.repoNamesFile, logger);
+  } else {
+    if (opts.repoNamesFile) {
+      logger.warn(
+        `[project-stats] Repo names file not found: ${opts.repoNamesFile}. Falling back to querying GitHub.`,
+      );
+    }
+    logger.info(
+      `[project-stats] Iterating repositories for organization: ${orgName}`,
+    );
+    reposIterator = client.listOrgRepoNames(orgName, pageSize);
+  }
 
   let processedCount = 0;
 

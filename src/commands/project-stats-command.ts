@@ -166,6 +166,12 @@ projectStatsCommand
       .argParser(parseFileAsNewlineSeparatedOption),
   )
   .addOption(
+    new Option(
+      '--repo-names-file <file>',
+      'Path to file containing repository names (one per line). If provided, skips querying GitHub for repo names.',
+    ).env('REPO_NAMES_FILE'),
+  )
+  .addOption(
     new Option('--output-dir <dir>', 'Output directory for generated files')
       .env('OUTPUT_DIR')
       .default('output'),

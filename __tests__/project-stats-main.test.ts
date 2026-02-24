@@ -227,6 +227,129 @@ describe('projects', () => {
       );
     });
 
+    it('should use repo names from file when repoNamesFile is provided and exists', async () => {
+      const { readFileSync } = await import('fs');
+
+      // existsSync: false for CSV file, then true for repo names file
+      vi.mocked(existsSync).mockImplementation((path: unknown) => {
+        if (String(path).endsWith('.csv')) return false;
+        if (String(path) === 'input/repo-names.txt') return true;
+        return false;
+      });
+
+      vi.mocked(readFileSync).mockImplementation((path: unknown) => {
+        if (String(path) === 'input/repo-names.txt') {
+          return 'repo-a\nrepo-b\n# comment\n\n';
+        }
+        return '';
+      });
+
+      const mockGetRepoProjectCounts = vi.fn().mockResolvedValue({
+        Org_Name: 'test-org',
+        Repo_Name: 'repo-a',
+        Issues_Linked_To_Projects: 1,
+        Unique_Projects_Linked_By_Issues: 1,
+        Projects_Linked_To_Repo: 1,
+      });
+
+      const mockListOrgRepoNames = vi.fn();
+
+      vi.mocked(OctokitClient).mockImplementation(
+        () =>
+          ({
+            getRepoProjectCounts: mockGetRepoProjectCounts,
+            listOrgRepoNames: mockListOrgRepoNames,
+          }) as unknown as OctokitClient,
+      );
+
+      const opts: Arguments = {
+        orgName: 'test-org',
+        orgList: [],
+        baseUrl: 'https://api.github.com',
+        proxyUrl: undefined,
+        verbose: false,
+        outputDir: 'output',
+        pageSize: 100,
+        retryMaxAttempts: 3,
+        retryInitialDelay: 1000,
+        retryMaxDelay: 30000,
+        retryBackoffFactor: 2,
+        retrySuccessThreshold: 5,
+        repoList: undefined,
+        repoNamesFile: 'input/repo-names.txt',
+      };
+
+      await runProjectStats(opts);
+
+      // Should NOT have called listOrgRepoNames since file was used
+      expect(mockListOrgRepoNames).not.toHaveBeenCalled();
+      // Should have processed repos from the file
+      expect(mockGetRepoProjectCounts).toHaveBeenCalledTimes(2);
+      expect(mockGetRepoProjectCounts).toHaveBeenCalledWith(
+        'test-org',
+        'repo-a',
+        100,
+      );
+      expect(mockGetRepoProjectCounts).toHaveBeenCalledWith(
+        'test-org',
+        'repo-b',
+        100,
+      );
+    });
+
+    it('should fall back to GraphQL query when repoNamesFile does not exist', async () => {
+      // existsSync: false for both CSV file and repo names file
+      vi.mocked(existsSync).mockReturnValue(false);
+
+      const mockGetRepoProjectCounts = vi.fn().mockResolvedValue({
+        Org_Name: 'test-org',
+        Repo_Name: 'repo1',
+        Issues_Linked_To_Projects: 2,
+        Unique_Projects_Linked_By_Issues: 1,
+        Projects_Linked_To_Repo: 3,
+      });
+
+      const mockListOrgRepoNames = vi.fn().mockReturnValue({
+        async *[Symbol.asyncIterator]() {
+          yield { name: 'repo1', owner: { login: 'test-org' } };
+        },
+      });
+
+      vi.mocked(OctokitClient).mockImplementation(
+        () =>
+          ({
+            getRepoProjectCounts: mockGetRepoProjectCounts,
+            listOrgRepoNames: mockListOrgRepoNames,
+          }) as unknown as OctokitClient,
+      );
+
+      const opts: Arguments = {
+        orgName: 'test-org',
+        orgList: [],
+        baseUrl: 'https://api.github.com',
+        proxyUrl: undefined,
+        verbose: false,
+        outputDir: 'output',
+        pageSize: 100,
+        retryMaxAttempts: 3,
+        retryInitialDelay: 1000,
+        retryMaxDelay: 30000,
+        retryBackoffFactor: 2,
+        retrySuccessThreshold: 5,
+        repoList: undefined,
+        repoNamesFile: 'input/nonexistent.txt',
+      };
+
+      await runProjectStats(opts);
+
+      // Should have fallen back to GraphQL
+      expect(mockListOrgRepoNames).toHaveBeenCalledWith('test-org', 100);
+      // Should have logged a warning
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Repo names file not found'),
+      );
+    });
+
     it('should process a single org successfully', async () => {
       vi.mocked(existsSync).mockReturnValue(false);
 

@@ -49,6 +49,7 @@ export interface Arguments {
   cleanState?: boolean;
 
   repoList: string[] | string | undefined;
+  repoNamesFile?: string;
   autoProcessMissing?: boolean;
 
   // multi-org options

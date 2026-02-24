@@ -39,10 +39,20 @@ describe('Commands - project-stats-command', () => {
       expect(optionNames).toContain('--resume-from-last-save');
       expect(optionNames).toContain('--force-fresh-start');
       expect(optionNames).toContain('--repo-list');
+      expect(optionNames).toContain('--repo-names-file');
       expect(optionNames).toContain('--output-dir');
       expect(optionNames).toContain('--clean-state');
       expect(optionNames).toContain('--delay-between-orgs');
       expect(optionNames).toContain('--continue-on-error');
+    });
+
+    it('should have --repo-names-file option with env var mapping', () => {
+      const option = projectStatsCommand.options.find(
+        (opt) => opt.long === '--repo-names-file',
+      );
+      expect(option).toBeDefined();
+      expect(option?.envVar).toBe('REPO_NAMES_FILE');
+      expect(option?.description).toContain('repository names');
     });
 
     it('should have default values for certain options', () => {
@@ -201,6 +211,20 @@ describe('Commands - project-stats-command', () => {
 
       expect(opts.pageSize).toBeTypeOf('number');
       expect(opts.pageSize).toBe(50);
+    });
+
+    it('should parse --repo-names-file as a string path', () => {
+      projectStatsCommand.parseOptions([
+        '-o',
+        'test-org',
+        '-t',
+        'test-token',
+        '--repo-names-file',
+        'input/repo-names.txt',
+      ]);
+      const opts = projectStatsCommand.opts();
+
+      expect(opts.repoNamesFile).toBe('input/repo-names.txt');
     });
   });
 });
