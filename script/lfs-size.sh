@@ -16,24 +16,39 @@ set -e
 # Usage:
 #   ./script/lfs-size.sh <repo-url>
 #   ./script/lfs-size.sh owner/repo          # shorthand for GitHub repos
+#   ./script/lfs-size.sh owner/repo --token <PAT>
+#
+# Authentication:
+#   --token <PAT>    Use a Personal Access Token for HTTPS authentication.
+#                    If not provided, falls back to the GH_TOKEN environment
+#                    variable (set by `gh auth`). If neither is set, the
+#                    clone uses your default git credential helper.
 #
 # Examples:
 #   ./script/lfs-size.sh https://github.com/owner/repo.git
 #   ./script/lfs-size.sh owner/repo
+#   ./script/lfs-size.sh owner/repo --token ghp_xxxxxxxxxxxx
+#   GH_TOKEN=ghp_xxx ./script/lfs-size.sh owner/repo
 
 # ── helpers ──────────────────────────────────────────────────────────
 
 usage() {
-  echo "Usage: $0 <repo-url | owner/repo>"
+  echo "Usage: $0 <repo-url | owner/repo> [--token <PAT>]"
   echo ""
   echo "Report Git LFS object sizes for a GitHub repository."
   echo ""
   echo "Arguments:"
   echo "  repo-url    Full clone URL or GitHub owner/repo shorthand"
   echo ""
+  echo "Options:"
+  echo "  --token <PAT>  Personal Access Token for HTTPS authentication."
+  echo "                 Falls back to GH_TOKEN env var if not provided."
+  echo ""
   echo "Examples:"
   echo "  $0 https://github.com/owner/repo.git"
   echo "  $0 owner/repo"
+  echo "  $0 owner/repo --token ghp_xxxxxxxxxxxx"
+  echo "  GH_TOKEN=ghp_xxx $0 owner/repo"
   exit 1
 }
 
@@ -58,12 +73,51 @@ if [ -z "$1" ]; then
 fi
 
 REPO_INPUT="$1"
+TOKEN=""
+
+# Parse optional flags
+shift
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --token)
+      if [ -z "$2" ]; then
+        echo "Error: --token requires a value"
+        exit 1
+      fi
+      TOKEN="$2"
+      shift 2
+      ;;
+    *)
+      echo "Error: Unknown option '$1'"
+      usage
+      ;;
+  esac
+done
+
+# Fall back to GH_TOKEN environment variable
+if [ -z "$TOKEN" ] && [ -n "$GH_TOKEN" ]; then
+  TOKEN="$GH_TOKEN"
+fi
 
 # Expand owner/repo shorthand to a full GitHub URL
 if [[ "$REPO_INPUT" =~ ^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$ ]]; then
-  REPO_URL="https://github.com/${REPO_INPUT}.git"
+  if [ -n "$TOKEN" ]; then
+    REPO_URL="https://x-access-token:${TOKEN}@github.com/${REPO_INPUT}.git"
+    # Display URL without the token for logging
+    DISPLAY_URL="https://github.com/${REPO_INPUT}.git"
+  else
+    REPO_URL="https://github.com/${REPO_INPUT}.git"
+    DISPLAY_URL="$REPO_URL"
+  fi
 else
-  REPO_URL="$REPO_INPUT"
+  # For full URLs, inject token if provided and URL is HTTPS GitHub
+  if [ -n "$TOKEN" ] && [[ "$REPO_INPUT" =~ ^https://github\.com/ ]]; then
+    REPO_URL=$(echo "$REPO_INPUT" | sed "s|https://github.com|https://x-access-token:${TOKEN}@github.com|")
+    DISPLAY_URL="$REPO_INPUT"
+  else
+    REPO_URL="$REPO_INPUT"
+    DISPLAY_URL="$REPO_URL"
+  fi
 fi
 
 # ── dependency checks ────────────────────────────────────────────────
@@ -76,7 +130,7 @@ check_dependency git-lfs
 CLONE_DIR=$(mktemp -d)
 trap cleanup EXIT
 
-echo "Cloning ${REPO_URL} (bare, depth 1)..."
+echo "Cloning ${DISPLAY_URL} (bare, depth 1)..."
 GIT_LFS_SKIP_SMUDGE=1 git clone --bare --depth 1 "$REPO_URL" "$CLONE_DIR" 2>&1 | grep -v "^remote:" || true
 
 echo ""

@@ -33,12 +33,32 @@ The script is located at `script/lfs-size.sh`. It accepts a repository URL or Gi
 ./script/lfs-size.sh https://github.com/owner/repo.git
 ```
 
+### Authentication
+
+For private repositories or when your default git credentials don't have access, pass a Personal Access Token (PAT) via the `--token` flag or the `GH_TOKEN` environment variable:
+
+```bash
+# Using --token flag
+./script/lfs-size.sh owner/repo --token ghp_xxxxxxxxxxxx
+
+# Using GH_TOKEN environment variable (set by `gh auth`)
+GH_TOKEN=ghp_xxxxxxxxxxxx ./script/lfs-size.sh owner/repo
+
+# GH_TOKEN is also set automatically if you're authenticated via gh CLI
+gh auth login
+./script/lfs-size.sh owner/repo
+```
+
+The token is injected into the HTTPS clone URL as `x-access-token` and is never printed to the console.
+
 ## What It Does
 
 1. **Shallow bare clone** — Clones only the latest commit metadata (no file checkout, no LFS object download) into a temporary directory.
 2. **LFS inspection** — Runs `git lfs ls-files -s --all` to list every LFS-tracked file with its size.
 3. **Summary** — Prints a per-file breakdown and a total object count with aggregate size.
 4. **Cleanup** — Removes the temporary clone directory automatically on exit.
+
+> **Note:** Depending on the size of the repository, the initial clone and LFS inspection can take some time — especially for repositories with large histories or many LFS-tracked files. The shallow bare clone minimizes this, but network speed and repository size will still affect duration.
 
 ## Example Output
 
