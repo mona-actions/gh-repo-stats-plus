@@ -58,10 +58,10 @@ Total size:  1.64 GB
 
 ## How This Relates to `repo-stats`
 
-| What you need | Tool to use |
-|---|---|
-| Quick boolean check for LFS across an org | `repo-stats` command → `Has_LFS` column |
-| Actual LFS object sizes for a specific repo | `script/lfs-size.sh` |
+| What you need                               | Tool to use                             |
+| ------------------------------------------- | --------------------------------------- |
+| Quick boolean check for LFS across an org   | `repo-stats` command → `Has_LFS` column |
+| Actual LFS object sizes for a specific repo | `script/lfs-size.sh`                    |
 
 The `Has_LFS` column in `repo-stats` is designed for bulk org-wide scanning and only checks whether `.gitattributes` contains `filter=lfs` entries. It uses the existing GraphQL query with zero additional API calls, making it efficient at scale but limited to detection only.
 
