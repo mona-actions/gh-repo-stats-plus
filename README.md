@@ -72,6 +72,7 @@ The extension is built using modern TypeScript patterns with:
 | [Installation](docs/installation.md) | Prerequisites and installation methods |
 | [Usage Guide](docs/usage.md)         | Authentication and usage examples      |
 | [Commands](docs/commands.md)         | Complete command reference             |
+| [LFS Sizing](docs/lfs-sizing.md)     | Git LFS storage analysis per repo      |
 | [Development](docs/development.md)   | Setup and development workflow         |
 
 ## Common Usage Examples
@@ -283,6 +284,7 @@ The CSV output includes detailed information about each repository:
 - `Fork_Count`: Number of forks
 - `Watcher_Count`: Number of watchers
 - `Has_Wiki`: Whether the repository has wiki feature enabled
+- `Has_LFS`: Whether the repository has Git LFS tracking configured (see [LFS Detection Limitations](#lfs-detection-limitations))
 - `Default_Branch`: Name of the default branch
 - `Primary_Language`: Primary programming language of the repository
 - `Languages`: Semicolon-separated list of languages with usage percentages (e.g., `TypeScript:85.2%;JavaScript:14.8%`)
@@ -300,6 +302,19 @@ The CSV output includes detailed information about each repository:
   - 60,000 or more objects being imported
   - 1.5 GB or larger size on disk
 - `Created`: Date/time when the repository was created
+
+### LFS Detection Limitations
+
+The `Has_LFS` column indicates whether the repository's `.gitattributes` file on the default branch contains `filter=lfs` entries. This is a lightweight check performed as part of the existing GraphQL query with no additional API calls.
+
+**Limitations to be aware of:**
+
+- **Default branch only**: The check reads `.gitattributes` from `HEAD` (the default branch). LFS tracking configured only on other branches will not be detected.
+- **Root `.gitattributes` only**: Nested `.gitattributes` files in subdirectories are not inspected.
+- **Detection, not sizing**: This column only indicates whether LFS is configured — it does not report the number or size of LFS objects.
+- **Empty repositories**: Empty repositories will always report `FALSE` since there is no `.gitattributes` file to read.
+
+**For actual LFS sizing**, use the standalone `script/lfs-size.sh` script to inspect individual repositories where `Has_LFS` is `TRUE`. This performs a shallow bare clone and reports per-file LFS sizes and totals. See the [LFS Sizing Guide](docs/lfs-sizing.md) for prerequisites and usage.
 
 ## 🛠️ Development Quick Start
 

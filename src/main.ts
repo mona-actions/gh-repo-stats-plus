@@ -30,6 +30,7 @@ import {
   generateRepoStatsFileName,
   convertKbToMb,
   checkIfHasMigrationIssues,
+  hasLfsTracking,
   formatElapsedTime,
   resolveOutputPath,
 } from './utils.js';
@@ -599,6 +600,7 @@ export function initializeCsvFile(fileName: string, logger: Logger): void {
     'Fork_Count',
     'Watcher_Count',
     'Has_Wiki',
+    'Has_LFS',
     'Default_Branch',
     'Primary_Language',
     'Languages',
@@ -1043,6 +1045,7 @@ export async function writeResultToCsv(
       isArchived: result.isArchived?.toString().toUpperCase() || 'FALSE',
       isTemplate: result.isTemplate?.toString().toUpperCase() || 'FALSE',
       Has_Wiki: result.Has_Wiki?.toString().toUpperCase() || 'FALSE',
+      Has_LFS: result.Has_LFS?.toString().toUpperCase() || 'FALSE',
       Auto_Merge_Allowed:
         result.Auto_Merge_Allowed?.toString().toUpperCase() || 'FALSE',
       Delete_Branch_On_Merge:
@@ -1089,6 +1092,7 @@ export async function writeResultToCsv(
       formattedResult.Fork_Count,
       formattedResult.Watcher_Count,
       formattedResult.Has_Wiki,
+      formattedResult.Has_LFS,
       formattedResult.Default_Branch,
       formattedResult.Primary_Language,
       formattedResult.Languages,
@@ -1182,6 +1186,7 @@ export function mapToRepoStatsResult(
     Fork_Count: repo.forkCount ?? 0,
     Watcher_Count: repo.watchers?.totalCount ?? 0,
     Has_Wiki: repo.hasWikiEnabled,
+    Has_LFS: hasLfsTracking(repo.gitattributes?.text),
     Default_Branch: repo.defaultBranchRef?.name ?? '',
     Primary_Language: repo.primaryLanguage?.name ?? '',
     Languages: languagesStr,

@@ -63,6 +63,7 @@ describe('initializeCsvFile', () => {
       'Fork_Count',
       'Watcher_Count',
       'Has_Wiki',
+      'Has_LFS',
       'Default_Branch',
       'Primary_Language',
       'Languages',
@@ -85,7 +86,7 @@ describe('initializeCsvFile', () => {
     }
   });
 
-  it('should include all 45 columns in correct order', () => {
+  it('should include all 46 columns in correct order', () => {
     vi.mocked(existsSync).mockReturnValue(false);
     const logger = createMockLogger();
 
@@ -95,7 +96,7 @@ describe('initializeCsvFile', () => {
     const headerLine = writtenContent.trim();
     const columns = headerLine.split(',');
 
-    expect(columns).toHaveLength(45);
+    expect(columns).toHaveLength(46);
 
     // Verify column order for new columns relative to neighbors
     const isTemplateIdx = columns.indexOf('isTemplate');
@@ -115,8 +116,11 @@ describe('initializeCsvFile', () => {
     const hasWikiIdx = columns.indexOf('Has_Wiki');
     expect(hasWikiIdx).toBe(watcherIdx + 1);
 
+    const hasLfsIdx = columns.indexOf('Has_LFS');
+    expect(hasLfsIdx).toBe(hasWikiIdx + 1);
+
     const defaultBranchIdx = columns.indexOf('Default_Branch');
-    expect(defaultBranchIdx).toBe(hasWikiIdx + 1);
+    expect(defaultBranchIdx).toBe(hasLfsIdx + 1);
   });
 
   it('should not overwrite existing file', () => {
@@ -254,6 +258,40 @@ describe('mapToRepoStatsResult', () => {
     expect(result.Merge_Commit_Allowed).toBe(true);
     expect(result.Squash_Merge_Allowed).toBe(true);
     expect(result.Rebase_Merge_Allowed).toBe(true);
+  });
+
+  it('should detect LFS tracking from gitattributes', () => {
+    const repo = createMockRepositoryStats({
+      gitattributes: { text: '*.psd filter=lfs diff=lfs merge=lfs -text\n' },
+    });
+    const issueStats = createMockIssueStats();
+    const prStats = createMockPrStats();
+
+    const result = mapToRepoStatsResult(repo, issueStats, prStats);
+
+    expect(result.Has_LFS).toBe(true);
+  });
+
+  it('should return Has_LFS false when gitattributes is null', () => {
+    const repo = createMockRepositoryStats({ gitattributes: null });
+    const issueStats = createMockIssueStats();
+    const prStats = createMockPrStats();
+
+    const result = mapToRepoStatsResult(repo, issueStats, prStats);
+
+    expect(result.Has_LFS).toBe(false);
+  });
+
+  it('should return Has_LFS false when gitattributes has no LFS patterns', () => {
+    const repo = createMockRepositoryStats({
+      gitattributes: { text: '*.md text\n*.png binary\n' },
+    });
+    const issueStats = createMockIssueStats();
+    const prStats = createMockPrStats();
+
+    const result = mapToRepoStatsResult(repo, issueStats, prStats);
+
+    expect(result.Has_LFS).toBe(false);
   });
 
   it('should format languages as semicolon-separated with percentages', () => {

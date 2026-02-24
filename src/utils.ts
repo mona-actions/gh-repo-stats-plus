@@ -22,6 +22,24 @@ export function convertKbToMb(kb: number | null | undefined): number {
   return kb / 1024;
 }
 
+/**
+ * Checks whether a `.gitattributes` file content indicates Git LFS tracking.
+ * Looks for lines containing `filter=lfs` which is the standard marker set by `git lfs track`.
+ *
+ * @param gitattributesText - The text content of a `.gitattributes` file, or null/undefined if the file doesn't exist
+ * @returns true if any line contains `filter=lfs`, false otherwise
+ */
+export function hasLfsTracking(
+  gitattributesText: string | null | undefined,
+): boolean {
+  if (!gitattributesText) {
+    return false;
+  }
+  return gitattributesText
+    .split(/\r?\n/)
+    .some((line) => line.includes('filter=lfs'));
+}
+
 export function checkIfHasMigrationIssues({
   repoSizeMb,
   totalRecordCount,

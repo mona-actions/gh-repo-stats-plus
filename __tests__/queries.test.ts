@@ -200,6 +200,13 @@ describe('GraphQL Queries', () => {
         expect(SINGLE_REPO_STATS_QUERY).toContain(field);
       }
     });
+
+    it('should include gitattributes object expression for LFS detection', () => {
+      expect(ORG_REPO_STATS_QUERY).toContain('gitattributes');
+      expect(ORG_REPO_STATS_QUERY).toContain('HEAD:.gitattributes');
+      expect(SINGLE_REPO_STATS_QUERY).toContain('gitattributes');
+      expect(SINGLE_REPO_STATS_QUERY).toContain('HEAD:.gitattributes');
+    });
   });
 
   describe('REPO_ISSUES_QUERY', () => {

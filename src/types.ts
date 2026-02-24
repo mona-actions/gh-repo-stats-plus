@@ -203,6 +203,7 @@ export interface RepositoryStats {
   url: string;
   visibility: string;
   watchers: TotalCount;
+  gitattributes: { text: string | null } | null;
 }
 
 export interface RepoStatsGraphQLResponse {
@@ -288,6 +289,7 @@ export interface RepoStatsResult {
   Fork_Count: number;
   Watcher_Count: number;
   Has_Wiki: boolean;
+  Has_LFS: boolean;
   Default_Branch: string;
   Primary_Language: string;
   Languages: string;
