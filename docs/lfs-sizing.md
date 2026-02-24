@@ -35,18 +35,17 @@ The script is located at `script/lfs-size.sh`. It accepts a repository URL or Gi
 
 ### Authentication
 
-For private repositories or when your default git credentials don't have access, pass a Personal Access Token (PAT) via the `--token` flag or the `GH_TOKEN` environment variable:
+For private repositories or when your default git credentials don't have access, pass a Personal Access Token (PAT) via the `--token` flag or the `GH_TOKEN` environment variable. `GH_TOKEN` is **not** set automatically by `gh auth`; you must set it yourself (optionally using `gh auth token`):
 
 ```bash
 # Using --token flag
 ./script/lfs-size.sh owner/repo --token ghp_xxxxxxxxxxxx
 
-# Using GH_TOKEN environment variable (set by `gh auth`)
+# Using GH_TOKEN environment variable (set manually)
 GH_TOKEN=ghp_xxxxxxxxxxxx ./script/lfs-size.sh owner/repo
 
-# GH_TOKEN is also set automatically if you're authenticated via gh CLI
-gh auth login
-./script/lfs-size.sh owner/repo
+# Populating GH_TOKEN from GitHub CLI auth
+GH_TOKEN=$(gh auth token) ./script/lfs-size.sh owner/repo
 ```
 
 The token is injected into the HTTPS clone URL as `x-access-token` and is never printed to the console.
