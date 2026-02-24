@@ -54,6 +54,7 @@ GH_TOKEN=$(gh auth token) ./script/lfs-size.sh owner/repo
 The token is injected into the HTTPS clone URL as `x-access-token`, and the script itself does not echo it back to the console. However, underlying tools such as `git` may still include parts of the remote URL (and thus the token) in error messages or logs, so avoid sharing terminal output or logs produced while using a real token.
 
 > **Security note:** Prefer the `GH_TOKEN` environment variable over `--token`. Command-line arguments are visible in process listings (e.g., `ps`) and may be captured in shell history or logs.
+
 ## What It Does
 
 1. **Shallow bare clone** — Clones only the latest commit metadata (no file checkout, no LFS object download) into a temporary directory.
