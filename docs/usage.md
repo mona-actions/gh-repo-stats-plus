@@ -19,6 +19,9 @@ gh repo-stats-plus repo-stats --org-name my-org
 
 # Find repositories missing from a CSV file
 gh repo-stats-plus missing-repos --org-name my-org --file my-repos.csv
+
+# Count ProjectsV2 linked to repositories
+gh repo-stats-plus project-stats --org-name my-org
 ```
 
 ## Common Scenarios
@@ -50,6 +53,19 @@ gh repo-stats-plus repo-stats \
 ```bash
 gh repo-stats-plus missing-repos --org-name my-org --file output.csv
 gh repo-stats-plus repo-stats --org-name my-org --auto-process-missing
+```
+
+### Count Project Associations
+
+```bash
+# Count ProjectsV2 linked to repositories via issues
+gh repo-stats-plus project-stats --org-name my-org
+
+# Process specific repos from a list
+gh repo-stats-plus project-stats --org-name my-org --repo-list repos.txt
+
+# Multiple organizations
+gh repo-stats-plus project-stats --org-list orgs.txt --continue-on-error
 ```
 
 ### Multiple Organizations
