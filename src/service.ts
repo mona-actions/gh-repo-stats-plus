@@ -4,18 +4,25 @@ import {
   AuthResponse,
   IssuesResponse,
   IssueStats,
+  OrgRepoNamesResponse,
+  ProjectInfo,
+  ProjectStatsResult,
+  ProjectV2Node,
   PullRequestNode,
   RateLimitCheck,
   RateLimitResponse,
   RateLimitResult,
+  RepoProjectCountsResponse,
   RepositoryStats,
   RepoStatsGraphQLResponse,
 } from './types.js';
 import {
   ORG_REPO_STATS_QUERY,
+  ORG_REPO_NAMES_QUERY,
   SINGLE_REPO_STATS_QUERY,
   REPO_ISSUES_QUERY,
   REPO_PULL_REQUESTS_QUERY,
+  REPO_PROJECT_COUNTS_QUERY,
 } from './queries.js';
 
 type Repository = components['schemas']['repository'];
@@ -153,6 +160,103 @@ export class OctokitClient {
         yield pr;
       }
     }
+  }
+
+  /**
+   * Lists repository names for an organization using GraphQL.
+   * This is a lightweight alternative to listReposForOrg (REST) that only
+   * fetches repo name and owner — avoiding REST API rate limits.
+   */
+  async *listOrgRepoNames(
+    org: string,
+    per_page: number,
+  ): AsyncGenerator<{ name: string; owner: { login: string } }, void, unknown> {
+    const iterator =
+      this.octokit.graphql.paginate.iterator<OrgRepoNamesResponse>(
+        ORG_REPO_NAMES_QUERY,
+        {
+          login: org,
+          pageSize: per_page,
+        },
+      );
+
+    for await (const response of iterator) {
+      const repos = response.organization.repositories.nodes;
+      for (const repo of repos) {
+        yield repo;
+      }
+    }
+  }
+
+  /**
+   * Paginates through all issues in a repository, collecting their linked
+   * ProjectsV2 nodes and computing aggregate project counts.
+   *
+   * Returns a ProjectStatsResult with:
+   * - Issues_Linked_To_Projects: number of issues that have at least one linked ProjectV2
+   * - Unique_Projects_Linked_By_Issues: count of distinct ProjectV2 items found across all issues
+   * - Projects_Linked_To_Repo: total projectsV2.totalCount on the repository
+   */
+  async getRepoProjectCounts(
+    owner: string,
+    repo: string,
+    per_page: number,
+    onPageProcessed?: (pageNumber: number, issuesInPage: number) => void,
+  ): Promise<ProjectStatsResult> {
+    const uniqueProjects = new Map<string, ProjectInfo>();
+    let issuesLinkedToProjects = 0;
+    let projectsLinkedToRepo = 0;
+
+    const iterator =
+      this.octokit.graphql.paginate.iterator<RepoProjectCountsResponse>(
+        REPO_PROJECT_COUNTS_QUERY,
+        {
+          owner,
+          repo,
+          pageSize: per_page,
+        },
+      );
+
+    let isFirstPage = true;
+    let pageNumber = 0;
+    for await (const response of iterator) {
+      pageNumber++;
+
+      // Capture repo-level project count from the first page
+      if (isFirstPage) {
+        projectsLinkedToRepo = response.repository.projectsV2?.totalCount ?? 0;
+        isFirstPage = false;
+      }
+
+      const issues = response.repository.issues.nodes;
+      for (const issue of issues) {
+        const projects: ProjectV2Node[] = issue.projectsV2?.nodes ?? [];
+        if (projects.length > 0) {
+          issuesLinkedToProjects++;
+        }
+        for (const project of projects) {
+          const existing = uniqueProjects.get(project.id);
+          if (existing) {
+            existing.issueCount++;
+          } else {
+            uniqueProjects.set(project.id, {
+              title: project.title,
+              issueCount: 1,
+            });
+          }
+        }
+      }
+
+      onPageProcessed?.(pageNumber, issues.length);
+    }
+
+    return {
+      Org_Name: owner,
+      Repo_Name: repo,
+      Issues_Linked_To_Projects: issuesLinkedToProjects,
+      Unique_Projects_Linked_By_Issues: uniqueProjects.size,
+      Projects_Linked_To_Repo: projectsLinkedToRepo,
+    };
   }
 
   async checkRateLimits(

@@ -53,6 +53,8 @@ This TypeScript rewrite offers several advantages:
 
 10. **Configurable Output Directory**: Control where output files and state files are saved with the `--output-dir` option (defaults to `./output/`) for organized file management.
 
+11. **Project Stats Tracking**: Counts unique ProjectsV2 linked to repositories via issues and directly, based on [jcantosz/Count-repo-projects](https://github.com/jcantosz/Count-repo-projects).
+
 ## Technical Implementation
 
 The extension is built using modern TypeScript patterns with:
@@ -174,6 +176,22 @@ gh repo-stats-plus missing-repos \
 gh repo-stats-plus repo-stats --org-name my-org --auto-process-missing
 ```
 
+### Project Statistics
+
+```bash
+# Count ProjectsV2 linked to repositories via issues
+gh repo-stats-plus project-stats --org-name my-org
+
+# Process specific repos from a file
+gh repo-stats-plus project-stats --org-name my-org --repo-list repos.txt
+
+# Multiple organizations
+gh repo-stats-plus project-stats --org-list orgs.txt --continue-on-error
+
+# Resume interrupted processing
+gh repo-stats-plus project-stats --org-name my-org --resume-from-last-save
+```
+
 #### Repo Stats Options
 
 **Organization Selection** (one required):
@@ -219,6 +237,15 @@ gh repo-stats-plus repo-stats --org-name my-org --auto-process-missing
 - `--retry-backoff-factor <factor>`: Backoff factor for retry delays (Default: 2)
 - `--retry-success-threshold <count>`: Successful operations before resetting retry count (Default: 5)
 
+#### Project Stats Options
+
+The `project-stats` command supports the same authentication, retry, multi-org, and processing options as `repo-stats` above, with these differences:
+
+- `--page-size <size>`: Number of issues per page (Default: 100)
+- No `--extra-page-size` or `--auto-process-missing` options
+
+See the [Commands Reference](docs/commands.md) for the complete list of project-stats options.
+
 ## Permissions
 
 The permissions needed by repo-stats-ts depends on the authentication method:
@@ -246,7 +273,7 @@ The app requires `Read-only` permissions to the following:
 
 The tool generates:
 
-1. A CSV file with repository statistics
+1. A CSV file with repository statistics (or project statistics for the `project-stats` command)
 2. A `last_known_state.json` file with the current processing state
 3. Log files in the `logs/` directory
 
@@ -306,6 +333,16 @@ The CSV output includes detailed information about each repository:
 ### LFS Detection Limitations
 
 The `Has_LFS` column indicates whether the repository's `.gitattributes` file on the default branch contains `filter=lfs` entries. This is a lightweight check performed as part of the existing GraphQL query with no additional API calls.
+
+### Project Stats CSV Output Columns
+
+The `project-stats` command generates a separate CSV file with the following columns:
+
+- `Org_Name`: Organization login
+- `Repo_Name`: Repository name
+- `Issues_Linked_To_Projects`: Number of issues that have at least one linked ProjectV2
+- `Unique_Projects_Linked_By_Issues`: Count of distinct ProjectV2 items found across all issues
+- `Projects_Linked_To_Repo`: Total count of projects directly associated with the repository
 
 **Limitations to be aware of:**
 

@@ -49,6 +49,7 @@ export interface Arguments {
   cleanState?: boolean;
 
   repoList: string[] | string | undefined;
+  repoNamesFile?: string;
   autoProcessMissing?: boolean;
 
   // multi-org options
@@ -408,4 +409,105 @@ export interface OrgProcessingResult {
   endTime?: Date;
   elapsedTime?: string;
   reposProcessed?: number;
+}
+
+// --- Project Stats types ---
+
+export interface ProjectV2Node {
+  id: string;
+  number: number;
+  title: string;
+}
+
+export interface OrgRepoNamesResponse {
+  organization: {
+    repositories: {
+      pageInfo: PageInfo;
+      nodes: Array<{
+        name: string;
+        owner: { login: string };
+      }>;
+    };
+  };
+}
+
+export interface RepoProjectCountsResponse {
+  repository: {
+    issues: {
+      pageInfo: PageInfo;
+      nodes: Array<{
+        projectsV2?: {
+          nodes?: ProjectV2Node[] | null;
+        } | null;
+      }>;
+    };
+    projectsV2?: TotalCount | null;
+  };
+}
+
+export interface ProjectStatsResult {
+  Org_Name: string;
+  Repo_Name: string;
+  Issues_Linked_To_Projects: number;
+  Unique_Projects_Linked_By_Issues: number;
+  Projects_Linked_To_Repo: number;
+}
+
+export interface ProjectInfo {
+  title: string;
+  issueCount: number;
+}
+
+// --- Shared command infrastructure types ---
+
+import type { OctokitClient } from './service.js';
+import type { StateManager } from './state.js';
+import type { SessionManager } from './session.js';
+import type { RetryConfig } from './retry.js';
+
+/**
+ * Shared processing context returned by initCommand.
+ * Used by both repo-stats and project-stats commands.
+ */
+export interface CommandContext {
+  opts: Arguments;
+  logger: Logger;
+  client: OctokitClient;
+  fileName: string;
+  processedState?: ProcessedPageState;
+  retryConfig: RetryConfig;
+  stateManager?: StateManager;
+  orgsToProcess: string[];
+  sessionManager?: SessionManager;
+  resumeFromOrgIndex: number;
+}
+
+/**
+ * Per-organization processing context created inside executeForOrg.
+ */
+export interface OrgContext {
+  opts: Arguments;
+  logger: Logger;
+  client: OctokitClient;
+  fileName: string;
+  processedState: ProcessedPageState;
+  retryConfig: RetryConfig;
+  stateManager: StateManager;
+}
+
+/**
+ * Configuration that varies between commands.
+ * Passed to initCommand / executeCommand / executeForOrg.
+ */
+export interface CommandConfig {
+  /** Prefix for log files, e.g. 'repo-stats' or 'project-stats' */
+  logPrefix: string;
+  /** Label used in summary output, e.g. 'PROCESSING' or 'PROJECT-STATS PROCESSING' */
+  summaryLabel: string;
+  /** Function that generates the output CSV file name for an org */
+  generateFileName: (orgName: string) => string;
+  /** Function that initializes the CSV file (writes headers) */
+  initializeCsvFile: (fileName: string, logger: Logger) => void;
+  /** The actual per-org processing logic */
+  processOrg: (context: OrgContext) => Promise<void>;
 }
