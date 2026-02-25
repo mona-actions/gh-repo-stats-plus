@@ -84,15 +84,15 @@ describe('OctokitClient - getRepoProjectCounts', () => {
                 {
                   projectsV2: {
                     nodes: [
-                      { number: 1, title: 'Project Alpha' },
-                      { number: 2, title: 'Project Beta' },
+                      { id: 'PVT_1', number: 1, title: 'Project Alpha' },
+                      { id: 'PVT_2', number: 2, title: 'Project Beta' },
                     ],
                   },
                 },
                 {
                   projectsV2: {
                     nodes: [
-                      { number: 1, title: 'Project Alpha' }, // duplicate
+                      { id: 'PVT_1', number: 1, title: 'Project Alpha' }, // duplicate
                     ],
                   },
                 },
@@ -140,7 +140,7 @@ describe('OctokitClient - getRepoProjectCounts', () => {
               nodes: [
                 {
                   projectsV2: {
-                    nodes: [{ number: 1, title: 'Project A' }],
+                    nodes: [{ id: 'PVT_A', number: 1, title: 'Project A' }],
                   },
                 },
               ],
@@ -157,8 +157,8 @@ describe('OctokitClient - getRepoProjectCounts', () => {
                 {
                   projectsV2: {
                     nodes: [
-                      { number: 2, title: 'Project B' },
-                      { number: 3, title: 'Project C' },
+                      { id: 'PVT_B', number: 2, title: 'Project B' },
+                      { id: 'PVT_C', number: 3, title: 'Project C' },
                     ],
                   },
                 },
@@ -201,21 +201,21 @@ describe('OctokitClient - getRepoProjectCounts', () => {
                 {
                   projectsV2: {
                     nodes: [
-                      { number: 10, title: 'Main Board' },
-                      { number: 20, title: 'Sprint Board' },
+                      { id: 'PVT_10', number: 10, title: 'Main Board' },
+                      { id: 'PVT_20', number: 20, title: 'Sprint Board' },
                     ],
                   },
                 },
                 {
                   projectsV2: {
-                    nodes: [{ number: 10, title: 'Main Board' }],
+                    nodes: [{ id: 'PVT_10', number: 10, title: 'Main Board' }],
                   },
                 },
                 {
                   projectsV2: {
                     nodes: [
-                      { number: 20, title: 'Sprint Board' },
-                      { number: 30, title: 'Backlog' },
+                      { id: 'PVT_20', number: 20, title: 'Sprint Board' },
+                      { id: 'PVT_30', number: 30, title: 'Backlog' },
                     ],
                   },
                 },

@@ -203,11 +203,38 @@ async function processProjectStatsFromFile({
 
   const repoList = repoListRaw
     .filter((line) => line.trim() !== '' && !line.trim().startsWith('#'))
-    .map((line) => {
-      const [owner, repo] = line.trim().split('/');
+    .map((line, index) => {
+      const trimmed = line.trim();
+      const segments = trimmed.split('/');
+
+      if (
+        segments.length !== 2 ||
+        !segments[0]?.trim() ||
+        !segments[1]?.trim()
+      ) {
+        logger.warn(
+          `[project-stats] Skipping invalid repo entry on line ${
+            index + 1
+          }: "${trimmed}". Expected format "owner/repo".`,
+        );
+        return null;
+      }
+
+      const owner = segments[0].trim();
+      const repo = segments[1].trim();
+
       return { owner, repo };
     })
-    .filter(({ owner }) => owner.toLowerCase() === opts.orgName!.toLowerCase());
+    .filter(
+      (
+        entry,
+      ): entry is {
+        owner: string;
+        repo: string;
+      } =>
+        entry !== null &&
+        entry.owner.toLowerCase() === opts.orgName!.toLowerCase(),
+    );
 
   logger.info(
     `[project-stats] Filtered to ${repoList.length} repositories for organization: ${opts.orgName}`,
@@ -246,7 +273,7 @@ async function processProjectStatsFromFile({
 
       writeProjectStatsToCsv(result, fileName, logger);
 
-      handleProjectStatsSuccess({
+      await handleProjectStatsSuccess({
         repoName: repo,
         processedState,
         state,
@@ -254,6 +281,7 @@ async function processProjectStatsFromFile({
         logger,
         processedCount: ++processedCount,
         stateManager,
+        client,
       });
     } catch (error) {
       state.successCount = 0;
@@ -357,7 +385,7 @@ async function processProjectStatsFromOrg({
 
       writeProjectStatsToCsv(result, fileName, logger);
 
-      handleProjectStatsSuccess({
+      await handleProjectStatsSuccess({
         repoName,
         processedState,
         state,
@@ -365,6 +393,7 @@ async function processProjectStatsFromOrg({
         logger,
         processedCount: ++processedCount,
         stateManager,
+        client,
       });
     } catch (error) {
       state.successCount = 0;
@@ -387,7 +416,7 @@ async function processProjectStatsFromOrg({
 
 // --- Helpers ---
 
-function handleProjectStatsSuccess({
+async function handleProjectStatsSuccess({
   repoName,
   processedState,
   state,
@@ -395,6 +424,7 @@ function handleProjectStatsSuccess({
   logger,
   processedCount,
   stateManager,
+  client,
 }: {
   repoName: string;
   processedState: ProcessedPageState;
@@ -403,7 +433,8 @@ function handleProjectStatsSuccess({
   logger: Logger;
   processedCount: number;
   stateManager: StateManager;
-}): void {
+  client: OctokitClient;
+}): Promise<void> {
   const successThreshold = opts.retrySuccessThreshold || 5;
 
   state.successCount++;
@@ -419,6 +450,41 @@ function handleProjectStatsSuccess({
     repoName,
     lastSuccessfulCursor: processedState.currentCursor,
   });
+
+  // Check rate limits after configured interval
+  if (processedCount % (opts.rateLimitCheckInterval || 10) === 0) {
+    logger.debug(
+      `[project-stats] Checking rate limits after processing ${processedCount} repositories`,
+    );
+    const rateLimits = await client.checkRateLimits();
+
+    if (
+      rateLimits.graphQLRemaining === 0 ||
+      rateLimits.apiRemainingRequest === 0
+    ) {
+      const limitType =
+        rateLimits.graphQLRemaining === 0 ? 'GraphQL' : 'REST API';
+      logger.warn(
+        `[project-stats] ${limitType} rate limit reached after processing ${processedCount} repositories`,
+      );
+
+      if (rateLimits.messageType === 'error') {
+        logger.error(rateLimits.message);
+        throw new Error(
+          `${limitType} rate limit exceeded and maximum retries reached`,
+        );
+      }
+
+      logger.warn(rateLimits.message);
+      throw new Error(
+        'Rate limit reached. Processing will be paused until limits reset.',
+      );
+    } else {
+      logger.info(
+        `[project-stats] GraphQL remaining: ${rateLimits.graphQLRemaining}, REST API remaining: ${rateLimits.apiRemainingRequest}`,
+      );
+    }
+  }
 
   logger.debug(
     `[project-stats] Processed ${processedCount} repositories so far`,

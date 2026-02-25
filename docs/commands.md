@@ -241,6 +241,7 @@ gh repo-stats-plus project-stats [options]
 - `--resume-from-last-save`: Resume from the last saved state
 - `--force-fresh-start`: Force a fresh start, ignoring any existing state
 - `--repo-list <file>`: Path to file containing list of repositories to process (format: owner/repo_name)
+- `--repo-names-file <file>`: Path to file containing repository names only, one per line (no owner prefix)
 - `--clean-state`: Remove state file after successful completion
 
 #### Multi-Organization Options

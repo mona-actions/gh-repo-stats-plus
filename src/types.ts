@@ -414,6 +414,7 @@ export interface OrgProcessingResult {
 // --- Project Stats types ---
 
 export interface ProjectV2Node {
+  id: string;
   number: number;
   title: string;
 }
@@ -435,12 +436,12 @@ export interface RepoProjectCountsResponse {
     issues: {
       pageInfo: PageInfo;
       nodes: Array<{
-        projectsV2: {
-          nodes: ProjectV2Node[];
-        };
+        projectsV2?: {
+          nodes?: ProjectV2Node[] | null;
+        } | null;
       }>;
     };
-    projectsV2: TotalCount;
+    projectsV2?: TotalCount | null;
   };
 }
 

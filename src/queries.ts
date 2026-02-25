@@ -283,7 +283,7 @@ export const ORG_REPO_NAMES_QUERY = `
 export const REPO_PROJECT_COUNTS_QUERY = `
   query repoProjectCounts($owner: String!, $repo: String!, $pageSize: Int!, $cursor: String) {
     repository(owner: $owner, name: $repo) {
-      issues(first: $pageSize, after: $cursor) {
+      issues(first: $pageSize, after: $cursor, states: [OPEN, CLOSED]) {
         pageInfo {
           endCursor
           hasNextPage
@@ -291,6 +291,7 @@ export const REPO_PROJECT_COUNTS_QUERY = `
         nodes {
           projectsV2(first: 100) {
             nodes {
+              id
               number
               title
             }

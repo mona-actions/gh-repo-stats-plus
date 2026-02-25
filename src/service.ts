@@ -202,7 +202,7 @@ export class OctokitClient {
     repo: string,
     per_page: number,
   ): Promise<ProjectStatsResult> {
-    const uniqueProjects = new Map<number, ProjectInfo>();
+    const uniqueProjects = new Map<string, ProjectInfo>();
     let issuesLinkedToProjects = 0;
     let projectsLinkedToRepo = 0;
 
@@ -231,11 +231,11 @@ export class OctokitClient {
           issuesLinkedToProjects++;
         }
         for (const project of projects) {
-          const existing = uniqueProjects.get(project.number);
+          const existing = uniqueProjects.get(project.id);
           if (existing) {
             existing.issueCount++;
           } else {
-            uniqueProjects.set(project.number, {
+            uniqueProjects.set(project.id, {
               title: project.title,
               issueCount: 1,
             });
