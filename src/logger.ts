@@ -77,64 +77,76 @@ export const logProcessingSummary = (
   summary: ProcessingSummary,
   logger: Logger,
 ): void => {
-  logger.info('Processing Summary:');
-  logger.info(`✓ Initially processed: ${summary.initiallyProcessed} files`);
-  if (summary.totalRetried > 0) {
-    logger.info(`✓ Successfully retried: ${summary.totalRetried} files`);
-  }
-  logger.info(`✓ Total successfully processed: ${summary.totalSuccess} files`);
+  logger.info('[repo-stats] Processing Summary:');
   logger.info(
-    `✗ Failed to process: ${summary.totalFailures} files that were attempted to be retried`,
+    `[repo-stats] ✓ Initially processed: ${summary.initiallyProcessed} files`,
+  );
+  if (summary.totalRetried > 0) {
+    logger.info(
+      `[repo-stats] ✓ Successfully retried: ${summary.totalRetried} files`,
+    );
+  }
+  logger.info(
+    `[repo-stats] ✓ Total successfully processed: ${summary.totalSuccess} files`,
+  );
+  logger.info(
+    `[repo-stats] ✗ Failed to process: ${summary.totalFailures} files that were attempted to be retried`,
   );
   if (summary.remainingUnprocessed > 0) {
     logger.warn(
-      `⚠ Unprocessed files remaining: ${summary.remainingUnprocessed}`,
+      `[repo-stats] ⚠ Unprocessed files remaining: ${summary.remainingUnprocessed}`,
     );
   }
-  logger.debug(`Total processing attempts: ${summary.totalAttempts}`);
-  logger.info('Completed repo-stats-queue processing');
+  logger.debug(
+    `[repo-stats] Total processing attempts: ${summary.totalAttempts}`,
+  );
+  logger.info('[repo-stats] Completed repo-stats-queue processing');
 };
 
 export const logBatchProcessing = {
   starting: (fileCount: number, logger: Logger): void => {
-    logger.info(`Starting batch processing with ${fileCount} files`);
+    logger.info(
+      `[repo-stats] Starting batch processing with ${fileCount} files`,
+    );
   },
   noFiles: (logger: Logger): void => {
-    logger.info('No batch files found for processing');
+    logger.info('[repo-stats] No batch files found for processing');
   },
   attempt: (current: number, max: number, logger: Logger): void => {
-    logger.info(`Processing attempt ${current} of ${max}`);
+    logger.info(`[repo-stats] Processing attempt ${current} of ${max}`);
   },
   allSuccess: (logger: Logger): void => {
-    logger.info('✓ All files processed successfully');
+    logger.info('[repo-stats] ✓ All files processed successfully');
   },
   maxRetries: (max: number, remaining: number, logger: Logger): void => {
     logger.warn(
-      `⚠ Maximum retry attempts (${max}) reached. ${remaining} files remain unprocessed`,
+      `[repo-stats] ⚠ Maximum retry attempts (${max}) reached. ${remaining} files remain unprocessed`,
     );
   },
   scheduled: (count: number, logger: Logger): void => {
-    logger.info(`⟳ ${count} files scheduled for retry in next attempt`);
+    logger.info(
+      `[repo-stats] ⟳ ${count} files scheduled for retry in next attempt`,
+    );
   },
   total: (count: number, logger: Logger): void => {
-    logger.info(`Total repositories processed: ${count}`);
+    logger.info(`[repo-stats] Total repositories processed: ${count}`);
   },
 };
 
 export const logInitialization = {
   start: (logger: Logger): void => {
-    logger.info('Initializing repo-stats-queue application...');
+    logger.info('[init] Initializing repo-stats-queue application...');
   },
   auth: (logger: Logger): void => {
-    logger.debug('Creating auth config...');
+    logger.debug('[init] Creating auth config...');
   },
   octokit: (logger: Logger): void => {
-    logger.debug('Initializing octokit client...');
+    logger.debug('[init] Initializing octokit client...');
   },
   token: (logger: Logger): void => {
-    logger.debug('Generating app token...');
+    logger.debug('[init] Generating app token...');
   },
   directories: (logger: Logger): void => {
-    logger.debug('Setting up output directories...');
+    logger.debug('[init] Setting up output directories...');
   },
 };

@@ -100,11 +100,11 @@ export function initializeCsvFile(
   logger: Logger,
 ): void {
   if (!existsSync(fileName)) {
-    logger.info(`Creating new CSV file: ${fileName}`);
+    logger.info(`[csv] Creating new CSV file: ${fileName}`);
     const headerRow = `${columns.join(',')}\n`;
     writeFileSync(fileName, headerRow);
   } else {
-    logger.info(`Using existing CSV file: ${fileName}`);
+    logger.info(`[csv] Using existing CSV file: ${fileName}`);
   }
 }
 
@@ -128,7 +128,7 @@ export function appendCsvRow(
     appendFileSync(fileName, csvRow);
   } catch (error) {
     logger.error(
-      `Failed to append CSV row: ${
+      `[csv] Failed to append CSV row: ${
         error instanceof Error ? error.message : String(error)
       }`,
     );
