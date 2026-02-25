@@ -192,9 +192,11 @@ export async function runCombineStats(
     logFileName,
   );
 
-  logger.info('Starting combine-stats...');
-  logger.info(`Files to combine: ${options.files.join(', ')}`);
-  logger.info(`Match columns: ${options.matchColumns.join(', ')}`);
+  logger.info('[combine-stats] Starting combine-stats...');
+  logger.info(`[combine-stats] Files to combine: ${options.files.join(', ')}`);
+  logger.info(
+    `[combine-stats] Match columns: ${options.matchColumns.join(', ')}`,
+  );
 
   // Validate all files exist
   for (const filePath of options.files) {
@@ -207,7 +209,7 @@ export async function runCombineStats(
   const { headers, rows } = combineFiles(options.files, options.matchColumns);
 
   logger.info(
-    `Combined ${options.files.length} files: ${headers.length} columns, ${rows.length} rows`,
+    `[combine-stats] Combined ${options.files.length} files: ${headers.length} columns, ${rows.length} rows`,
   );
 
   // Determine output path
@@ -216,12 +218,14 @@ export async function runCombineStats(
 
   // Write output
   writeCsvFile(outputPath, headers, rows);
-  logger.info(`Combined CSV written to: ${outputPath}`);
+  logger.info(`[combine-stats] Combined CSV written to: ${outputPath}`);
 
-  logger.info(`Combined ${options.files.length} files into: ${outputPath}`);
-  logger.info(`  Total columns: ${headers.length}`);
-  logger.info(`  Total rows: ${rows.length}`);
-  logger.info(`output_file=${outputPath}`);
+  logger.info(
+    `[combine-stats] Combined ${options.files.length} files into: ${outputPath}`,
+  );
+  logger.info(`[combine-stats]   Total columns: ${headers.length}`);
+  logger.info(`[combine-stats]   Total rows: ${rows.length}`);
+  logger.info(`[combine-stats] output_file=${outputPath}`);
 
   return outputPath;
 }
