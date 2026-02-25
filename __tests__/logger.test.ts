@@ -136,21 +136,23 @@ describe('Logger Module', () => {
       logProcessingSummary(summary, mockLogger);
 
       // Assert - Check key log entries
-      expect(mockLogger.info).toHaveBeenCalledWith('Processing Summary:');
       expect(mockLogger.info).toHaveBeenCalledWith(
-        '✓ Initially processed: 100 files',
+        '[repo-stats] Processing Summary:',
       );
       expect(mockLogger.info).toHaveBeenCalledWith(
-        '✓ Successfully retried: 5 files',
+        '[repo-stats] ✓ Initially processed: 100 files',
       );
       expect(mockLogger.info).toHaveBeenCalledWith(
-        '✓ Total successfully processed: 95 files',
+        '[repo-stats] ✓ Successfully retried: 5 files',
       );
       expect(mockLogger.info).toHaveBeenCalledWith(
-        '✗ Failed to process: 10 files that were attempted to be retried',
+        '[repo-stats] ✓ Total successfully processed: 95 files',
       );
       expect(mockLogger.info).toHaveBeenCalledWith(
-        'Completed repo-stats-queue processing',
+        '[repo-stats] ✗ Failed to process: 10 files that were attempted to be retried',
+      );
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        '[repo-stats] Completed repo-stats-queue processing',
       );
     });
 
@@ -171,7 +173,7 @@ describe('Logger Module', () => {
 
       // Assert
       expect(mockLogger.warn).toHaveBeenCalledWith(
-        '⚠ Unprocessed files remaining: 2',
+        '[repo-stats] ⚠ Unprocessed files remaining: 2',
       );
     });
 
@@ -207,7 +209,7 @@ describe('Logger Module', () => {
 
       // Assert
       expect(mockLogger.info).toHaveBeenCalledWith(
-        '✓ All files processed successfully',
+        '[repo-stats] ✓ All files processed successfully',
       );
     });
 
@@ -222,7 +224,7 @@ describe('Logger Module', () => {
 
       // Assert
       expect(mockLogger.warn).toHaveBeenCalledWith(
-        `⚠ Maximum retry attempts (${max}) reached. ${remaining} files remain unprocessed`,
+        `[repo-stats] ⚠ Maximum retry attempts (${max}) reached. ${remaining} files remain unprocessed`,
       );
     });
 
@@ -231,14 +233,15 @@ describe('Logger Module', () => {
         method: 'scheduled',
         args: [5],
         expectedCall: 'info',
-        expectedMessage: '⟳ 5 files scheduled for retry in next attempt',
+        expectedMessage:
+          '[repo-stats] ⟳ 5 files scheduled for retry in next attempt',
         description: 'files scheduled for retry',
       },
       {
         method: 'total',
         args: [100],
         expectedCall: 'info',
-        expectedMessage: 'Total repositories processed: 100',
+        expectedMessage: '[repo-stats] Total repositories processed: 100',
         description: 'total repositories processed',
       },
     ])(
@@ -274,15 +277,19 @@ describe('Logger Module', () => {
 
       // Assert
       expect(mockLogger.info).toHaveBeenCalledWith(
-        'Initializing repo-stats-queue application...',
+        '[init] Initializing repo-stats-queue application...',
       );
-      expect(mockLogger.debug).toHaveBeenCalledWith('Creating auth config...');
       expect(mockLogger.debug).toHaveBeenCalledWith(
-        'Initializing octokit client...',
+        '[init] Creating auth config...',
       );
-      expect(mockLogger.debug).toHaveBeenCalledWith('Generating app token...');
       expect(mockLogger.debug).toHaveBeenCalledWith(
-        'Setting up output directories...',
+        '[init] Initializing octokit client...',
+      );
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        '[init] Generating app token...',
+      );
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        '[init] Setting up output directories...',
       );
     });
   });

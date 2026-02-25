@@ -91,7 +91,7 @@ describe('StateManager', () => {
       expect(resumeFromLastState).toBe(true);
       expect(processedState.processedRepos).toEqual(['repo1', 'repo2']);
       expect(mockLogger.info).toHaveBeenCalledWith(
-        'Resuming from completed state with 2 previously processed repositories (will skip them)',
+        '[state] Resuming from completed state with 2 previously processed repositories (will skip them)',
       );
     });
 
@@ -119,7 +119,7 @@ describe('StateManager', () => {
       expect(resumeFromLastState).toBe(false);
       expect(processedState.processedRepos).toEqual([]);
       expect(mockLogger.info).toHaveBeenCalledWith(
-        'Previous run completed successfully with no repositories processed. Starting fresh run.',
+        '[state] Previous run completed successfully with no repositories processed. Starting fresh run.',
       );
     });
 
@@ -155,7 +155,7 @@ describe('StateManager', () => {
       expect(processedState.completedSuccessfully).toBe(false);
 
       expect(mockLogger.info).toHaveBeenCalledWith(
-        'Resuming from incomplete state (last updated: 2025-03-19T12:00:00Z)',
+        '[state] Resuming from incomplete state (last updated: 2025-03-19T12:00:00Z)',
       );
     });
 
@@ -185,7 +185,7 @@ describe('StateManager', () => {
       expect(resumeFromLastState).toBe(false);
       expect(processedState.processedRepos).toEqual([]); // Should be fresh state
       expect(mockLogger.info).toHaveBeenCalledWith(
-        'State file exists but resume-from-last-save is not enabled. Starting fresh.',
+        '[state] State file exists but resume-from-last-save is not enabled. Starting fresh.',
       );
     });
 
@@ -230,7 +230,7 @@ describe('StateManager', () => {
       expect(resumeFromLastState).toBe(true);
       expect(processedState.processedRepos).toEqual([]);
       expect(mockLogger.warn).toHaveBeenCalledWith(
-        'Invalid state file: processedRepos is missing or not an array',
+        '[state] Invalid state file: processedRepos is missing or not an array',
       );
     });
 
@@ -362,7 +362,7 @@ describe('StateManager', () => {
         expect.any(String),
       );
       expect(mockLogger.debug).toHaveBeenCalledWith(
-        'Updated cursor to: cursor2 for repo: undefined',
+        '[state] Updated cursor to: cursor2 for repo: undefined',
       );
     });
 
@@ -526,7 +526,7 @@ describe('StateManager', () => {
         recursive: true,
       });
       expect(mockLogger.debug).toHaveBeenCalledWith(
-        'Creating output directory: /new/output/dir',
+        '[state] Creating output directory: /new/output/dir',
       );
     });
   });
@@ -546,7 +546,7 @@ describe('StateManager', () => {
         '/test/output/last_known_state_test-org.json',
       );
       expect(mockLogger.info).toHaveBeenCalledWith(
-        'Removed state file: /test/output/last_known_state_test-org.json',
+        '[state] Removed state file: /test/output/last_known_state_test-org.json',
       );
     });
 
@@ -562,7 +562,7 @@ describe('StateManager', () => {
 
       expect(unlinkSync).not.toHaveBeenCalled();
       expect(mockLogger.debug).toHaveBeenCalledWith(
-        'State file does not exist, nothing to clean up: /test/output/last_known_state_test-org.json',
+        '[state] State file does not exist, nothing to clean up: /test/output/last_known_state_test-org.json',
       );
     });
 
@@ -580,7 +580,7 @@ describe('StateManager', () => {
       stateManager.cleanup();
 
       expect(mockLogger.error).toHaveBeenCalledWith(
-        'Failed to cleanup state file: Permission denied',
+        '[state] Failed to cleanup state file: Permission denied',
       );
     });
   });
