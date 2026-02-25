@@ -33,6 +33,7 @@ set -e
 #   --skip-project-stats     Skip the project-stats step
 #   --repo-stats-file <file> Use an existing repo-stats CSV instead of running repo-stats
 #   --project-stats-file <f> Use an existing project-stats CSV instead of running project-stats
+#   --lfs-file <file>        Include an existing LFS sizing CSV in combine-stats
 #   --run-audit              Run migration audit (requires gh migration-audit extension)
 #   --audit-file <file>      Use an existing audit CSV instead of running audit
 #   --verbose                Enable verbose logging
@@ -44,6 +45,7 @@ set -e
 #   ACCESS_TOKEN=ghp_xxxx ./script/collect-stats.sh --org-name my-org
 #   GH_TOKEN=ghp_xxxx ./script/collect-stats.sh --org-name my-org
 #   ./script/collect-stats.sh --org-name my-org --repo-stats-file output/existing.csv
+#   ./script/collect-stats.sh --org-name my-org --lfs-file output/lfs-sizing.csv
 #   ./script/collect-stats.sh --org-name my-org --run-audit
 
 # ── helpers ──────────────────────────────────────────────────────────
@@ -70,6 +72,7 @@ usage() {
   echo "  --skip-project-stats       Skip the project-stats step"
   echo "  --repo-stats-file <file>   Use existing repo-stats CSV (skips repo-stats)"
   echo "  --project-stats-file <f>   Use existing project-stats CSV (skips project-stats)"
+  echo "  --lfs-file <file>          Include existing LFS sizing CSV in combine-stats"
   echo "  --run-audit                Run migration audit (requires gh migration-audit)"
   echo "  --audit-file <file>        Use existing audit CSV (implies --run-audit)"
   echo "  --verbose                  Enable verbose logging"
@@ -104,6 +107,7 @@ SKIP_REPO_STATS=false
 SKIP_PROJECT_STATS=false
 REPO_STATS_FILE=""
 PROJECT_STATS_FILE=""
+LFS_FILE=""
 RUN_AUDIT=false
 AUDIT_FILE=""
 VERBOSE=""
@@ -134,6 +138,8 @@ while [[ $# -gt 0 ]]; do
       REPO_STATS_FILE="$2"; SKIP_REPO_STATS=true; shift 2 ;;
     --project-stats-file)
       PROJECT_STATS_FILE="$2"; SKIP_PROJECT_STATS=true; shift 2 ;;
+    --lfs-file)
+      LFS_FILE="$2"; shift 2 ;;
     --run-audit)
       RUN_AUDIT=true; shift ;;
     --audit-file)
@@ -165,6 +171,20 @@ fi
 AUTH_ARGS=""
 if [ -n "$ACCESS_TOKEN" ]; then
   AUTH_ARGS="--access-token $ACCESS_TOKEN"
+fi
+
+# Resolve user-provided file paths: prepend OUTPUT_DIR if relative
+if [ -n "$REPO_STATS_FILE" ] && [[ "$REPO_STATS_FILE" != /* ]]; then
+  REPO_STATS_FILE="${OUTPUT_DIR}/${REPO_STATS_FILE}"
+fi
+if [ -n "$PROJECT_STATS_FILE" ] && [[ "$PROJECT_STATS_FILE" != /* ]]; then
+  PROJECT_STATS_FILE="${OUTPUT_DIR}/${PROJECT_STATS_FILE}"
+fi
+if [ -n "$AUDIT_FILE" ] && [[ "$AUDIT_FILE" != /* ]]; then
+  AUDIT_FILE="${OUTPUT_DIR}/${AUDIT_FILE}"
+fi
+if [ -n "$LFS_FILE" ] && [[ "$LFS_FILE" != /* ]]; then
+  LFS_FILE="${OUTPUT_DIR}/${LFS_FILE}"
 fi
 
 # ── step 1: repo-stats ──────────────────────────────────────────────
@@ -257,6 +277,13 @@ fi
 FILES_TO_COMBINE=""
 if [ -n "$REPO_STATS_FILE" ]; then
   FILES_TO_COMBINE="$REPO_STATS_FILE"
+fi
+if [ -n "$LFS_FILE" ]; then
+  if [ ! -f "$LFS_FILE" ]; then
+    echo "Warning: LFS file not found: $LFS_FILE (skipping)"
+  else
+    FILES_TO_COMBINE="$FILES_TO_COMBINE $LFS_FILE"
+  fi
 fi
 if [ -n "$PROJECT_STATS_FILE" ]; then
   FILES_TO_COMBINE="$FILES_TO_COMBINE $PROJECT_STATS_FILE"
