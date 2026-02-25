@@ -46,9 +46,9 @@ describe('checkForMissingRepos', () => {
     vi.mocked(createOctokit).mockReturnValue(
       mockOctokit as unknown as ReturnType<typeof createOctokit>,
     );
-    vi.mocked(OctokitClient).mockReturnValue(
-      mockClient as unknown as InstanceType<typeof OctokitClient>,
-    );
+    vi.mocked(OctokitClient).mockImplementation(function () {
+      return mockClient as unknown as InstanceType<typeof OctokitClient>;
+    });
   });
 
   afterEach(() => {

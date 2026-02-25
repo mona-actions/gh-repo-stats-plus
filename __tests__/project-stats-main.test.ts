@@ -43,36 +43,40 @@ vi.mock('../src/service.js', () => ({
 }));
 
 vi.mock('../src/state.js', () => ({
-  StateManager: vi.fn().mockImplementation(() => ({
-    initialize: vi.fn().mockReturnValue({
-      processedState: {
-        organizationName: 'test-org',
-        currentCursor: null,
-        processedRepos: [],
-        lastSuccessfulCursor: null,
-        lastProcessedRepo: null,
-        lastUpdated: null,
-        completedSuccessfully: false,
-        outputFileName: null,
-      },
-      resumeFromLastState: false,
-    }),
-    update: vi.fn(),
-    cleanup: vi.fn(),
-  })),
+  StateManager: vi.fn().mockImplementation(function () {
+    return {
+      initialize: vi.fn().mockReturnValue({
+        processedState: {
+          organizationName: 'test-org',
+          currentCursor: null,
+          processedRepos: [],
+          lastSuccessfulCursor: null,
+          lastProcessedRepo: null,
+          lastUpdated: null,
+          completedSuccessfully: false,
+          outputFileName: null,
+        },
+        resumeFromLastState: false,
+      }),
+      update: vi.fn(),
+      cleanup: vi.fn(),
+    };
+  }),
 }));
 
 vi.mock('../src/session.js', () => ({
-  SessionManager: vi.fn().mockImplementation(() => ({
-    initialize: vi.fn().mockReturnValue({
-      canResume: false,
-      currentOrgIndex: 0,
-    }),
-    getOrCreateOrgReference: vi.fn().mockReturnValue({
-      status: 'pending',
-    }),
-    updateOrgReference: vi.fn(),
-  })),
+  SessionManager: vi.fn().mockImplementation(function () {
+    return {
+      initialize: vi.fn().mockReturnValue({
+        canResume: false,
+        currentOrgIndex: 0,
+      }),
+      getOrCreateOrgReference: vi.fn().mockReturnValue({
+        status: 'pending',
+      }),
+      updateOrgReference: vi.fn(),
+    };
+  }),
 }));
 
 vi.mock('../src/retry.js', () => ({
@@ -254,13 +258,12 @@ describe('projects', () => {
 
       const mockListOrgRepoNames = vi.fn();
 
-      vi.mocked(OctokitClient).mockImplementation(
-        () =>
-          ({
-            getRepoProjectCounts: mockGetRepoProjectCounts,
-            listOrgRepoNames: mockListOrgRepoNames,
-          }) as unknown as OctokitClient,
-      );
+      vi.mocked(OctokitClient).mockImplementation(function () {
+        return {
+          getRepoProjectCounts: mockGetRepoProjectCounts,
+          listOrgRepoNames: mockListOrgRepoNames,
+        } as unknown as OctokitClient;
+      });
 
       const opts: Arguments = {
         orgName: 'test-org',
@@ -317,13 +320,12 @@ describe('projects', () => {
         },
       });
 
-      vi.mocked(OctokitClient).mockImplementation(
-        () =>
-          ({
-            getRepoProjectCounts: mockGetRepoProjectCounts,
-            listOrgRepoNames: mockListOrgRepoNames,
-          }) as unknown as OctokitClient,
-      );
+      vi.mocked(OctokitClient).mockImplementation(function () {
+        return {
+          getRepoProjectCounts: mockGetRepoProjectCounts,
+          listOrgRepoNames: mockListOrgRepoNames,
+        } as unknown as OctokitClient;
+      });
 
       const opts: Arguments = {
         orgName: 'test-org',
@@ -369,13 +371,12 @@ describe('projects', () => {
         },
       });
 
-      vi.mocked(OctokitClient).mockImplementation(
-        () =>
-          ({
-            getRepoProjectCounts: mockGetRepoProjectCounts,
-            listOrgRepoNames: mockListOrgRepoNames,
-          }) as unknown as OctokitClient,
-      );
+      vi.mocked(OctokitClient).mockImplementation(function () {
+        return {
+          getRepoProjectCounts: mockGetRepoProjectCounts,
+          listOrgRepoNames: mockListOrgRepoNames,
+        } as unknown as OctokitClient;
+      });
 
       const opts: Arguments = {
         orgName: 'test-org',

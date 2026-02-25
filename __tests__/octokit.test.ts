@@ -18,9 +18,15 @@ vi.mock('octokit', () => {
   };
 
   const Octokit = {
-    plugin: vi.fn(() => ({
-      plugin: vi.fn(() => vi.fn(() => mockOctokit)),
-    })),
+    plugin: vi.fn(function () {
+      return {
+        plugin: vi.fn(function () {
+          return vi.fn(function () {
+            return mockOctokit;
+          });
+        }),
+      };
+    }),
   };
 
   return {
