@@ -44,7 +44,7 @@ describe('auth', () => {
           auth: accessToken,
         });
         expect(mockLogger.info).toHaveBeenCalledWith(
-          '[auth] No GitHub App installation ID detected. Defaulting to authenticating using an access token...',
+          'No GitHub App installation ID detected. Defaulting to authenticating using an access token...',
         );
       });
 
@@ -104,7 +104,7 @@ describe('auth', () => {
           installationId: 67890,
         });
         expect(mockLogger.info).toHaveBeenCalledWith(
-          '[auth] GitHub App installation ID detected. Authenticating using GitHub App installation...',
+          'GitHub App installation ID detected. Authenticating using GitHub App installation...',
         );
       });
 
@@ -239,7 +239,7 @@ describe('auth', () => {
         ).toThrow(errorMessage);
 
         expect(mockLogger.error).toHaveBeenCalledWith(
-          '[auth] Error creating and validating auth config',
+          'Error creating and validating auth config',
           expect.any(Error),
         );
       });

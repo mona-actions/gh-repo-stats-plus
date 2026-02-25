@@ -5,6 +5,7 @@ export interface Logger {
   info: LoggerFn;
   warn: LoggerFn;
   error: LoggerFn;
+  child?: (options: Record<string, unknown>) => Logger;
 }
 
 export interface Arguments {

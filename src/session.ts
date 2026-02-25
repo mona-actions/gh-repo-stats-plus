@@ -48,7 +48,7 @@ export class SessionManager {
     // Check if session file exists
     if (!existsSync(sessionFilePath)) {
       this.logger.debug(
-        `[session] No session file found at ${sessionFilePath}. Creating new session.`,
+        `No session file found at ${sessionFilePath}. Creating new session.`,
       );
       this.sessionState = this.createNewSession(orgList, settings);
       this.save();
@@ -59,7 +59,7 @@ export class SessionManager {
     const existingSession = this.load();
     if (!existingSession) {
       this.logger.warn(
-        '[session] Session file exists but could not be loaded. Creating new session.',
+        'Session file exists but could not be loaded. Creating new session.',
       );
       this.sessionState = this.createNewSession(orgList, settings);
       this.save();
@@ -69,7 +69,7 @@ export class SessionManager {
     // Check if session is already complete (all orgs processed)
     if (existingSession.currentOrgIndex >= existingSession.orgList.length) {
       this.logger.info(
-        '[session] Previous session completed successfully. Starting new session.',
+        'Previous session completed successfully. Starting new session.',
       );
       this.sessionState = this.createNewSession(orgList, settings);
       this.save();
@@ -82,7 +82,7 @@ export class SessionManager {
     // User wants to resume?
     if (!resumeFromLastSave) {
       this.logger.info(
-        '[session] Session file exists but resume-from-last-save is not enabled. Starting new session.',
+        'Session file exists but resume-from-last-save is not enabled. Starting new session.',
       );
       this.sessionState = this.createNewSession(orgList, settings);
       this.save();
@@ -95,10 +95,10 @@ export class SessionManager {
     // Resume from existing session
     this.sessionState = existingSession;
     this.logger.info(
-      `[session] Resuming from session (last updated: ${this.sessionState.lastUpdated})`,
+      `Resuming from session (last updated: ${this.sessionState.lastUpdated})`,
     );
     this.logger.info(
-      `[session] Session progress: org ${this.sessionState.currentOrgIndex + 1} of ${this.sessionState.orgList.length}`,
+      `Session progress: org ${this.sessionState.currentOrgIndex + 1} of ${this.sessionState.orgList.length}`,
     );
 
     return {
@@ -244,7 +244,7 @@ export class SessionManager {
     if (this.sessionState.currentOrgIndex < this.sessionState.orgList.length) {
       this.sessionState.currentOrgIndex++;
       this.logger.debug(
-        `[session] Advanced org index to ${this.sessionState.currentOrgIndex} of ${this.sessionState.orgList.length}`,
+        `Advanced org index to ${this.sessionState.currentOrgIndex} of ${this.sessionState.orgList.length}`,
       );
     }
   }
@@ -282,11 +282,11 @@ export class SessionManager {
 
     if (sessionStatus === 'completed' && !fileComplete) {
       this.logger.warn(
-        `[session] Session shows org "${orgName}" as completed, but org state file shows incomplete. Trusting org file.`,
+        `Session shows org "${orgName}" as completed, but org state file shows incomplete. Trusting org file.`,
       );
     } else if (sessionStatus !== 'completed' && fileComplete) {
       this.logger.warn(
-        `[session] Session shows org "${orgName}" as ${sessionStatus}, but org state file shows completed. Trusting org file.`,
+        `Session shows org "${orgName}" as ${sessionStatus}, but org state file shows completed. Trusting org file.`,
       );
     }
   }
@@ -296,7 +296,7 @@ export class SessionManager {
    */
   public save(): void {
     if (!this.sessionState) {
-      this.logger.warn('[session] No session state to save');
+      this.logger.warn('No session state to save');
       return;
     }
 
@@ -304,7 +304,7 @@ export class SessionManager {
       // Ensure output directory exists
       if (!existsSync(this.outputDir)) {
         this.logger.debug(
-          `[session] Creating output directory: ${this.outputDir}`,
+          `Creating output directory: ${this.outputDir}`,
         );
         mkdirSync(this.outputDir, { recursive: true });
       }
@@ -314,10 +314,10 @@ export class SessionManager {
         sessionFilePath,
         JSON.stringify(this.sessionState, null, 2),
       );
-      this.logger.debug(`[session] Saved session state to ${sessionFilePath}`);
+      this.logger.debug(`Saved session state to ${sessionFilePath}`);
     } catch (error) {
       this.logger.error(
-        `[session] Failed to save session state: ${
+        `Failed to save session state: ${
           error instanceof Error ? error.message : String(error)
         }`,
       );
@@ -339,20 +339,20 @@ export class SessionManager {
 
       // Basic validation
       if (!parsed.version || !parsed.mode || !parsed.orgList) {
-        this.logger.error('[session] Invalid session file format');
+        this.logger.error('Invalid session file format');
         return null;
       }
 
       if (parsed.mode !== 'multi-org') {
-        this.logger.error(`[session] Unexpected session mode: ${parsed.mode}`);
+        this.logger.error(`Unexpected session mode: ${parsed.mode}`);
         return null;
       }
 
-      this.logger.info(`[session] Loaded session from ${sessionFilePath}`);
+      this.logger.info(`Loaded session from ${sessionFilePath}`);
       return parsed;
     } catch (error) {
       this.logger.error(
-        `[session] Failed to load session state: ${
+        `Failed to load session state: ${
           error instanceof Error ? error.message : String(error)
         }`,
       );
@@ -365,7 +365,7 @@ export class SessionManager {
    */
   public cleanup(): void {
     if (!this.sessionState) {
-      this.logger.debug('[session] No session state to clean up');
+      this.logger.debug('No session state to clean up');
       return;
     }
 
@@ -378,7 +378,7 @@ export class SessionManager {
           if (existsSync(orgStateFilePath)) {
             unlinkSync(orgStateFilePath);
             this.logger.debug(
-              `[session] Removed org state file: ${orgStateFilePath}`,
+              `Removed org state file: ${orgStateFilePath}`,
             );
           }
         }
@@ -388,13 +388,13 @@ export class SessionManager {
       const sessionFilePath = this.getSessionFilePath();
       if (existsSync(sessionFilePath)) {
         unlinkSync(sessionFilePath);
-        this.logger.info(`[session] Removed session file: ${sessionFilePath}`);
+        this.logger.info(`Removed session file: ${sessionFilePath}`);
       }
 
       this.sessionState = null;
     } catch (error) {
       this.logger.error(
-        `[session] Failed to cleanup session: ${
+        `Failed to cleanup session: ${
           error instanceof Error ? error.message : String(error)
         }`,
       );

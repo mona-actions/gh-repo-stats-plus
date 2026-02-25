@@ -74,7 +74,7 @@ async function processOrgRepoStats(context: OrgContext): Promise<void> {
   } = context;
 
   const startTime = new Date();
-  logger.info(`[repo-stats] Started processing at: ${startTime.toISOString()}`);
+  logger.info(`Started processing at: ${startTime.toISOString()}`);
 
   // Create a state object to track counts that can be modified by reference
   const processingState = {
@@ -100,12 +100,12 @@ async function processOrgRepoStats(context: OrgContext): Promise<void> {
       if (result.isComplete) {
         processedState.completedSuccessfully = true;
         logger.info(
-          '[repo-stats] All repositories have been processed successfully. Marking state as complete.',
+          'All repositories have been processed successfully. Marking state as complete.',
         );
       }
 
       logger.info(
-        `[repo-stats] Completed processing ${result.processedCount} repositories. ` +
+        `Completed processing ${result.processedCount} repositories. ` +
           `Last cursor: ${result.cursor}, ` +
           `Last repo: ${processedState.lastProcessedRepo}\n` +
           `Start time: ${startTime.toISOString()}\n` +
@@ -144,7 +144,7 @@ async function processOrgRepoStats(context: OrgContext): Promise<void> {
       processingState.retryCount++;
       processingState.successCount = 0;
       logger.warn(
-        `[repo-stats] Retry attempt ${state.attempt}: Failed while processing repositories. ` +
+        `Retry attempt ${state.attempt}: Failed while processing repositories. ` +
           `Current cursor: ${processedState.currentCursor}, ` +
           `Last successful cursor: ${processedState.lastSuccessfulCursor}, ` +
           `Last processed repo: ${processedState.lastProcessedRepo}, ` +
@@ -176,7 +176,7 @@ async function processMissingRepositories({
   retryConfig: RetryConfig;
   stateManager: StateManager;
 }): Promise<void> {
-  logger.info('[repo-stats] Checking for missing repositories...');
+  logger.info('Checking for missing repositories...');
   const missingReposResult = await checkForMissingRepos({
     opts,
     processedFile: fileName,
@@ -185,20 +185,20 @@ async function processMissingRepositories({
   const missingReposCount = missingReposResult.missingRepos.length;
   if (missingReposCount === 0) {
     logger.info(
-      '[repo-stats] No missing repositories found. All repositories have been processed.',
+      'No missing repositories found. All repositories have been processed.',
     );
     return;
   }
 
   logger.info(
-    `[repo-stats] Found ${missingReposCount} missing repositories that need to be processed`,
+    `Found ${missingReposCount} missing repositories that need to be processed`,
   );
 
   // Reset completedSuccessfully flag since we're now processing additional repos
   processedState.completedSuccessfully = false;
   stateManager.update(processedState, {});
   logger.debug(
-    '[repo-stats] Reset completedSuccessfully flag for missing repositories processing',
+    'Reset completedSuccessfully flag for missing repositories processing',
   );
 
   // Create temporary file with missing repos
@@ -210,12 +210,12 @@ async function processMissingRepositories({
       .join('\n'),
   );
   logger.info(
-    `[repo-stats] Created temporary file with missing repos: ${missingReposFile}`,
+    `Created temporary file with missing repos: ${missingReposFile}`,
   );
 
   try {
     // Process the missing repos
-    logger.info('[repo-stats] Processing missing repositories...');
+    logger.info('Processing missing repositories...');
     const missingReposProcessingState = {
       successCount: 0,
       retryCount: 0,
@@ -234,7 +234,7 @@ async function processMissingRepositories({
         });
 
         logger.info(
-          `[repo-stats] Completed processing ${missingResult.processedCount} out of ${missingReposCount} missing repositories`,
+          `Completed processing ${missingResult.processedCount} out of ${missingReposCount} missing repositories`,
         );
 
         // Mark as complete if all missing repos were processed
@@ -242,7 +242,7 @@ async function processMissingRepositories({
           processedState.completedSuccessfully = true;
           stateManager.update(processedState, {});
           logger.info(
-            '[repo-stats] All missing repositories processed successfully. Marking state as complete.',
+            'All missing repositories processed successfully. Marking state as complete.',
           );
         }
 
@@ -253,18 +253,18 @@ async function processMissingRepositories({
         missingReposProcessingState.retryCount++;
         missingReposProcessingState.successCount = 0;
         logger.warn(
-          `[repo-stats] Retry attempt ${state.attempt}: Failed while processing missing repositories. ` +
+          `Retry attempt ${state.attempt}: Failed while processing missing repositories. ` +
             `Error: ${state.error?.message}`,
         );
       },
     );
 
-    logger.info('[repo-stats] Completed processing of missing repositories');
+    logger.info('Completed processing of missing repositories');
   } finally {
     // Clean up temporary file
     if (existsSync(missingReposFile)) {
       unlinkSync(missingReposFile);
-      logger.info(`[repo-stats] Removed temporary file: ${missingReposFile}`);
+      logger.info(`Removed temporary file: ${missingReposFile}`);
     }
   }
 }
@@ -286,6 +286,8 @@ async function analyzeRepositoryStats({
   client: OctokitClient;
   logger: Logger;
 }): Promise<RepoStatsResult> {
+  logger.info(`Analyzing repository: ${owner}/${repo.name}`);
+
   // Run issue and PR analysis concurrently
   const [issueStats, prStats] = await Promise.all([
     analyzeIssues({
@@ -368,7 +370,7 @@ async function handleRepoProcessingSuccess({
   state.successCount++;
   if (state.successCount >= successThreshold && state.retryCount > 0) {
     logger.info(
-      `[repo-stats] Reset retry count after ${state.successCount} successful operations`,
+      `Reset retry count after ${state.successCount} successful operations`,
     );
     state.retryCount = 0;
     state.successCount = 0;
@@ -413,7 +415,7 @@ async function processRepositoriesFromFile({
   stateManager: StateManager;
 }): Promise<RepoProcessingResult> {
   logger.info(
-    `[repo-stats] Processing repositories from list: ${opts.repoList}`,
+    `Processing repositories from list: ${opts.repoList}`,
   );
 
   if (!opts.repoList || opts.repoList.length === 0) {
@@ -433,12 +435,12 @@ async function processRepositoriesFromFile({
     .filter(({ owner }) => owner.toLowerCase() === opts.orgName!.toLowerCase());
 
   logger.info(
-    `[repo-stats] Filtered to ${repoList.length} repositories for organization: ${opts.orgName}`,
+    `Filtered to ${repoList.length} repositories for organization: ${opts.orgName}`,
   );
 
   if (repoList.length === 0) {
     logger.info(
-      `[repo-stats] No repositories in the list belong to organization: ${opts.orgName}`,
+      `No repositories in the list belong to organization: ${opts.orgName}`,
     );
     return {
       cursor: null,
@@ -456,12 +458,12 @@ async function processRepositoriesFromFile({
     try {
       if (processedState.processedRepos.includes(repo)) {
         logger.debug(
-          `[repo-stats] Skipping already processed repository: ${repo}`,
+          `Skipping already processed repository: ${repo}`,
         );
         continue;
       }
 
-      logger.info(`[repo-stats] Processing repository: ${owner}/${repo}`);
+      logger.info(`Processing repository: ${owner}/${repo}`);
 
       const repoStats = await client.getRepoStats(
         owner,
@@ -492,7 +494,7 @@ async function processRepositoriesFromFile({
       });
     } catch (error) {
       state.successCount = 0;
-      logger.error(`[repo-stats] Failed processing repo ${repo}: ${error}`);
+      logger.error(`Failed processing repo ${repo}: ${error}`);
       throw error;
     }
   }
@@ -525,7 +527,7 @@ async function processRepositories({
   stateManager: StateManager;
 }): Promise<RepoProcessingResult> {
   logger.debug(
-    `[repo-stats] Starting/Resuming from cursor: ${processedState.currentCursor}`,
+    `Starting/Resuming from cursor: ${processedState.currentCursor}`,
   );
 
   if (opts.repoList && opts.repoList.length > 0) {
@@ -543,7 +545,7 @@ async function processRepositories({
   // Use lastSuccessfulCursor only if cursor is null (first try)
   const startCursor =
     processedState.currentCursor || processedState.lastSuccessfulCursor;
-  logger.info(`[repo-stats] Using start cursor: ${startCursor}`);
+  logger.info(`Using start cursor: ${startCursor}`);
 
   const reposIterator = client.getOrgRepoStats(
     opts.orgName!,
@@ -566,7 +568,7 @@ async function processRepositories({
       try {
         if (processedState.processedRepos.includes(result.Repo_Name)) {
           logger.debug(
-            `[repo-stats] Skipping already processed repository: ${result.Repo_Name}`,
+            `Skipping already processed repository: ${result.Repo_Name}`,
           );
           continue;
         }
@@ -586,7 +588,7 @@ async function processRepositories({
       } catch (error) {
         state.successCount = 0;
         logger.error(
-          `[repo-stats] Failed processing repo ${result.Repo_Name}: ${error}`,
+          `Failed processing repo ${result.Repo_Name}: ${error}`,
         );
         processedState.currentCursor = processedState.lastSuccessfulCursor;
         throw error;
@@ -595,16 +597,16 @@ async function processRepositories({
 
     // If we get here, we've completed the iteration without errors
     logger.info(
-      '[repo-stats] Successfully completed processing all repositories',
+      'Successfully completed processing all repositories',
     );
   } catch (error) {
     // If there's an error during iteration, we'll handle it at the caller
-    logger.error(`[repo-stats] Error during repository processing: ${error}`);
+    logger.error(`Error during repository processing: ${error}`);
     throw error;
   }
 
   logger.info(
-    '[repo-stats] No more repositories to process - processing completed successfully',
+    'No more repositories to process - processing completed successfully',
   );
 
   return {
@@ -627,7 +629,7 @@ async function checkAndHandleRateLimits({
   processedCount: number;
 }): Promise<boolean> {
   logger.debug(
-    `[repo-stats] Checking rate limits after processing ${processedCount} repositories`,
+    `Checking rate limits after processing ${processedCount} repositories`,
   );
   const rateLimits = await client.checkRateLimits();
 
@@ -638,28 +640,28 @@ async function checkAndHandleRateLimits({
     const limitType =
       rateLimits.graphQLRemaining === 0 ? 'GraphQL' : 'REST API';
     logger.warn(
-      `[repo-stats] ${limitType} rate limit reached after processing ${processedCount} repositories`,
+      `${limitType} rate limit reached after processing ${processedCount} repositories`,
     );
 
     if (rateLimits.messageType === 'error') {
-      logger.error(`[repo-stats] ${rateLimits.message}`);
+      logger.error(`${rateLimits.message}`);
       throw new Error(
         `${limitType} rate limit exceeded and maximum retries reached`,
       );
     }
 
-    logger.warn(`[repo-stats] ${rateLimits.message}`);
+    logger.warn(`${rateLimits.message}`);
     logger.info(
-      `[repo-stats] GraphQL remaining: ${rateLimits.graphQLRemaining}`,
+      `GraphQL remaining: ${rateLimits.graphQLRemaining}`,
     );
     logger.info(
-      `[repo-stats] REST API remaining: ${rateLimits.apiRemainingRequest}`,
+      `REST API remaining: ${rateLimits.apiRemainingRequest}`,
     );
 
     return true; // indicates rate limit was reached
   } else {
     logger.info(
-      `[repo-stats] GraphQL remaining: ${rateLimits.graphQLRemaining}, REST API remaining: ${rateLimits.apiRemainingRequest}`,
+      `GraphQL remaining: ${rateLimits.graphQLRemaining}, REST API remaining: ${rateLimits.apiRemainingRequest}`,
     );
   }
 
@@ -747,11 +749,11 @@ export async function writeResultToCsv(
     appendCsvRow(fileName, values, logger);
 
     logger.info(
-      `[repo-stats] Successfully wrote result for repository: ${result.Repo_Name}`,
+      `Successfully wrote result for repository: ${result.Repo_Name}`,
     );
   } catch (error) {
     logger.error(
-      `[repo-stats] Failed to write CSV for repository ${result.Repo_Name}: ${
+      `Failed to write CSV for repository ${result.Repo_Name}: ${
         error instanceof Error ? error.message : String(error)
       }`,
     );
@@ -877,10 +879,10 @@ async function analyzeIssues({
   client: OctokitClient;
   logger: Logger;
 }): Promise<IssueStatsResult> {
-  logger.debug(`[repo-stats] Analyzing issues for repository: ${repo}`);
+  logger.debug(`Analyzing issues for repository: ${repo}`);
 
   if (issues.totalCount <= 0) {
-    logger.debug(`[repo-stats] No issues found for repository: ${repo}`);
+    logger.debug(`No issues found for repository: ${repo}`);
     return {
       totalIssuesCount: issues.totalCount,
       issueEventCount: 0,
@@ -904,7 +906,7 @@ async function analyzeIssues({
   // Process additional pages if they exist
   if (issues.pageInfo.hasNextPage && issues.pageInfo.endCursor != null) {
     logger.debug(
-      `[repo-stats] More pages of issues found for repository: ${repo}`,
+      `More pages of issues found for repository: ${repo}`,
     );
 
     try {
@@ -927,7 +929,7 @@ async function analyzeIssues({
       }
     } catch (error) {
       logger.error(
-        `[repo-stats] Error retrieving additional issues for ${owner}/${repo}. ` +
+        `Error retrieving additional issues for ${owner}/${repo}. ` +
           `Consider reducing page size. Error: ${error}`,
         error,
       );
@@ -935,7 +937,7 @@ async function analyzeIssues({
     }
   }
 
-  logger.debug(`[repo-stats] Gathered all issues from repository: ${repo}`);
+  logger.debug(`Gathered all issues from repository: ${repo}`);
   return {
     totalIssuesCount: issues.totalCount,
     issueEventCount: totalEventCount,
@@ -1007,7 +1009,7 @@ async function analyzePullRequests({
   ) {
     const cursor = pullRequests.pageInfo.endCursor;
     logger.debug(
-      `[repo-stats] Fetching additional pull requests for ${repo} starting from cursor ${cursor}`,
+      `Fetching additional pull requests for ${repo} starting from cursor ${cursor}`,
     );
 
     for await (const pr of client.getRepoPullRequests(
@@ -1076,16 +1078,16 @@ export async function checkForMissingRepos({
   const per_page = opts.pageSize || 10;
 
   logger.debug(
-    `[repo-stats] Checking for missing repositories in organization: ${org}`,
+    `Checking for missing repositories in organization: ${org}`,
   );
 
   logger.info(
-    `[repo-stats] Reading processed file: ${processedFile} to check for missing repositories`,
+    `Reading processed file: ${processedFile} to check for missing repositories`,
   );
   const records = readCsvFile(processedFile);
 
   logger.debug(
-    `[repo-stats] Parsed ${records.length} records from processed file`,
+    `Parsed ${records.length} records from processed file`,
   );
   const processedReposSet = new Set<string>();
   (records as Array<{ Repo_Name: string }>).forEach((record) => {
@@ -1106,12 +1108,12 @@ export async function checkForMissingRepos({
     baseMissingReposFileName,
   );
 
-  logger.info('[repo-stats] Checking for missing repositories');
+  logger.info('Checking for missing repositories');
   const missingRepos = [];
 
   if (opts.repoList && opts.repoList.length > 0) {
     // Check missing repos from the provided repo list
-    logger.info('[repo-stats] Checking against provided repo list');
+    logger.info('Checking against provided repo list');
     const repoListRaw = Array.isArray(opts.repoList)
       ? opts.repoList
       : readFileSync(opts.repoList, 'utf-8').split('\n');
@@ -1128,7 +1130,7 @@ export async function checkForMissingRepos({
       .filter(({ owner }) => !owner || owner.toLowerCase() === org);
 
     logger.info(
-      `[repo-stats] Found ${repoList.length} repos for ${org} in repo list`,
+      `Found ${repoList.length} repos for ${org} in repo list`,
     );
 
     for (const { repo: repoName } of repoList) {
@@ -1140,7 +1142,7 @@ export async function checkForMissingRepos({
     }
   } else {
     // Check missing repos from all org repos
-    logger.info('[repo-stats] Checking against all organization repositories');
+    logger.info('Checking against all organization repositories');
     for await (const repo of client.listReposForOrg(org, per_page)) {
       if (processedReposSet.has(repo.name.toLowerCase())) {
         continue;
@@ -1151,10 +1153,10 @@ export async function checkForMissingRepos({
       }
     }
   }
-  logger.info(`[repo-stats] Found ${missingRepos.length} missing repositories`);
+  logger.info(`Found ${missingRepos.length} missing repositories`);
   if (missingRepos.length > 0) {
     logger.info(
-      `[repo-stats] Missing repositories written to: ${missingReposFileName}`,
+      `Missing repositories written to: ${missingReposFileName}`,
     );
   }
 

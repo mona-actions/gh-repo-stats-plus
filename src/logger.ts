@@ -6,13 +6,15 @@ const { combine, timestamp, printf, colorize } = winston.format;
 
 import { Logger, ProcessingSummary } from './types.js';
 
-const format = printf(({ level, message, timestamp, owner, repo }): string => {
-  if (owner && repo) {
-    return `${timestamp} ${level} [${owner}/${repo}]: ${message}`;
-  } else {
-    return `${timestamp} ${level}: ${message}`;
-  }
-});
+const createFormat = (verbose: boolean) =>
+  printf(({ level, message, timestamp, owner, repo, module }): string => {
+    const moduleTag = verbose && module ? ` [${module}]` : '';
+    if (owner && repo) {
+      return `${timestamp} ${level}${moduleTag} [${owner}/${repo}]: ${message}`;
+    } else {
+      return `${timestamp} ${level}${moduleTag}: ${message}`;
+    }
+  });
 
 const generateLoggerOptions = async (
   verbose: boolean,
@@ -35,6 +37,7 @@ const generateLoggerOptions = async (
 
     console.debug(`Initializing logger with file: ${logFile}`); // Debug output
 
+    const format = createFormat(verbose);
     const commonFormat = combine(timestamp(), format);
 
     return {
@@ -73,80 +76,84 @@ export const createLogger = async (
   return logger;
 };
 
+/**
+ * Creates a child logger with a module label.
+ * When verbose mode is enabled, log output will include `[module]` tags
+ * to identify which module produced each message.
+ *
+ * @param logger - Parent logger instance
+ * @param module - Module name to use as the label (e.g., 'state', 'session')
+ * @returns A child logger with the module metadata attached, or the original logger if child() is unavailable
+ */
+export const withModule = (logger: Logger, module: string): Logger => {
+  if (logger.child) {
+    return logger.child({ module });
+  }
+  return logger;
+};
+
 export const logProcessingSummary = (
   summary: ProcessingSummary,
   logger: Logger,
 ): void => {
-  logger.info('[repo-stats] Processing Summary:');
-  logger.info(
-    `[repo-stats] ✓ Initially processed: ${summary.initiallyProcessed} files`,
-  );
+  logger.info('Processing Summary:');
+  logger.info(`✓ Initially processed: ${summary.initiallyProcessed} files`);
   if (summary.totalRetried > 0) {
-    logger.info(
-      `[repo-stats] ✓ Successfully retried: ${summary.totalRetried} files`,
-    );
+    logger.info(`✓ Successfully retried: ${summary.totalRetried} files`);
   }
+  logger.info(`✓ Total successfully processed: ${summary.totalSuccess} files`);
   logger.info(
-    `[repo-stats] ✓ Total successfully processed: ${summary.totalSuccess} files`,
-  );
-  logger.info(
-    `[repo-stats] ✗ Failed to process: ${summary.totalFailures} files that were attempted to be retried`,
+    `✗ Failed to process: ${summary.totalFailures} files that were attempted to be retried`,
   );
   if (summary.remainingUnprocessed > 0) {
     logger.warn(
-      `[repo-stats] ⚠ Unprocessed files remaining: ${summary.remainingUnprocessed}`,
+      `⚠ Unprocessed files remaining: ${summary.remainingUnprocessed}`,
     );
   }
-  logger.debug(
-    `[repo-stats] Total processing attempts: ${summary.totalAttempts}`,
-  );
-  logger.info('[repo-stats] Completed repo-stats-queue processing');
+  logger.debug(`Total processing attempts: ${summary.totalAttempts}`);
+  logger.info('Completed repo-stats-queue processing');
 };
 
 export const logBatchProcessing = {
   starting: (fileCount: number, logger: Logger): void => {
-    logger.info(
-      `[repo-stats] Starting batch processing with ${fileCount} files`,
-    );
+    logger.info(`Starting batch processing with ${fileCount} files`);
   },
   noFiles: (logger: Logger): void => {
-    logger.info('[repo-stats] No batch files found for processing');
+    logger.info('No batch files found for processing');
   },
   attempt: (current: number, max: number, logger: Logger): void => {
-    logger.info(`[repo-stats] Processing attempt ${current} of ${max}`);
+    logger.info(`Processing attempt ${current} of ${max}`);
   },
   allSuccess: (logger: Logger): void => {
-    logger.info('[repo-stats] ✓ All files processed successfully');
+    logger.info('✓ All files processed successfully');
   },
   maxRetries: (max: number, remaining: number, logger: Logger): void => {
     logger.warn(
-      `[repo-stats] ⚠ Maximum retry attempts (${max}) reached. ${remaining} files remain unprocessed`,
+      `⚠ Maximum retry attempts (${max}) reached. ${remaining} files remain unprocessed`,
     );
   },
   scheduled: (count: number, logger: Logger): void => {
-    logger.info(
-      `[repo-stats] ⟳ ${count} files scheduled for retry in next attempt`,
-    );
+    logger.info(`⟳ ${count} files scheduled for retry in next attempt`);
   },
   total: (count: number, logger: Logger): void => {
-    logger.info(`[repo-stats] Total repositories processed: ${count}`);
+    logger.info(`Total repositories processed: ${count}`);
   },
 };
 
 export const logInitialization = {
   start: (logger: Logger): void => {
-    logger.info('[init] Initializing repo-stats-queue application...');
+    logger.info('Initializing repo-stats-queue application...');
   },
   auth: (logger: Logger): void => {
-    logger.debug('[init] Creating auth config...');
+    logger.debug('Creating auth config...');
   },
   octokit: (logger: Logger): void => {
-    logger.debug('[init] Initializing octokit client...');
+    logger.debug('Initializing octokit client...');
   },
   token: (logger: Logger): void => {
-    logger.debug('[init] Generating app token...');
+    logger.debug('Generating app token...');
   },
   directories: (logger: Logger): void => {
-    logger.debug('[init] Setting up output directories...');
+    logger.debug('Setting up output directories...');
   },
 };

@@ -73,7 +73,7 @@ export const createOctokit = (
         const { method, url } = options as OnRateLimitOptions;
 
         logger.warn(
-          `[octokit] Primary rate limit exceeded for request \`${method} ${url}\` - retrying after ${retryAfter} seconds`,
+          `Primary rate limit exceeded for request \`${method} ${url}\` - retrying after ${retryAfter} seconds`,
         );
 
         return true;
@@ -82,7 +82,7 @@ export const createOctokit = (
         const { method, url } = options as OnRateLimitOptions;
 
         logger.warn(
-          `[octokit] Secondary rate limit exceeded for request \`${method} ${url}\` - retrying after ${retryAfter} seconds`,
+          `Secondary rate limit exceeded for request \`${method} ${url}\` - retrying after ${retryAfter} seconds`,
         );
 
         return true;
@@ -92,18 +92,18 @@ export const createOctokit = (
 
   octokit.hook.after('request', async (response: any, options: any) => {
     logger.debug(
-      `[octokit] ${options.method} ${options.url}: ${response.status}`,
+      `${options.method} ${options.url}: ${response.status}`,
     );
   });
 
   octokit.hook.error('request', async (error: any, options: any) => {
     if (error instanceof RequestError) {
       logger.debug(
-        `[octokit] ${options.method} ${options.url}: ${error.status} - ${error.message}`,
+        `${options.method} ${options.url}: ${error.status} - ${error.message}`,
       );
     } else {
       logger.debug(
-        `[octokit] ${options.method} ${options.url}: ${error.name} - ${error.message}`,
+        `${options.method} ${options.url}: ${error.name} - ${error.message}`,
       );
     }
 

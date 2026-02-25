@@ -97,7 +97,7 @@ export const createAuthConfig = ({
   try {
     if (appInstallationId || process.env.GITHUB_APP_INSTALLATION_ID) {
       logger.info(
-        '[auth] GitHub App installation ID detected. Authenticating using GitHub App installation...',
+        'GitHub App installation ID detected. Authenticating using GitHub App installation...',
       );
       return getInstallationAuthConfig(
         appId,
@@ -107,12 +107,12 @@ export const createAuthConfig = ({
       );
     } else {
       logger.info(
-        '[auth] No GitHub App installation ID detected. Defaulting to authenticating using an access token...',
+        'No GitHub App installation ID detected. Defaulting to authenticating using an access token...',
       );
       return getTokenAuthConfig(accessToken);
     }
   } catch (e) {
-    logger.error('[auth] Error creating and validating auth config', e);
+    logger.error('Error creating and validating auth config', e);
     throw e;
   }
 };

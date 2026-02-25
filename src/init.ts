@@ -61,7 +61,7 @@ export async function initCommand(
     stateManager = new StateManager(outputDir, orgName, logger);
 
     logger.debug(
-      `[init] resumeFromLastSave option value: ${
+      `resumeFromLastSave option value: ${
         opts.resumeFromLastSave
       } (type: ${typeof opts.resumeFromLastSave})`,
     );
@@ -76,7 +76,7 @@ export async function initCommand(
     if (resumeFromLastState) {
       fileName = processedState.outputFileName || '';
       logger.info(
-        `[init] Resuming from last state. Using existing file: ${fileName}`,
+        `Resuming from last state. Using existing file: ${fileName}`,
       );
     } else {
       const baseFileName =
@@ -84,7 +84,7 @@ export async function initCommand(
       fileName = await resolveOutputPath(opts.outputDir, baseFileName);
 
       config.initializeCsvFile(fileName, logger);
-      logger.info(`[init] Results will be saved to file: ${fileName}`);
+      logger.info(`Results will be saved to file: ${fileName}`);
 
       processedState.outputFileName = fileName;
       stateManager.update(processedState, {});
@@ -118,7 +118,7 @@ export async function initCommand(
     resumeFromOrgIndex = sessionInit.currentOrgIndex;
     if (sessionInit.canResume) {
       logger.info(
-        `[init] Resuming session from organization ${resumeFromOrgIndex + 1} of ${orgsToProcess.length}`,
+        `Resuming session from organization ${resumeFromOrgIndex + 1} of ${orgsToProcess.length}`,
       );
     }
   }
@@ -154,14 +154,14 @@ export async function executeCommand(
   }
 
   logger.info(
-    `[execute] Organizations to process: ${orgsToProcess.join(', ')}`,
+    `Organizations to process: ${orgsToProcess.join(', ')}`,
   );
   if (orgsToProcess.length > 1 && delayBetweenOrgs > 0) {
     const estimatedDelayMinutes = Math.ceil(
       ((orgsToProcess.length - 1) * delayBetweenOrgs) / 60,
     );
     logger.info(
-      `[execute] Estimated minimum time (delays only): ${estimatedDelayMinutes} minutes`,
+      `Estimated minimum time (delays only): ${estimatedDelayMinutes} minutes`,
     );
   }
 
@@ -173,7 +173,7 @@ export async function executeCommand(
     // Skip orgs before resume index when resuming
     if (sessionManager && i < resumeFromOrgIndex) {
       logger.debug(
-        `[execute] Skipping org ${orgName} (before resume index ${resumeFromOrgIndex})`,
+        `Skipping org ${orgName} (before resume index ${resumeFromOrgIndex})`,
       );
       continue;
     }
@@ -183,7 +183,7 @@ export async function executeCommand(
       const orgRef = sessionManager.getOrCreateOrgReference(orgName);
       if (orgRef.status === 'completed') {
         logger.info(
-          `[execute] Organization ${orgName} already completed, skipping`,
+          `Organization ${orgName} already completed, skipping`,
         );
         continue;
       }
@@ -219,7 +219,7 @@ export async function executeCommand(
     // Add delay between organizations (except for the last one)
     if (!isLastToProcess && delayBetweenOrgs > 0) {
       logger.info(
-        `[execute] Waiting for ${delayBetweenOrgs} seconds before processing the next organization...`,
+        `Waiting for ${delayBetweenOrgs} seconds before processing the next organization...`,
       );
       await new Promise((resolve) =>
         setTimeout(resolve, delayBetweenOrgs * 1000),
@@ -236,7 +236,7 @@ export async function executeCommand(
     .map((r) => r.outputFile!);
 
   for (const file of outputFiles) {
-    logger.info(`[init] output_file=${file}`);
+    logger.info(`output_file=${file}`);
   }
 
   return { outputFiles };
@@ -254,7 +254,7 @@ async function executeForOrg(
 ): Promise<OrgProcessingResult> {
   const { logger, opts, client, retryConfig } = context;
 
-  logger.debug(`[execute] Starting processing for organization: ${orgName}`);
+  logger.debug(`Starting processing for organization: ${orgName}`);
 
   const result: OrgProcessingResult = {
     orgName,
@@ -280,7 +280,7 @@ async function executeForOrg(
     if (resumeFromLastState) {
       fileName = processedState.outputFileName || '';
       logger.info(
-        `[execute] Resuming from last state. Using existing file: ${fileName}`,
+        `Resuming from last state. Using existing file: ${fileName}`,
       );
     } else {
       const baseFileName =
@@ -288,7 +288,7 @@ async function executeForOrg(
       fileName = await resolveOutputPath(opts.outputDir, baseFileName);
 
       config.initializeCsvFile(fileName, logger);
-      logger.info(`[execute] Results will be saved to file: ${fileName}`);
+      logger.info(`Results will be saved to file: ${fileName}`);
 
       processedState.outputFileName = fileName;
       stateManager.update(processedState, {});
@@ -313,13 +313,13 @@ async function executeForOrg(
     result.success = true;
 
     logger.info(
-      `[execute] Successfully completed processing for organization: ${orgName} in ${result.elapsedTime}`,
+      `Successfully completed processing for organization: ${orgName} in ${result.elapsedTime}`,
     );
   } catch (e) {
     result.success = false;
     result.error = e instanceof Error ? e.message : String(e);
     logger.error(
-      `[execute] Error processing organization ${orgName}: ${result.error}`,
+      `Error processing organization ${orgName}: ${result.error}`,
     );
   }
 
@@ -334,35 +334,35 @@ function logSummary(
 ): void {
   logger.info('='.repeat(80));
   logger.info(
-    `[summary] ${orgsToProcess.length > 1 ? 'MULTI-ORG' : 'ORG'} ${summaryLabel} SUMMARY`,
+    `${orgsToProcess.length > 1 ? 'MULTI-ORG' : 'ORG'} ${summaryLabel} SUMMARY`,
   );
   logger.info('='.repeat(80));
-  logger.info(`[summary] Total organizations processed: ${results.length}`);
+  logger.info(`Total organizations processed: ${results.length}`);
 
   const totalSuccessful = results.filter((r) => r.success).length;
   const totalFailed = results.filter((r) => !r.success).length;
-  logger.info(`[summary] Successful: ${totalSuccessful}`);
-  logger.info(`[summary] Failed: ${totalFailed}`);
+  logger.info(`Successful: ${totalSuccessful}`);
+  logger.info(`Failed: ${totalFailed}`);
   if (results.length > 0) {
     logger.info(
-      `[summary] Success rate: ${((totalSuccessful / results.length) * 100).toFixed(2)}%`,
+      `Success rate: ${((totalSuccessful / results.length) * 100).toFixed(2)}%`,
     );
   }
 
-  logger.info('[summary] Detailed Results:');
+  logger.info('Detailed Results:');
   for (const result of results) {
     const duration = result.elapsedTime || 'N/A';
     const status = result.success ? '✅ SUCCESS' : '❌ FAILED';
     const errorInfo = result.error ? ` - ${result.error}` : '';
     logger.info(
-      `[summary] - ${result.orgName}: ${status} (${duration})${errorInfo}`,
+      `- ${result.orgName}: ${status} (${duration})${errorInfo}`,
     );
   }
   logger.info('='.repeat(80));
 
   if (totalFailed > 0) {
     logger.warn(
-      `[summary] ⚠️  ${totalFailed} organization(s) failed processing. Check individual logs for details.`,
+      `⚠️  ${totalFailed} organization(s) failed processing. Check individual logs for details.`,
     );
   }
 }

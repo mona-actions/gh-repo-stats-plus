@@ -41,7 +41,7 @@ export class StateManager {
   private checkLegacyStateFile(): void {
     if (existsSync(LEGACY_STATE_FILE)) {
       this.logger.warn(
-        `[state] Found legacy state file '${LEGACY_STATE_FILE}' without organization suffix. ` +
+        `Found legacy state file '${LEGACY_STATE_FILE}' without organization suffix. ` +
           `This file will not be used. Organization-specific state files are now used (e.g., '${this.getStateFileName()}'). ` +
           `Please manually remove '${LEGACY_STATE_FILE}' to avoid confusion.`,
       );
@@ -64,17 +64,17 @@ export class StateManager {
 
       if (missingReposFiles.length > 0) {
         this.logger.debug(
-          `[state] Cleaning up ${missingReposFiles.length} old missing repos file(s) for ${this.organizationName}`,
+          `Cleaning up ${missingReposFiles.length} old missing repos file(s) for ${this.organizationName}`,
         );
         for (const file of missingReposFiles) {
           const filePath = join(this.outputDir, file);
           unlinkSync(filePath);
-          this.logger.debug(`[state] Removed old missing repos file: ${file}`);
+          this.logger.debug(`Removed old missing repos file: ${file}`);
         }
       }
     } catch (error) {
       this.logger.warn(
-        `[state] Failed to cleanup old missing repos files: ${
+        `Failed to cleanup old missing repos files: ${
           error instanceof Error ? error.message : String(error)
         }`,
       );
@@ -86,7 +86,7 @@ export class StateManager {
       // Ensure output directory exists
       if (!existsSync(this.outputDir)) {
         this.logger.debug(
-          `[state] Creating output directory: ${this.outputDir}`,
+          `Creating output directory: ${this.outputDir}`,
         );
         mkdirSync(this.outputDir, { recursive: true });
       }
@@ -99,9 +99,9 @@ export class StateManager {
 
       const stateFilePath = this.getStateFilePath();
       writeFileSync(stateFilePath, JSON.stringify(stateToSave, null, 2));
-      this.logger.debug(`[state] Saved last state to ${stateFilePath}`);
+      this.logger.debug(`Saved last state to ${stateFilePath}`);
     } catch (error) {
-      this.logger.error(`[state] Failed to save last state: ${error}`);
+      this.logger.error(`Failed to save last state: ${error}`);
     }
   }
 
@@ -110,7 +110,7 @@ export class StateManager {
       const stateFilePath = this.getStateFilePath();
       if (existsSync(stateFilePath)) {
         const data = readFileSync(stateFilePath, 'utf-8');
-        this.logger.info(`[state] Loaded last state from ${stateFilePath}`);
+        this.logger.info(`Loaded last state from ${stateFilePath}`);
         const parsedState = JSON.parse(data);
 
         // Validate processedRepos exists and is an array
@@ -119,7 +119,7 @@ export class StateManager {
           !Array.isArray(parsedState.processedRepos)
         ) {
           this.logger.warn(
-            '[state] Invalid state file: processedRepos is missing or not an array',
+            'Invalid state file: processedRepos is missing or not an array',
           );
           parsedState.processedRepos = [];
         }
@@ -142,7 +142,7 @@ export class StateManager {
       }
     } catch (error) {
       this.logger.error(
-        `[state] Failed to load last state: ${
+        `Failed to load last state: ${
           error instanceof Error ? error.message : String(error)
         }`,
       );
@@ -177,7 +177,7 @@ export class StateManager {
     // Force fresh start if requested
     if (forceFreshStart) {
       this.logger.info(
-        '[state] Force fresh start requested. Ignoring any existing state.',
+        'Force fresh start requested. Ignoring any existing state.',
       );
       return { processedState, resumeFromLastState: false };
     }
@@ -187,7 +187,7 @@ export class StateManager {
 
     if (!existsSync(stateFilePath)) {
       this.logger.debug(
-        `[state] No state file found at ${stateFilePath}. Starting fresh.`,
+        `No state file found at ${stateFilePath}. Starting fresh.`,
       );
       return { processedState, resumeFromLastState };
     }
@@ -195,7 +195,7 @@ export class StateManager {
     const lastState = this.load();
     if (!lastState) {
       this.logger.warn(
-        '[state] State file exists but could not be loaded. Starting fresh.',
+        'State file exists but could not be loaded. Starting fresh.',
       );
       return { processedState, resumeFromLastState };
     }
@@ -203,7 +203,7 @@ export class StateManager {
     // Check if user wants to resume
     if (!resumeFromLastSave) {
       this.logger.info(
-        '[state] State file exists but resume-from-last-save is not enabled. Starting fresh.',
+        'State file exists but resume-from-last-save is not enabled. Starting fresh.',
       );
       return { processedState, resumeFromLastState };
     }
@@ -215,7 +215,7 @@ export class StateManager {
       (!lastState.processedRepos || lastState.processedRepos.length === 0)
     ) {
       this.logger.info(
-        '[state] Previous run completed successfully with no repositories processed. Starting fresh run.',
+        'Previous run completed successfully with no repositories processed. Starting fresh run.',
       );
       return { processedState, resumeFromLastState };
     }
@@ -226,11 +226,11 @@ export class StateManager {
 
     if (lastState.completedSuccessfully) {
       this.logger.info(
-        `[state] Resuming from completed state with ${lastState.processedRepos.length} previously processed repositories (will skip them)`,
+        `Resuming from completed state with ${lastState.processedRepos.length} previously processed repositories (will skip them)`,
       );
     } else {
       this.logger.info(
-        `[state] Resuming from incomplete state (last updated: ${lastState.lastUpdated})`,
+        `Resuming from incomplete state (last updated: ${lastState.lastUpdated})`,
       );
     }
 
@@ -251,7 +251,7 @@ export class StateManager {
     if (newCursor && newCursor !== state.currentCursor) {
       state.currentCursor = newCursor;
       this.logger.debug(
-        `[state] Updated cursor to: ${state.currentCursor} for repo: ${repoName}`,
+        `Updated cursor to: ${state.currentCursor} for repo: ${repoName}`,
       );
     }
 
@@ -280,15 +280,15 @@ export class StateManager {
       const stateFilePath = this.getStateFilePath();
       if (existsSync(stateFilePath)) {
         unlinkSync(stateFilePath);
-        this.logger.info(`[state] Removed state file: ${stateFilePath}`);
+        this.logger.info(`Removed state file: ${stateFilePath}`);
       } else {
         this.logger.debug(
-          `[state] State file does not exist, nothing to clean up: ${stateFilePath}`,
+          `State file does not exist, nothing to clean up: ${stateFilePath}`,
         );
       }
     } catch (error) {
       this.logger.error(
-        `[state] Failed to cleanup state file: ${
+        `Failed to cleanup state file: ${
           error instanceof Error ? error.message : String(error)
         }`,
       );
