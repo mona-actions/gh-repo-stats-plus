@@ -91,9 +91,7 @@ export const createOctokit = (
   });
 
   octokit.hook.after('request', async (response: any, options: any) => {
-    logger.debug(
-      `${options.method} ${options.url}: ${response.status}`,
-    );
+    logger.debug(`${options.method} ${options.url}: ${response.status}`);
   });
 
   octokit.hook.error('request', async (error: any, options: any) => {

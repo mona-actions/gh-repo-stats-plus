@@ -209,9 +209,7 @@ async function processMissingRepositories({
       .map((repo) => `${opts.orgName!}/${repo}`)
       .join('\n'),
   );
-  logger.info(
-    `Created temporary file with missing repos: ${missingReposFile}`,
-  );
+  logger.info(`Created temporary file with missing repos: ${missingReposFile}`);
 
   try {
     // Process the missing repos
@@ -414,9 +412,7 @@ async function processRepositoriesFromFile({
   fileName: string;
   stateManager: StateManager;
 }): Promise<RepoProcessingResult> {
-  logger.info(
-    `Processing repositories from list: ${opts.repoList}`,
-  );
+  logger.info(`Processing repositories from list: ${opts.repoList}`);
 
   if (!opts.repoList || opts.repoList.length === 0) {
     throw new Error('Repository list is required and cannot be empty');
@@ -457,9 +453,7 @@ async function processRepositoriesFromFile({
   for (const { owner, repo } of repoList) {
     try {
       if (processedState.processedRepos.includes(repo)) {
-        logger.debug(
-          `Skipping already processed repository: ${repo}`,
-        );
+        logger.debug(`Skipping already processed repository: ${repo}`);
         continue;
       }
 
@@ -587,18 +581,14 @@ async function processRepositories({
         });
       } catch (error) {
         state.successCount = 0;
-        logger.error(
-          `Failed processing repo ${result.Repo_Name}: ${error}`,
-        );
+        logger.error(`Failed processing repo ${result.Repo_Name}: ${error}`);
         processedState.currentCursor = processedState.lastSuccessfulCursor;
         throw error;
       }
     }
 
     // If we get here, we've completed the iteration without errors
-    logger.info(
-      'Successfully completed processing all repositories',
-    );
+    logger.info('Successfully completed processing all repositories');
   } catch (error) {
     // If there's an error during iteration, we'll handle it at the caller
     logger.error(`Error during repository processing: ${error}`);
@@ -651,12 +641,8 @@ async function checkAndHandleRateLimits({
     }
 
     logger.warn(`${rateLimits.message}`);
-    logger.info(
-      `GraphQL remaining: ${rateLimits.graphQLRemaining}`,
-    );
-    logger.info(
-      `REST API remaining: ${rateLimits.apiRemainingRequest}`,
-    );
+    logger.info(`GraphQL remaining: ${rateLimits.graphQLRemaining}`);
+    logger.info(`REST API remaining: ${rateLimits.apiRemainingRequest}`);
 
     return true; // indicates rate limit was reached
   } else {
@@ -905,9 +891,7 @@ async function analyzeIssues({
 
   // Process additional pages if they exist
   if (issues.pageInfo.hasNextPage && issues.pageInfo.endCursor != null) {
-    logger.debug(
-      `More pages of issues found for repository: ${repo}`,
-    );
+    logger.debug(`More pages of issues found for repository: ${repo}`);
 
     try {
       // Get next page of issues using iterator
@@ -1077,18 +1061,14 @@ export async function checkForMissingRepos({
   const org = opts.orgName!.toLowerCase();
   const per_page = opts.pageSize || 10;
 
-  logger.debug(
-    `Checking for missing repositories in organization: ${org}`,
-  );
+  logger.debug(`Checking for missing repositories in organization: ${org}`);
 
   logger.info(
     `Reading processed file: ${processedFile} to check for missing repositories`,
   );
   const records = readCsvFile(processedFile);
 
-  logger.debug(
-    `Parsed ${records.length} records from processed file`,
-  );
+  logger.debug(`Parsed ${records.length} records from processed file`);
   const processedReposSet = new Set<string>();
   (records as Array<{ Repo_Name: string }>).forEach((record) => {
     processedReposSet.add(record.Repo_Name.toLowerCase());
@@ -1129,9 +1109,7 @@ export async function checkForMissingRepos({
       })
       .filter(({ owner }) => !owner || owner.toLowerCase() === org);
 
-    logger.info(
-      `Found ${repoList.length} repos for ${org} in repo list`,
-    );
+    logger.info(`Found ${repoList.length} repos for ${org} in repo list`);
 
     for (const { repo: repoName } of repoList) {
       if (!processedReposSet.has(repoName.toLowerCase())) {
@@ -1155,9 +1133,7 @@ export async function checkForMissingRepos({
   }
   logger.info(`Found ${missingRepos.length} missing repositories`);
   if (missingRepos.length > 0) {
-    logger.info(
-      `Missing repositories written to: ${missingReposFileName}`,
-    );
+    logger.info(`Missing repositories written to: ${missingReposFileName}`);
   }
 
   return { missingRepos };

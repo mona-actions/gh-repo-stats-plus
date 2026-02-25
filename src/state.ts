@@ -85,9 +85,7 @@ export class StateManager {
     try {
       // Ensure output directory exists
       if (!existsSync(this.outputDir)) {
-        this.logger.debug(
-          `Creating output directory: ${this.outputDir}`,
-        );
+        this.logger.debug(`Creating output directory: ${this.outputDir}`);
         mkdirSync(this.outputDir, { recursive: true });
       }
 

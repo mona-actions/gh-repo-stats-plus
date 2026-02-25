@@ -75,9 +75,7 @@ export async function initCommand(
 
     if (resumeFromLastState) {
       fileName = processedState.outputFileName || '';
-      logger.info(
-        `Resuming from last state. Using existing file: ${fileName}`,
-      );
+      logger.info(`Resuming from last state. Using existing file: ${fileName}`);
     } else {
       const baseFileName =
         opts.outputFileName || config.generateFileName(orgName);
@@ -153,9 +151,7 @@ export async function executeCommand(
     throw new Error('Either orgName or orgList must be provided');
   }
 
-  logger.info(
-    `Organizations to process: ${orgsToProcess.join(', ')}`,
-  );
+  logger.info(`Organizations to process: ${orgsToProcess.join(', ')}`);
   if (orgsToProcess.length > 1 && delayBetweenOrgs > 0) {
     const estimatedDelayMinutes = Math.ceil(
       ((orgsToProcess.length - 1) * delayBetweenOrgs) / 60,
@@ -182,9 +178,7 @@ export async function executeCommand(
     if (sessionManager) {
       const orgRef = sessionManager.getOrCreateOrgReference(orgName);
       if (orgRef.status === 'completed') {
-        logger.info(
-          `Organization ${orgName} already completed, skipping`,
-        );
+        logger.info(`Organization ${orgName} already completed, skipping`);
         continue;
       }
     }
@@ -279,9 +273,7 @@ async function executeForOrg(
     let fileName = '';
     if (resumeFromLastState) {
       fileName = processedState.outputFileName || '';
-      logger.info(
-        `Resuming from last state. Using existing file: ${fileName}`,
-      );
+      logger.info(`Resuming from last state. Using existing file: ${fileName}`);
     } else {
       const baseFileName =
         opts.outputFileName || config.generateFileName(orgName);
@@ -318,9 +310,7 @@ async function executeForOrg(
   } catch (e) {
     result.success = false;
     result.error = e instanceof Error ? e.message : String(e);
-    logger.error(
-      `Error processing organization ${orgName}: ${result.error}`,
-    );
+    logger.error(`Error processing organization ${orgName}: ${result.error}`);
   }
 
   return result;
@@ -354,9 +344,7 @@ function logSummary(
     const duration = result.elapsedTime || 'N/A';
     const status = result.success ? '✅ SUCCESS' : '❌ FAILED';
     const errorInfo = result.error ? ` - ${result.error}` : '';
-    logger.info(
-      `- ${result.orgName}: ${status} (${duration})${errorInfo}`,
-    );
+    logger.info(`- ${result.orgName}: ${status} (${duration})${errorInfo}`);
   }
   logger.info('='.repeat(80));
 

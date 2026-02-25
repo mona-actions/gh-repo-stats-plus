@@ -303,9 +303,7 @@ export class SessionManager {
     try {
       // Ensure output directory exists
       if (!existsSync(this.outputDir)) {
-        this.logger.debug(
-          `Creating output directory: ${this.outputDir}`,
-        );
+        this.logger.debug(`Creating output directory: ${this.outputDir}`);
         mkdirSync(this.outputDir, { recursive: true });
       }
 
@@ -377,9 +375,7 @@ export class SessionManager {
           const orgStateFilePath = join(this.outputDir, orgRef.stateFile);
           if (existsSync(orgStateFilePath)) {
             unlinkSync(orgStateFilePath);
-            this.logger.debug(
-              `Removed org state file: ${orgStateFilePath}`,
-            );
+            this.logger.debug(`Removed org state file: ${orgStateFilePath}`);
           }
         }
       }

@@ -136,9 +136,7 @@ describe('Logger Module', () => {
       logProcessingSummary(summary, mockLogger);
 
       // Assert - Check key log entries
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        'Processing Summary:',
-      );
+      expect(mockLogger.info).toHaveBeenCalledWith('Processing Summary:');
       expect(mockLogger.info).toHaveBeenCalledWith(
         '✓ Initially processed: 100 files',
       );
@@ -233,8 +231,7 @@ describe('Logger Module', () => {
         method: 'scheduled',
         args: [5],
         expectedCall: 'info',
-        expectedMessage:
-          '⟳ 5 files scheduled for retry in next attempt',
+        expectedMessage: '⟳ 5 files scheduled for retry in next attempt',
         description: 'files scheduled for retry',
       },
       {
@@ -279,15 +276,11 @@ describe('Logger Module', () => {
       expect(mockLogger.info).toHaveBeenCalledWith(
         'Initializing repo-stats-queue application...',
       );
-      expect(mockLogger.debug).toHaveBeenCalledWith(
-        'Creating auth config...',
-      );
+      expect(mockLogger.debug).toHaveBeenCalledWith('Creating auth config...');
       expect(mockLogger.debug).toHaveBeenCalledWith(
         'Initializing octokit client...',
       );
-      expect(mockLogger.debug).toHaveBeenCalledWith(
-        'Generating app token...',
-      );
+      expect(mockLogger.debug).toHaveBeenCalledWith('Generating app token...');
       expect(mockLogger.debug).toHaveBeenCalledWith(
         'Setting up output directories...',
       );
