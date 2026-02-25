@@ -47,41 +47,45 @@ vi.mock('../src/octokit.js', () => ({
 
 // Mock state manager
 vi.mock('../src/state.js', () => ({
-  StateManager: vi.fn().mockImplementation(() => ({
-    initialize: vi.fn().mockReturnValue({
-      processedState: {
-        currentCursor: null,
-        lastSuccessfulCursor: null,
-        processedRepos: [],
-        lastProcessedRepo: '',
-        completedSuccessfully: false,
-        outputFileName: '',
-      },
-      resumeFromLastState: false,
-    }),
-    update: vi.fn(),
-    markComplete: vi.fn(),
-    cleanup: vi.fn(),
-  })),
+  StateManager: vi.fn().mockImplementation(function () {
+    return {
+      initialize: vi.fn().mockReturnValue({
+        processedState: {
+          currentCursor: null,
+          lastSuccessfulCursor: null,
+          processedRepos: [],
+          lastProcessedRepo: '',
+          completedSuccessfully: false,
+          outputFileName: '',
+        },
+        resumeFromLastState: false,
+      }),
+      update: vi.fn(),
+      markComplete: vi.fn(),
+      cleanup: vi.fn(),
+    };
+  }),
 }));
 
 // Mock service
 vi.mock('../src/service.js', () => ({
-  OctokitClient: vi.fn().mockImplementation(() => ({
-    getOrgRepoStats: vi.fn().mockReturnValue({
-      // eslint-disable-next-line require-yield
-      async *[Symbol.asyncIterator]() {
-        // Empty iterator for testing
-        return;
-      },
-    }),
-    checkRateLimits: vi.fn().mockResolvedValue({
-      graphQLRemaining: 5000,
-      apiRemainingRequest: 5000,
-      messageType: 'info',
-      message: 'Rate limits OK',
-    }),
-  })),
+  OctokitClient: vi.fn().mockImplementation(function () {
+    return {
+      getOrgRepoStats: vi.fn().mockReturnValue({
+        // eslint-disable-next-line require-yield
+        async *[Symbol.asyncIterator]() {
+          // Empty iterator for testing
+          return;
+        },
+      }),
+      checkRateLimits: vi.fn().mockResolvedValue({
+        graphQLRemaining: 5000,
+        apiRemainingRequest: 5000,
+        messageType: 'info',
+        message: 'Rate limits OK',
+      }),
+    };
+  }),
 }));
 
 // Mock utils
@@ -167,26 +171,28 @@ describe('Multi-Org Processing', () => {
       const { OctokitClient } = await vi.importMock('../src/service.js');
       let callCount = 0;
 
-      vi.mocked(OctokitClient).mockImplementation(() => ({
-        getOrgRepoStats: vi.fn().mockImplementation(() => {
-          callCount++;
-          if (callCount === 2) {
-            throw new Error('Processing failed for org2');
-          }
-          return {
-            // eslint-disable-next-line require-yield
-            async *[Symbol.asyncIterator]() {
-              return;
-            },
-          };
-        }),
-        checkRateLimits: vi.fn().mockResolvedValue({
-          graphQLRemaining: 5000,
-          apiRemainingRequest: 5000,
-          messageType: 'info',
-          message: 'Rate limits OK',
-        }),
-      }));
+      vi.mocked(OctokitClient).mockImplementation(function () {
+        return {
+          getOrgRepoStats: vi.fn().mockImplementation(() => {
+            callCount++;
+            if (callCount === 2) {
+              throw new Error('Processing failed for org2');
+            }
+            return {
+              // eslint-disable-next-line require-yield
+              async *[Symbol.asyncIterator]() {
+                return;
+              },
+            };
+          }),
+          checkRateLimits: vi.fn().mockResolvedValue({
+            graphQLRemaining: 5000,
+            apiRemainingRequest: 5000,
+            messageType: 'info',
+            message: 'Rate limits OK',
+          }),
+        };
+      });
 
       const args: Partial<Arguments> = {
         orgList: ['org1', 'org2', 'org3'],
@@ -203,26 +209,28 @@ describe('Multi-Org Processing', () => {
       const { OctokitClient } = await vi.importMock('../src/service.js');
       let callCount = 0;
 
-      vi.mocked(OctokitClient).mockImplementation(() => ({
-        getOrgRepoStats: vi.fn().mockImplementation(() => {
-          callCount++;
-          if (callCount === 2) {
-            throw new Error('Processing failed for org2');
-          }
-          return {
-            // eslint-disable-next-line require-yield
-            async *[Symbol.asyncIterator]() {
-              return;
-            },
-          };
-        }),
-        checkRateLimits: vi.fn().mockResolvedValue({
-          graphQLRemaining: 5000,
-          apiRemainingRequest: 5000,
-          messageType: 'info',
-          message: 'Rate limits OK',
-        }),
-      }));
+      vi.mocked(OctokitClient).mockImplementation(function () {
+        return {
+          getOrgRepoStats: vi.fn().mockImplementation(() => {
+            callCount++;
+            if (callCount === 2) {
+              throw new Error('Processing failed for org2');
+            }
+            return {
+              // eslint-disable-next-line require-yield
+              async *[Symbol.asyncIterator]() {
+                return;
+              },
+            };
+          }),
+          checkRateLimits: vi.fn().mockResolvedValue({
+            graphQLRemaining: 5000,
+            apiRemainingRequest: 5000,
+            messageType: 'info',
+            message: 'Rate limits OK',
+          }),
+        };
+      });
 
       const args: Partial<Arguments> = {
         orgList: ['org1', 'org2', 'org3'],
@@ -392,26 +400,28 @@ describe('Multi-Org Processing', () => {
       const { OctokitClient } = await vi.importMock('../src/service.js');
       let callCount = 0;
 
-      vi.mocked(OctokitClient).mockImplementation(() => ({
-        getOrgRepoStats: vi.fn().mockImplementation(() => {
-          callCount++;
-          if (callCount === 2) {
-            throw new Error('Processing failed for org2');
-          }
-          return {
-            // eslint-disable-next-line require-yield
-            async *[Symbol.asyncIterator]() {
-              return;
-            },
-          };
-        }),
-        checkRateLimits: vi.fn().mockResolvedValue({
-          graphQLRemaining: 5000,
-          apiRemainingRequest: 5000,
-          messageType: 'info',
-          message: 'Rate limits OK',
-        }),
-      }));
+      vi.mocked(OctokitClient).mockImplementation(function () {
+        return {
+          getOrgRepoStats: vi.fn().mockImplementation(() => {
+            callCount++;
+            if (callCount === 2) {
+              throw new Error('Processing failed for org2');
+            }
+            return {
+              // eslint-disable-next-line require-yield
+              async *[Symbol.asyncIterator]() {
+                return;
+              },
+            };
+          }),
+          checkRateLimits: vi.fn().mockResolvedValue({
+            graphQLRemaining: 5000,
+            apiRemainingRequest: 5000,
+            messageType: 'info',
+            message: 'Rate limits OK',
+          }),
+        };
+      });
 
       const args: Partial<Arguments> = {
         orgList: ['org1', 'org2', 'org3'],

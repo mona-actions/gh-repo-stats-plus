@@ -595,7 +595,6 @@ async function processRepositories({
   );
 
   let processedCount = 0;
-  let iterationComplete = false;
 
   try {
     for await (const result of processRepoStats({
@@ -636,7 +635,6 @@ async function processRepositories({
     }
 
     // If we get here, we've completed the iteration without errors
-    iterationComplete = true;
     logger.info('Successfully completed processing all repositories');
   } catch (error) {
     // If there's an error during iteration, we'll handle it at the caller
@@ -644,20 +642,15 @@ async function processRepositories({
     throw error;
   }
 
-  // Simple completion logic: if we've successfully iterated through all repositories, we're done
-  const isComplete = iterationComplete;
-
-  if (isComplete) {
-    logger.info(
-      'No more repositories to process - processing completed successfully',
-    );
-  }
+  logger.info(
+    'No more repositories to process - processing completed successfully',
+  );
 
   return {
     cursor: processedState.lastSuccessfulCursor,
     processedRepos: processedState.processedRepos,
     processedCount,
-    isComplete,
+    isComplete: true,
     successCount: state.successCount,
     retryCount: state.retryCount,
   };

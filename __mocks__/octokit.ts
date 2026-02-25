@@ -47,15 +47,17 @@ export const rest = {
   },
 };
 
-export const Octokit = vi.fn().mockImplementation(() => ({
-  auth: vi.fn(),
-  graphql,
-  paginate: {
-    iterator: vi.fn(),
-  },
-  request,
-  rest,
-}));
+export const Octokit = vi.fn().mockImplementation(function () {
+  return {
+    auth: vi.fn(),
+    graphql,
+    paginate: {
+      iterator: vi.fn(),
+    },
+    request,
+    rest,
+  };
+});
 
 export default {
   Octokit,
