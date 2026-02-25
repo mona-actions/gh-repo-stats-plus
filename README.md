@@ -334,6 +334,15 @@ The CSV output includes detailed information about each repository:
 
 The `Has_LFS` column indicates whether the repository's `.gitattributes` file on the default branch contains `filter=lfs` entries. This is a lightweight check performed as part of the existing GraphQL query with no additional API calls.
 
+**Limitations to be aware of:**
+
+- **Default branch only**: The check reads `.gitattributes` from `HEAD` (the default branch). LFS tracking configured only on other branches will not be detected.
+- **Root `.gitattributes` only**: Nested `.gitattributes` files in subdirectories are not inspected.
+- **Detection, not sizing**: This column only indicates whether LFS is configured — it does not report the number or size of LFS objects.
+- **Empty repositories**: Empty repositories will always report `FALSE` since there is no `.gitattributes` file to read.
+
+**For actual LFS sizing**, use the standalone `script/lfs-size.sh` script to inspect individual repositories where `Has_LFS` is `TRUE`. This performs a shallow bare clone and reports per-file LFS sizes and totals. See the [LFS Sizing Guide](docs/lfs-sizing.md) for prerequisites and usage.
+
 ### Project Stats CSV Output Columns
 
 The `project-stats` command generates a separate CSV file with the following columns:
@@ -343,15 +352,6 @@ The `project-stats` command generates a separate CSV file with the following col
 - `Issues_Linked_To_Projects`: Number of issues that have at least one linked ProjectV2
 - `Unique_Projects_Linked_By_Issues`: Count of distinct ProjectV2 items found across all issues
 - `Projects_Linked_To_Repo`: Total count of projects directly associated with the repository
-
-**Limitations to be aware of:**
-
-- **Default branch only**: The check reads `.gitattributes` from `HEAD` (the default branch). LFS tracking configured only on other branches will not be detected.
-- **Root `.gitattributes` only**: Nested `.gitattributes` files in subdirectories are not inspected.
-- **Detection, not sizing**: This column only indicates whether LFS is configured — it does not report the number or size of LFS objects.
-- **Empty repositories**: Empty repositories will always report `FALSE` since there is no `.gitattributes` file to read.
-
-**For actual LFS sizing**, use the standalone `script/lfs-size.sh` script to inspect individual repositories where `Has_LFS` is `TRUE`. This performs a shallow bare clone and reports per-file LFS sizes and totals. See the [LFS Sizing Guide](docs/lfs-sizing.md) for prerequisites and usage.
 
 ## 🛠️ Development Quick Start
 
