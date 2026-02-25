@@ -9,7 +9,7 @@ import { Logger } from './types.js';
 export interface CombineStatsOptions {
   files: string[];
   matchColumns: string[];
-  outputFile?: string;
+  outputFileName?: string;
   outputDir?: string;
   verbose?: boolean;
 }
@@ -211,7 +211,8 @@ export async function runCombineStats(
   );
 
   // Determine output path
-  const outputFileName = options.outputFile || generateCombinedStatsFileName();
+  const outputFileName =
+    options.outputFileName || generateCombinedStatsFileName();
   const outputPath = await resolveOutputPath(options.outputDir, outputFileName);
 
   // Write output

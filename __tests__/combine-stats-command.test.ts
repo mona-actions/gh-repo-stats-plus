@@ -24,7 +24,7 @@ describe('Commands - combine-stats-command', () => {
 
       expect(optionNames).toContain('--files');
       expect(optionNames).toContain('--match-columns');
-      expect(optionNames).toContain('--output-file');
+      expect(optionNames).toContain('--output-file-name');
       expect(optionNames).toContain('--output-dir');
       expect(optionNames).toContain('--verbose');
     });
@@ -42,7 +42,10 @@ describe('Commands - combine-stats-command', () => {
         (opt) => opt.long === '--match-columns',
       );
       expect(matchColumnsOption).toBeDefined();
-      expect(matchColumnsOption?.defaultValue).toBe('Org_Name,Repo_Name');
+      expect(matchColumnsOption?.defaultValue).toEqual([
+        'Org_Name',
+        'Repo_Name',
+      ]);
     });
 
     it('should have default value for --output-dir', () => {
@@ -56,7 +59,7 @@ describe('Commands - combine-stats-command', () => {
     it('should have environment variable mappings', () => {
       const envMappings: Record<string, string> = {
         '--match-columns': 'MATCH_COLUMNS',
-        '--output-file': 'COMBINE_OUTPUT_FILE',
+        '--output-file-name': 'COMBINE_OUTPUT_FILE',
         '--output-dir': 'OUTPUT_DIR',
         '--verbose': 'VERBOSE',
       };
@@ -97,7 +100,7 @@ describe('Commands - combine-stats-command', () => {
 
       expect(opts.files).toEqual(['file1.csv', 'file2.csv']);
       expect(opts.outputDir).toBe('output');
-      expect(opts.matchColumns).toBe('Org_Name,Repo_Name');
+      expect(opts.matchColumns).toEqual(['Org_Name', 'Repo_Name']);
     });
 
     it('should parse custom match columns', () => {
@@ -118,14 +121,14 @@ describe('Commands - combine-stats-command', () => {
         '--files',
         'f1.csv',
         'f2.csv',
-        '--output-file',
+        '--output-file-name',
         'my-output.csv',
         '--output-dir',
         'reports',
       ]);
       const opts = cmd.opts();
 
-      expect(opts.outputFile).toBe('my-output.csv');
+      expect(opts.outputFileName).toBe('my-output.csv');
       expect(opts.outputDir).toBe('reports');
     });
 

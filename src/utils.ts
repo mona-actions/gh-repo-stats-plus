@@ -164,7 +164,7 @@ export async function resolveOutputPath(
  */
 export function parseCommaSeparatedOption(
   value: string,
-  previous?: string[] | string,
+  previous?: string[],
 ): string[] {
   if (!value) {
     return Array.isArray(previous) ? previous : [];

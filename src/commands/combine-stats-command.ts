@@ -1,6 +1,5 @@
 import * as commander from 'commander';
 import { existsSync } from 'fs';
-import { parseCommaSeparatedOption } from '../utils.js';
 import { DEFAULT_MATCH_COLUMNS } from '../csv.js';
 import { runCombineStats, CombineStatsOptions } from '../combine.js';
 import VERSION from '../version.js';
@@ -48,12 +47,17 @@ export function createCombineStatsCommand(): commander.Command {
         'Comma-separated column names used to match rows across files',
       )
         .env('MATCH_COLUMNS')
-        .default(DEFAULT_MATCH_COLUMNS.join(','))
-        .argParser(parseCommaSeparatedOption),
+        .default(DEFAULT_MATCH_COLUMNS)
+        .argParser((value: string) =>
+          value
+            .split(',')
+            .map((s) => s.trim())
+            .filter((s) => s !== ''),
+        ),
     )
     .addOption(
       new Option(
-        '--output-file <name>',
+        '--output-file-name <name>',
         'Name for the combined output CSV file (default: auto-generated with timestamp)',
       ).env('COMBINE_OUTPUT_FILE'),
     )
@@ -67,14 +71,6 @@ export function createCombineStatsCommand(): commander.Command {
     )
     .action(async (options: CombineStatsOptions) => {
       console.log('Version:', VERSION);
-
-      // Handle match-columns default: when not provided by user, Commander
-      // passes the string default which needs to be converted to array
-      if (typeof options.matchColumns === 'string') {
-        options.matchColumns = parseCommaSeparatedOption(
-          options.matchColumns as string,
-        );
-      }
 
       console.log('Validating options...');
       validate(options);

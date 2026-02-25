@@ -392,7 +392,7 @@ describe('combine', () => {
         files: ['file1.csv', 'file2.csv'],
         matchColumns: ['Org_Name', 'Repo_Name'],
         outputDir: 'output',
-        outputFile: 'combined.csv',
+        outputFileName: 'combined.csv',
       };
 
       await runCombineStats(options);

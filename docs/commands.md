@@ -324,7 +324,7 @@ gh repo-stats-plus combine-stats --files <file1.csv> <file2.csv> [file3.csv ...]
 
 - `--files <paths...>`: Two or more CSV files to combine (Required)
 - `--match-columns <columns>`: Comma-separated column names used to match rows across files (Default: `Org_Name,Repo_Name`)
-- `--output-file <name>`: Name for the combined output CSV file (Default: auto-generated with timestamp)
+- `--output-file-name <name>`: Name for the combined output CSV file (Default: auto-generated with timestamp)
 - `--output-dir <dir>`: Output directory for the combined file (Default: `output`)
 - `-v, --verbose`: Enable verbose logging
 
@@ -342,7 +342,7 @@ gh repo-stats-plus combine-stats \
 ```bash
 gh repo-stats-plus combine-stats \
   --files output/repo-stats.csv output/project-stats.csv output/other-stats.csv \
-  --output-file combined-all.csv
+  --output-file-name combined-all.csv
 ```
 
 #### With custom match columns
