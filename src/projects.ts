@@ -377,10 +377,21 @@ async function processProjectStatsFromOrg({
     }
 
     try {
+      logger.info(
+        `[project-stats] Fetching project counts for repository: ${orgName}/${repoName}`,
+      );
+
       const result = await client.getRepoProjectCounts(
         orgName,
         repoName,
         pageSize,
+      );
+
+      logger.info(
+        `[project-stats] Writing results for ${orgName}/${repoName} ` +
+          `(issues linked: ${result.Issues_Linked_To_Projects}, ` +
+          `unique projects: ${result.Unique_Projects_Linked_By_Issues}, ` +
+          `repo projects: ${result.Projects_Linked_To_Repo})`,
       );
 
       writeProjectStatsToCsv(result, fileName, logger);
@@ -395,6 +406,10 @@ async function processProjectStatsFromOrg({
         stateManager,
         client,
       });
+
+      logger.info(
+        `[project-stats] Successfully processed repository ${processedCount}: ${orgName}/${repoName}`,
+      );
     } catch (error) {
       state.successCount = 0;
       logger.error(
@@ -403,6 +418,12 @@ async function processProjectStatsFromOrg({
       throw error;
     }
   }
+
+  logger.info(
+    `[project-stats] Finished iterating all repositories for ${orgName}. ` +
+      `Total processed: ${processedCount}, ` +
+      `Total skipped (already processed): ${processedState.processedRepos.length - processedCount}`,
+  );
 
   return {
     cursor: null,
