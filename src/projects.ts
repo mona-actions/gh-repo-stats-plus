@@ -32,9 +32,10 @@ const projectStatsConfig: CommandConfig = {
 
 // --- Public entry point ---
 
-export async function runProjectStats(opts: Arguments): Promise<void> {
+export async function runProjectStats(opts: Arguments): Promise<string[]> {
   const context = await initCommand(opts, projectStatsConfig);
-  await executeCommand(context, projectStatsConfig);
+  const result = await executeCommand(context, projectStatsConfig);
+  return result.outputFiles;
 }
 
 // --- Per-org processing (called by shared executeForOrg via config.processOrg) ---

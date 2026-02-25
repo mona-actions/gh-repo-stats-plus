@@ -409,6 +409,14 @@ export interface OrgProcessingResult {
   endTime?: Date;
   elapsedTime?: string;
   reposProcessed?: number;
+  outputFile?: string;
+}
+
+/**
+ * Result returned by executeCommand with summary info and output file paths.
+ */
+export interface CommandResult {
+  outputFiles: string[];
 }
 
 // --- Project Stats types ---

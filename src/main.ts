@@ -54,9 +54,10 @@ const repoStatsConfig: CommandConfig = {
 
 // --- Public entry point ---
 
-export async function run(opts: Arguments): Promise<void> {
+export async function run(opts: Arguments): Promise<string[]> {
   const context = await initCommand(opts, repoStatsConfig);
-  await executeCommand(context, repoStatsConfig);
+  const result = await executeCommand(context, repoStatsConfig);
+  return result.outputFiles;
 }
 
 // --- Per-org processing (called by shared executeForOrg via config.processOrg) ---
