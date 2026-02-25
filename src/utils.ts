@@ -164,17 +164,17 @@ export async function resolveOutputPath(
  */
 export function parseCommaSeparatedOption(
   value: string,
-  previous?: string[],
+  previous?: string[] | string,
 ): string[] {
   if (!value) {
-    return previous ?? [];
+    return Array.isArray(previous) ? previous : [];
   }
 
   const parsed = value
     .split(',')
     .map((item) => item.trim())
     .filter((item) => item !== '');
-  return previous ? [...previous, ...parsed] : parsed;
+  return Array.isArray(previous) ? [...previous, ...parsed] : parsed;
 }
 
 /**
@@ -265,20 +265,10 @@ export function parseFileAsNewlineSeparatedOption(
   return parseNewlineSeparatedOption(fileContent, previous);
 }
 
-/**
- * Escapes a value for safe inclusion in a CSV field per RFC 4180.
- * - Wraps in double quotes if the value contains commas, double quotes, or newlines
- * - Escapes embedded double quotes by doubling them
- */
-export function escapeCsvField(value: unknown): string {
-  const str = value?.toString() ?? '';
-  if (
-    str.includes(',') ||
-    str.includes('"') ||
-    str.includes('\n') ||
-    str.includes('\r')
-  ) {
-    return `"${str.replace(/"/g, '""')}"`;
-  }
-  return str;
+export function generateCombinedStatsFileName(): string {
+  const timestamp = new Date()
+    .toISOString()
+    .replace(/[-:T\.Z]/g, '')
+    .slice(0, 12);
+  return `combined-stats-${timestamp}_ts.csv`;
 }
