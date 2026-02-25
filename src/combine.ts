@@ -183,7 +183,7 @@ export function combineFiles(
  */
 export async function runCombineStats(
   options: CombineStatsOptions,
-): Promise<void> {
+): Promise<string> {
   const logFileName = `combine-stats-${
     new Date().toISOString().split('T')[0]
   }.log`;
@@ -221,4 +221,6 @@ export async function runCombineStats(
   logger.info(`Combined ${options.files.length} files into: ${outputPath}`);
   logger.info(`  Total columns: ${headers.length}`);
   logger.info(`  Total rows: ${rows.length}`);
+
+  return outputPath;
 }
