@@ -218,7 +218,7 @@ export async function runCombineStats(
   writeCsvFile(outputPath, headers, rows);
   logger.info(`Combined CSV written to: ${outputPath}`);
 
-  console.log(`Combined ${options.files.length} files into: ${outputPath}`);
-  console.log(`  Total columns: ${headers.length}`);
-  console.log(`  Total rows: ${rows.length}`);
+  logger.info(`Combined ${options.files.length} files into: ${outputPath}`);
+  logger.info(`  Total columns: ${headers.length}`);
+  logger.info(`  Total rows: ${rows.length}`);
 }
