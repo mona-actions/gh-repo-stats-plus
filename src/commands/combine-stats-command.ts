@@ -80,9 +80,8 @@ export function createCombineStatsCommand(): commander.Command {
       validate(options);
 
       console.log('Starting combine-stats...');
-      const outputFile = await runCombineStats(options);
+      await runCombineStats(options);
       console.log('Combine-stats completed.');
-      console.log(`output_file=${outputFile}`);
     });
 
   return command;
