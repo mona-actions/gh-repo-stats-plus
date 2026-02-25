@@ -393,6 +393,53 @@ gh repo-stats-plus combine-stats \
   --files output/myorg-all_repos-*.csv output/myorg-project-stats-*.csv
 ```
 
+### Scripted Pipeline (repo-stats + project-stats + combine-stats)
+
+The `script/collect-stats.sh` script runs repo-stats, project-stats, and combine-stats
+in sequence, automatically passing output file paths between steps.
+
+#### Basic usage
+
+```bash
+./script/collect-stats.sh --org-name my-org --access-token ghp_xxxxxxxxxxxx
+```
+
+#### With custom options
+
+```bash
+./script/collect-stats.sh \
+  --org-name my-org \
+  --access-token ghp_xxxxxxxxxxxx \
+  --output-dir ./reports \
+  --page-size 20 \
+  --verbose
+```
+
+#### Using ACCESS_TOKEN environment variable
+
+```bash
+ACCESS_TOKEN=ghp_xxxxxxxxxxxx ./script/collect-stats.sh --org-name my-org
+```
+
+#### Using existing files
+
+If you already have output from a previous run, you can skip steps and provide
+existing files directly:
+
+```bash
+# Skip repo-stats, provide an existing file
+./script/collect-stats.sh \
+  --org-name my-org \
+  --repo-stats-file output/my-org-all_repos-202502250000_ts.csv
+
+# Skip project-stats
+./script/collect-stats.sh \
+  --org-name my-org \
+  --project-stats-file output/my-org-project-stats-202502250000_ts.csv
+```
+
+Run `./script/collect-stats.sh --help` for a full list of options.
+
 ### Selective Processing
 
 ```bash
