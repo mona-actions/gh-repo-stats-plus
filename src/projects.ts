@@ -9,25 +9,16 @@ import {
   CommandConfig,
 } from './types.js';
 import { StateManager } from './state.js';
-import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 
 import { withRetry } from './retry.js';
+import { generateProjectStatsFileName, formatElapsedTime } from './utils.js';
 import {
-  generateProjectStatsFileName,
-  formatElapsedTime,
-  escapeCsvField,
-} from './utils.js';
+  initializeCsvFile as initializeCsvFileGeneric,
+  appendCsvRow,
+  PROJECT_STATS_COLUMNS,
+} from './csv.js';
 import { initCommand, executeCommand } from './init.js';
-
-// --- CSV columns ---
-
-const PROJECT_STATS_COLUMNS = [
-  'Org_Name',
-  'Repo_Name',
-  'Issues_Linked_To_Projects',
-  'Unique_Projects_Linked_By_Issues',
-  'Projects_Linked_To_Repo',
-];
 
 // --- Command configuration ---
 
@@ -41,9 +32,10 @@ const projectStatsConfig: CommandConfig = {
 
 // --- Public entry point ---
 
-export async function runProjectStats(opts: Arguments): Promise<void> {
+export async function runProjectStats(opts: Arguments): Promise<string[]> {
   const context = await initCommand(opts, projectStatsConfig);
-  await executeCommand(context, projectStatsConfig);
+  const result = await executeCommand(context, projectStatsConfig);
+  return result.outputFiles;
 }
 
 // --- Per-org processing (called by shared executeForOrg via config.processOrg) ---
@@ -60,9 +52,7 @@ async function processOrgProjectStats(context: OrgContext): Promise<void> {
   } = context;
 
   const startTime = new Date();
-  logger.info(
-    `[project-stats] Started processing at: ${startTime.toISOString()}`,
-  );
+  logger.info(`Started processing at: ${startTime.toISOString()}`);
 
   const processingState = {
     successCount: 0,
@@ -86,13 +76,11 @@ async function processOrgProjectStats(context: OrgContext): Promise<void> {
 
       if (result.isComplete) {
         processedState.completedSuccessfully = true;
-        logger.info(
-          '[project-stats] All repositories have been processed successfully.',
-        );
+        logger.info('All repositories have been processed successfully.');
       }
 
       logger.info(
-        `[project-stats] Completed processing ${result.processedCount} repositories. ` +
+        `Completed processing ${result.processedCount} repositories. ` +
           `Start time: ${startTime.toISOString()}\n` +
           `End time: ${endTime.toISOString()}\n` +
           `Total elapsed time: ${elapsedTime}\n` +
@@ -115,7 +103,7 @@ async function processOrgProjectStats(context: OrgContext): Promise<void> {
       processingState.retryCount++;
       processingState.successCount = 0;
       logger.warn(
-        `[project-stats] Retry attempt ${state.attempt}: Failed while processing. ` +
+        `Retry attempt ${state.attempt}: Failed while processing. ` +
           `Last processed repo: ${processedState.lastProcessedRepo}, ` +
           `Processed repos count: ${processedState.processedRepos.length}, ` +
           `Error: ${state.error?.message}\n` +
@@ -145,9 +133,7 @@ async function processProjectStats({
   fileName: string;
   stateManager: StateManager;
 }): Promise<RepoProcessingResult> {
-  logger.debug(
-    `[project-stats] Starting/Resuming processing for ${opts.orgName}`,
-  );
+  logger.debug(`Starting/Resuming processing for ${opts.orgName}`);
 
   if (opts.repoList && opts.repoList.length > 0) {
     return processProjectStatsFromFile({
@@ -189,9 +175,7 @@ async function processProjectStatsFromFile({
   fileName: string;
   stateManager: StateManager;
 }): Promise<RepoProcessingResult> {
-  logger.info(
-    `[project-stats] Processing repositories from list: ${opts.repoList}`,
-  );
+  logger.info(`Processing repositories from list: ${opts.repoList}`);
 
   if (!opts.repoList || opts.repoList.length === 0) {
     throw new Error('Repository list is required and cannot be empty');
@@ -213,7 +197,7 @@ async function processProjectStatsFromFile({
         !segments[1]?.trim()
       ) {
         logger.warn(
-          `[project-stats] Skipping invalid repo entry on line ${
+          `Skipping invalid repo entry on line ${
             index + 1
           }: "${trimmed}". Expected format "owner/repo".`,
         );
@@ -237,12 +221,12 @@ async function processProjectStatsFromFile({
     );
 
   logger.info(
-    `[project-stats] Filtered to ${repoList.length} repositories for organization: ${opts.orgName}`,
+    `Filtered to ${repoList.length} repositories for organization: ${opts.orgName}`,
   );
 
   if (repoList.length === 0) {
     logger.info(
-      `[project-stats] No repositories in the list belong to organization: ${opts.orgName}`,
+      `No repositories in the list belong to organization: ${opts.orgName}`,
     );
     return {
       cursor: null,
@@ -259,9 +243,7 @@ async function processProjectStatsFromFile({
   for (const { owner, repo } of repoList) {
     try {
       if (processedState.processedRepos.includes(repo)) {
-        logger.debug(
-          `[project-stats] Skipping already processed repository: ${repo}`,
-        );
+        logger.debug(`Skipping already processed repository: ${repo}`);
         continue;
       }
 
@@ -271,7 +253,7 @@ async function processProjectStatsFromFile({
         opts.pageSize != null ? Number(opts.pageSize) : 100,
         (pageNumber, issuesInPage) => {
           logger.info(
-            `[project-stats] ${owner}/${repo} - processed page ${pageNumber} (${issuesInPage} issues)`,
+            `${owner}/${repo} - processed page ${pageNumber} (${issuesInPage} issues)`,
           );
         },
       );
@@ -290,7 +272,7 @@ async function processProjectStatsFromFile({
       });
     } catch (error) {
       state.successCount = 0;
-      logger.error(`[project-stats] Failed processing repo ${repo}: ${error}`);
+      logger.error(`Failed processing repo ${repo}: ${error}`);
       throw error;
     }
   }
@@ -306,9 +288,7 @@ async function processProjectStatsFromFile({
 }
 
 function loadRepoNamesFromFile(filePath: string, logger: Logger): string[] {
-  logger.info(
-    `[project-stats] Loading repository names from file: ${filePath}`,
-  );
+  logger.info(`Loading repository names from file: ${filePath}`);
 
   const content = readFileSync(filePath, 'utf-8');
   const names = content
@@ -316,9 +296,7 @@ function loadRepoNamesFromFile(filePath: string, logger: Logger): string[] {
     .map((line) => line.trim())
     .filter((line) => line !== '' && !line.startsWith('#'));
 
-  logger.info(
-    `[project-stats] Loaded ${names.length} repository names from file`,
-  );
+  logger.info(`Loaded ${names.length} repository names from file`);
 
   return names;
 }
@@ -360,12 +338,10 @@ async function processProjectStatsFromOrg({
   } else {
     if (opts.repoNamesFile) {
       logger.warn(
-        `[project-stats] Repo names file not found: ${opts.repoNamesFile}. Falling back to querying GitHub.`,
+        `Repo names file not found: ${opts.repoNamesFile}. Falling back to querying GitHub.`,
       );
     }
-    logger.info(
-      `[project-stats] Iterating repositories for organization: ${orgName}`,
-    );
+    logger.info(`Iterating repositories for organization: ${orgName}`);
     reposIterator = client.listOrgRepoNames(orgName, pageSize);
   }
 
@@ -375,15 +351,13 @@ async function processProjectStatsFromOrg({
     const repoName = repo.name;
 
     if (processedState.processedRepos.includes(repoName)) {
-      logger.debug(
-        `[project-stats] Skipping already processed repository: ${repoName}`,
-      );
+      logger.debug(`Skipping already processed repository: ${repoName}`);
       continue;
     }
 
     try {
       logger.info(
-        `[project-stats] Fetching project counts for repository: ${orgName}/${repoName}`,
+        `Fetching project counts for repository: ${orgName}/${repoName}`,
       );
 
       const result = await client.getRepoProjectCounts(
@@ -392,13 +366,13 @@ async function processProjectStatsFromOrg({
         pageSize,
         (pageNumber, issuesInPage) => {
           logger.info(
-            `[project-stats] ${orgName}/${repoName} - processed page ${pageNumber} (${issuesInPage} issues)`,
+            `${orgName}/${repoName} - processed page ${pageNumber} (${issuesInPage} issues)`,
           );
         },
       );
 
       logger.info(
-        `[project-stats] Writing results for ${orgName}/${repoName} ` +
+        `Writing results for ${orgName}/${repoName} ` +
           `(issues linked: ${result.Issues_Linked_To_Projects}, ` +
           `unique projects: ${result.Unique_Projects_Linked_By_Issues}, ` +
           `repo projects: ${result.Projects_Linked_To_Repo})`,
@@ -418,19 +392,17 @@ async function processProjectStatsFromOrg({
       });
 
       logger.info(
-        `[project-stats] Successfully processed repository ${processedCount}: ${orgName}/${repoName}`,
+        `Successfully processed repository ${processedCount}: ${orgName}/${repoName}`,
       );
     } catch (error) {
       state.successCount = 0;
-      logger.error(
-        `[project-stats] Failed processing repo ${repoName}: ${error}`,
-      );
+      logger.error(`Failed processing repo ${repoName}: ${error}`);
       throw error;
     }
   }
 
   logger.info(
-    `[project-stats] Finished iterating all repositories for ${orgName}. ` +
+    `Finished iterating all repositories for ${orgName}. ` +
       `Total processed: ${processedCount}, ` +
       `Total skipped (already processed): ${processedState.processedRepos.length - processedCount}`,
   );
@@ -471,7 +443,7 @@ async function handleProjectStatsSuccess({
   state.successCount++;
   if (state.successCount >= successThreshold && state.retryCount > 0) {
     logger.info(
-      `[project-stats] Reset retry count after ${state.successCount} successful operations`,
+      `Reset retry count after ${state.successCount} successful operations`,
     );
     state.retryCount = 0;
     state.successCount = 0;
@@ -485,7 +457,7 @@ async function handleProjectStatsSuccess({
   // Check rate limits after configured interval
   if (processedCount % (opts.rateLimitCheckInterval || 10) === 0) {
     logger.debug(
-      `[project-stats] Checking rate limits after processing ${processedCount} repositories`,
+      `Checking rate limits after processing ${processedCount} repositories`,
     );
     const rateLimits = await client.checkRateLimits();
 
@@ -496,7 +468,7 @@ async function handleProjectStatsSuccess({
       const limitType =
         rateLimits.graphQLRemaining === 0 ? 'GraphQL' : 'REST API';
       logger.warn(
-        `[project-stats] ${limitType} rate limit reached after processing ${processedCount} repositories`,
+        `${limitType} rate limit reached after processing ${processedCount} repositories`,
       );
 
       if (rateLimits.messageType === 'error') {
@@ -512,27 +484,19 @@ async function handleProjectStatsSuccess({
       );
     } else {
       logger.info(
-        `[project-stats] GraphQL remaining: ${rateLimits.graphQLRemaining}, REST API remaining: ${rateLimits.apiRemainingRequest}`,
+        `GraphQL remaining: ${rateLimits.graphQLRemaining}, REST API remaining: ${rateLimits.apiRemainingRequest}`,
       );
     }
   }
 
-  logger.debug(
-    `[project-stats] Processed ${processedCount} repositories so far`,
-  );
+  logger.debug(`Processed ${processedCount} repositories so far`);
 }
 
 export function initializeProjectStatsCsvFile(
   fileName: string,
   logger: Logger,
 ): void {
-  if (!existsSync(fileName)) {
-    logger.info(`[project-stats] Creating new CSV file: ${fileName}`);
-    const headerRow = `${PROJECT_STATS_COLUMNS.join(',')}\n`;
-    writeFileSync(fileName, headerRow);
-  } else {
-    logger.info(`[project-stats] Using existing CSV file: ${fileName}`);
-  }
+  initializeCsvFileGeneric(fileName, PROJECT_STATS_COLUMNS, logger);
 }
 
 export function writeProjectStatsToCsv(
@@ -542,22 +506,19 @@ export function writeProjectStatsToCsv(
 ): void {
   try {
     const values = [
-      escapeCsvField(result.Org_Name),
-      escapeCsvField(result.Repo_Name),
+      result.Org_Name,
+      result.Repo_Name,
       result.Issues_Linked_To_Projects,
       result.Unique_Projects_Linked_By_Issues,
       result.Projects_Linked_To_Repo,
     ];
 
-    const csvRow = `${values.join(',')}\n`;
-    appendFileSync(fileName, csvRow);
+    appendCsvRow(fileName, values, logger);
 
-    logger.debug(
-      `[project-stats] Wrote result for ${result.Org_Name}/${result.Repo_Name}`,
-    );
+    logger.debug(`Wrote result for ${result.Org_Name}/${result.Repo_Name}`);
   } catch (error) {
     logger.error(
-      `[project-stats] Error writing CSV for ${result.Org_Name}/${result.Repo_Name}: ${error}`,
+      `Error writing CSV for ${result.Org_Name}/${result.Repo_Name}: ${error}`,
     );
     throw error;
   }

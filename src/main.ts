@@ -33,9 +33,13 @@ import {
   hasLfsTracking,
   formatElapsedTime,
   resolveOutputPath,
-  escapeCsvField,
 } from './utils.js';
-import { parse } from 'csv-parse/sync';
+import {
+  initializeCsvFile as initializeCsvFileGeneric,
+  appendCsvRow,
+  readCsvFile,
+  REPO_STATS_COLUMNS,
+} from './csv.js';
 import { initCommand, executeCommand } from './init.js';
 
 // --- Command configuration ---
@@ -50,9 +54,10 @@ const repoStatsConfig: CommandConfig = {
 
 // --- Public entry point ---
 
-export async function run(opts: Arguments): Promise<void> {
+export async function run(opts: Arguments): Promise<string[]> {
   const context = await initCommand(opts, repoStatsConfig);
-  await executeCommand(context, repoStatsConfig);
+  const result = await executeCommand(context, repoStatsConfig);
+  return result.outputFiles;
 }
 
 // --- Per-org processing (called by shared executeForOrg via config.processOrg) ---
@@ -263,63 +268,7 @@ async function processMissingRepositories({
 }
 
 export function initializeCsvFile(fileName: string, logger: Logger): void {
-  const columns = [
-    'Org_Name',
-    'Repo_Name',
-    'Is_Empty',
-    'Last_Push',
-    'Last_Update',
-    'isFork',
-    'isArchived',
-    'isTemplate',
-    'Visibility',
-    'Repo_Size_mb',
-    'Record_Count',
-    'Collaborator_Count',
-    'Protected_Branch_Count',
-    'PR_Review_Count',
-    'Milestone_Count',
-    'Issue_Count',
-    'PR_Count',
-    'PR_Review_Comment_Count',
-    'Commit_Comment_Count',
-    'Issue_Comment_Count',
-    'Issue_Event_Count',
-    'Release_Count',
-    'Project_Count',
-    'Branch_Count',
-    'Tag_Count',
-    'Discussion_Count',
-    'Star_Count',
-    'Fork_Count',
-    'Watcher_Count',
-    'Has_Wiki',
-    'Has_LFS',
-    'Default_Branch',
-    'Primary_Language',
-    'Languages',
-    'License',
-    'Topics',
-    'Description',
-    'Homepage_URL',
-    'Auto_Merge_Allowed',
-    'Delete_Branch_On_Merge',
-    'Merge_Commit_Allowed',
-    'Squash_Merge_Allowed',
-    'Rebase_Merge_Allowed',
-    'Full_URL',
-    'Migration_Issue',
-    'Created',
-  ];
-
-  if (!existsSync(fileName)) {
-    logger.info(`Creating new CSV file: ${fileName}`);
-    // Create header row using same approach as data rows
-    const headerRow = `${columns.join(',')}\n`;
-    writeFileSync(fileName, headerRow);
-  } else {
-    logger.info(`Using existing CSV file: ${fileName}`);
-  }
+  initializeCsvFileGeneric(fileName, REPO_STATS_COLUMNS, logger);
 }
 
 async function analyzeRepositoryStats({
@@ -335,6 +284,8 @@ async function analyzeRepositoryStats({
   client: OctokitClient;
   logger: Logger;
 }): Promise<RepoStatsResult> {
+  logger.info(`Analyzing repository: ${owner}/${repo.name}`);
+
   // Run issue and PR analysis concurrently
   const [issueStats, prStats] = await Promise.all([
     analyzeIssues({
@@ -505,6 +456,8 @@ async function processRepositoriesFromFile({
         logger.debug(`Skipping already processed repository: ${repo}`);
         continue;
       }
+
+      logger.info(`Processing repository: ${owner}/${repo}`);
 
       const repoStats = await client.getRepoStats(
         owner,
@@ -681,13 +634,13 @@ async function checkAndHandleRateLimits({
     );
 
     if (rateLimits.messageType === 'error') {
-      logger.error(rateLimits.message);
+      logger.error(`${rateLimits.message}`);
       throw new Error(
         `${limitType} rate limit exceeded and maximum retries reached`,
       );
     }
 
-    logger.warn(rateLimits.message);
+    logger.warn(`${rateLimits.message}`);
     logger.info(`GraphQL remaining: ${rateLimits.graphQLRemaining}`);
     logger.info(`REST API remaining: ${rateLimits.apiRemainingRequest}`);
 
@@ -777,10 +730,9 @@ export async function writeResultToCsv(
       formattedResult.Full_URL,
       formattedResult.Migration_Issue,
       formattedResult.Created,
-    ].map((value) => escapeCsvField(value));
+    ];
 
-    const csvRow = `${values.join(',')}\n`;
-    appendFileSync(fileName, csvRow);
+    appendCsvRow(fileName, values, logger);
 
     logger.info(
       `Successfully wrote result for repository: ${result.Repo_Name}`,
@@ -1114,11 +1066,7 @@ export async function checkForMissingRepos({
   logger.info(
     `Reading processed file: ${processedFile} to check for missing repositories`,
   );
-  const fileContent = readFileSync(processedFile, 'utf-8');
-  const records = parse(fileContent, {
-    columns: true,
-    skip_empty_lines: true,
-  });
+  const records = readCsvFile(processedFile);
 
   logger.debug(`Parsed ${records.length} records from processed file`);
   const processedReposSet = new Set<string>();

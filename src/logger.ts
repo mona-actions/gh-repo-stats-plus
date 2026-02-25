@@ -6,13 +6,15 @@ const { combine, timestamp, printf, colorize } = winston.format;
 
 import { Logger, ProcessingSummary } from './types.js';
 
-const format = printf(({ level, message, timestamp, owner, repo }): string => {
-  if (owner && repo) {
-    return `${timestamp} ${level} [${owner}/${repo}]: ${message}`;
-  } else {
-    return `${timestamp} ${level}: ${message}`;
-  }
-});
+const createFormat = (verbose: boolean) =>
+  printf(({ level, message, timestamp, owner, repo, module }): string => {
+    const moduleTag = verbose && module ? ` [${module}]` : '';
+    if (owner && repo) {
+      return `${timestamp} ${level}${moduleTag} [${owner}/${repo}]: ${message}`;
+    } else {
+      return `${timestamp} ${level}${moduleTag}: ${message}`;
+    }
+  });
 
 const generateLoggerOptions = async (
   verbose: boolean,
@@ -35,6 +37,7 @@ const generateLoggerOptions = async (
 
     console.debug(`Initializing logger with file: ${logFile}`); // Debug output
 
+    const format = createFormat(verbose);
     const commonFormat = combine(timestamp(), format);
 
     return {
@@ -70,6 +73,22 @@ export const createLogger = async (
     console.error('Logger error:', error);
   });
 
+  return logger;
+};
+
+/**
+ * Creates a child logger with a module label.
+ * When verbose mode is enabled, log output will include `[module]` tags
+ * to identify which module produced each message.
+ *
+ * @param logger - Parent logger instance
+ * @param module - Module name to use as the label (e.g., 'state', 'session')
+ * @returns A child logger with the module metadata attached, or the original logger if child() is unavailable
+ */
+export const withModule = (logger: Logger, module: string): Logger => {
+  if (logger.child) {
+    return logger.child({ module });
+  }
   return logger;
 };
 

@@ -20,7 +20,7 @@
     "prepare-release": "./script/prepare-release.sh"
   },
   "name": "gh-repo-stats-plus",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "main": "dist/index.js",
   "description": "GitHub CLI extension for gathering comprehensive repository statistics from GitHub organizations",
   "keywords": [
@@ -61,7 +61,6 @@
     "vitest": "^4.0.18"
   },
   "dependencies": {
-    "@fast-csv/parse": "^5.0.5",
     "@octokit/graphql": "^9.0.3",
     "@octokit/plugin-paginate-graphql": "^6.0.0",
     "@octokit/plugin-throttling": "^11.0.3",

@@ -310,12 +310,73 @@ Generates a CSV file with the following columns:
 
 ---
 
+## combine-stats Command
+
+Combines multiple CSV stat files (e.g., repo-stats, project-stats) into a single CSV by joining rows on matching columns. Supports combining 2 or more files in a single invocation using a full outer join — rows from any file are included in the output, with empty values for columns that don't exist in a given file.
+
+### Basic Syntax
+
+```bash
+gh repo-stats-plus combine-stats --files <file1.csv> <file2.csv> [file3.csv ...]
+```
+
+### Options
+
+- `--files <paths...>`: Two or more CSV files to combine (Required)
+- `--match-columns <columns>`: Comma-separated column names used to match rows across files (Default: `Org_Name,Repo_Name`)
+- `--output-file-name <name>`: Name for the combined output CSV file (Default: auto-generated with timestamp)
+- `--output-dir <dir>`: Output directory for the combined file (Default: `output`)
+- `-v, --verbose`: Enable verbose logging
+
+### Examples
+
+#### Combine repo-stats and project-stats
+
+```bash
+gh repo-stats-plus combine-stats \
+  --files output/myorg-all_repos-202502250000_ts.csv output/myorg-project-stats-202502250000_ts.csv
+```
+
+#### Combine 3 files
+
+```bash
+gh repo-stats-plus combine-stats \
+  --files output/repo-stats.csv output/project-stats.csv output/other-stats.csv \
+  --output-file-name combined-all.csv
+```
+
+#### With custom match columns
+
+```bash
+gh repo-stats-plus combine-stats \
+  --files file1.csv file2.csv \
+  --match-columns "Organization,Repository"
+```
+
+#### With custom output directory
+
+```bash
+gh repo-stats-plus combine-stats \
+  --files file1.csv file2.csv \
+  --output-dir reports
+```
+
+### Output
+
+Generates a single CSV file with:
+
+- All columns from all input files (unified, deduplicated)
+- Rows matched across files by the specified match columns (default: `Org_Name`, `Repo_Name`)
+- Full outer join: rows unique to any file are preserved with empty values for missing columns
+
+---
+
 ## Common Workflows
 
 ### Complete Organization Analysis
 
 ```bash
-# 1. Initial run
+# 1. Initial run — gather repo statistics
 gh repo-stats-plus repo-stats --org-name myorg
 
 # 2. Check for any missing repositories
@@ -323,7 +384,61 @@ gh repo-stats-plus missing-repos --org-name myorg --file myorg-repo-stats.csv
 
 # 3. If interrupted, resume the main process
 gh repo-stats-plus repo-stats --org-name myorg --resume-from-last-save
+
+# 4. Gather project statistics
+gh repo-stats-plus project-stats --org-name myorg
+
+# 5. Combine repo-stats and project-stats into a single report
+gh repo-stats-plus combine-stats \
+  --files output/myorg-all_repos-*.csv output/myorg-project-stats-*.csv
 ```
+
+### Scripted Pipeline (repo-stats + project-stats + combine-stats)
+
+The `script/collect-stats.sh` script runs repo-stats, project-stats, and combine-stats
+in sequence, automatically passing output file paths between steps.
+
+#### Basic usage
+
+```bash
+./script/collect-stats.sh --org-name my-org --access-token ghp_xxxxxxxxxxxx
+```
+
+#### With custom options
+
+```bash
+./script/collect-stats.sh \
+  --org-name my-org \
+  --access-token ghp_xxxxxxxxxxxx \
+  --output-dir ./reports \
+  --page-size 20 \
+  --verbose
+```
+
+#### Using ACCESS_TOKEN environment variable
+
+```bash
+ACCESS_TOKEN=ghp_xxxxxxxxxxxx ./script/collect-stats.sh --org-name my-org
+```
+
+#### Using existing files
+
+If you already have output from a previous run, you can skip steps and provide
+existing files directly:
+
+```bash
+# Skip repo-stats, provide an existing file
+./script/collect-stats.sh \
+  --org-name my-org \
+  --repo-stats-file output/my-org-all_repos-202502250000_ts.csv
+
+# Skip project-stats
+./script/collect-stats.sh \
+  --org-name my-org \
+  --project-stats-file output/my-org-project-stats-202502250000_ts.csv
+```
+
+Run `./script/collect-stats.sh --help` for a full list of options.
 
 ### Selective Processing
 

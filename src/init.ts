@@ -8,6 +8,7 @@ import {
   CommandContext,
   OrgContext,
   CommandConfig,
+  CommandResult,
 } from './types.js';
 import { createLogger, logInitialization } from './logger.js';
 import { createAuthConfig } from './auth.js';
@@ -76,7 +77,8 @@ export async function initCommand(
       fileName = processedState.outputFileName || '';
       logger.info(`Resuming from last state. Using existing file: ${fileName}`);
     } else {
-      const baseFileName = config.generateFileName(orgName);
+      const baseFileName =
+        opts.outputFileName || config.generateFileName(orgName);
       fileName = await resolveOutputPath(opts.outputDir, baseFileName);
 
       config.initializeCsvFile(fileName, logger);
@@ -141,7 +143,7 @@ export async function initCommand(
 export async function executeCommand(
   context: CommandContext,
   config: CommandConfig,
-): Promise<void> {
+): Promise<CommandResult> {
   const { delayBetweenOrgs = 5, continueOnError = false } = context.opts;
   const { logger, orgsToProcess, sessionManager, resumeFromOrgIndex } = context;
 
@@ -221,6 +223,17 @@ export async function executeCommand(
 
   // Log final summary
   logSummary(logger, results, orgsToProcess, config.summaryLabel);
+
+  // Collect output file paths from successful results
+  const outputFiles = results
+    .filter((r) => r.success && r.outputFile)
+    .map((r) => r.outputFile!);
+
+  for (const file of outputFiles) {
+    logger.info(`output_file=${file}`);
+  }
+
+  return { outputFiles };
 }
 
 /**
@@ -262,7 +275,8 @@ async function executeForOrg(
       fileName = processedState.outputFileName || '';
       logger.info(`Resuming from last state. Using existing file: ${fileName}`);
     } else {
-      const baseFileName = config.generateFileName(orgName);
+      const baseFileName =
+        opts.outputFileName || config.generateFileName(orgName);
       fileName = await resolveOutputPath(opts.outputDir, baseFileName);
 
       config.initializeCsvFile(fileName, logger);
@@ -287,6 +301,7 @@ async function executeForOrg(
 
     result.elapsedTime = formatElapsedTime(result.startTime, result.endTime);
     result.reposProcessed = processedState.processedRepos.length;
+    result.outputFile = fileName;
     result.success = true;
 
     logger.info(
