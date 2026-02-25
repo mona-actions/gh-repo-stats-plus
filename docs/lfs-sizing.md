@@ -24,7 +24,11 @@ The `repo-stats` command includes a `Has_LFS` column that detects whether a repo
 
 ## Usage
 
-The script is located at `script/lfs-size.sh`. It accepts a repository URL or GitHub `owner/repo` shorthand:
+The script is located at `script/lfs-size.sh`. It supports two modes: single-repo and multi-repo.
+
+### Single-Repo Mode
+
+Accepts a repository URL or GitHub `owner/repo` shorthand:
 
 ```bash
 # Using owner/repo shorthand
@@ -32,6 +36,19 @@ The script is located at `script/lfs-size.sh`. It accepts a repository URL or Gi
 
 # Using a full URL
 ./script/lfs-size.sh https://github.com/owner/repo.git
+```
+
+### Multi-Repo Mode
+
+Process multiple repositories in the same organization with `--org` and `--repos`:
+
+```bash
+# Comma-separated list of repo names
+./script/lfs-size.sh --org my-org --repos repo1,repo2,repo3
+
+# With CSV output and authentication
+./script/lfs-size.sh --org my-org --repos repo1,repo2,repo3 \
+  --output-file output/lfs-sizing.csv --token ghp_xxxx
 ```
 
 ### Authentication
@@ -54,6 +71,34 @@ GH_TOKEN=$(gh auth token) ./script/lfs-size.sh owner/repo
 The token is injected into the HTTPS clone URL as `x-access-token`, and the script itself does not echo it back to the console. However, underlying tools such as `git` may still include parts of the remote URL (and thus the token) in error messages or logs, so avoid sharing terminal output or logs produced while using a real token.
 
 > **Security note:** Prefer the `GH_TOKEN` environment variable over `--token`. Command-line arguments are visible in process listings (e.g., `ps`) and may be captured in shell history or logs.
+
+### GitHub Enterprise Server
+
+For GitHub Enterprise Server (GHES) instances, use the `--base-url` flag to specify the base URL:
+
+```bash
+./script/lfs-size.sh --org my-org --repos repo1,repo2 \
+  --base-url https://github.example.com
+```
+
+The default base URL is `https://github.com`.
+
+### CSV Output
+
+Use `--output-file` to write results to a CSV file. If the file doesn't exist, it will be created with headers. If it already exists, rows are appended:
+
+```bash
+# Single repo
+./script/lfs-size.sh owner/repo --output-file output/lfs-sizing.csv
+
+# Multiple repos — each repo gets its own row
+./script/lfs-size.sh --org my-org --repos repo1,repo2,repo3 \
+  --output-file output/lfs-sizing.csv
+```
+
+The CSV columns are: `Org_Name,Repo_Name,LFS_Objects,LFS_Size`
+
+This CSV can be passed to `collect-stats.sh` via the `--lfs-file` flag to include LFS sizing data in the combined stats output.
 
 ## What It Does
 
@@ -96,4 +141,4 @@ For repositories where `Has_LFS` is `TRUE` and you need to understand the storag
 - **Requires a clone**: Even though the clone is shallow and bare (typically a few KB), it still requires network access and git authentication to the repository.
 - **Default branch only**: The shallow clone fetches only the default branch. LFS objects tracked on other branches will not be included.
 - **Point-in-time snapshot**: Reports LFS objects as of the latest commit on the default branch. Historical LFS objects that have been removed from HEAD are not counted.
-- **Manual process**: This script must be run individually per repository. It is not integrated into the automated `repo-stats` pipeline.
+- **Sequential processing**: In multi-repo mode, repositories are processed one at a time. For organizations with many repositories, this may take some time.
