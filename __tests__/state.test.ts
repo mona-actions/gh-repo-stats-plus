@@ -331,6 +331,64 @@ describe('StateManager', () => {
         );
       });
     });
+
+    it('should use statePrefix in state file name when provided', () => {
+      vi.mocked(existsSync).mockReturnValue(false);
+
+      const stateManager = new StateManager(
+        outputDir,
+        organizationName,
+        mockLogger,
+        'projects',
+      );
+      stateManager.initialize();
+
+      expect(existsSync).toHaveBeenCalledWith(
+        '/test/output/last_known_state_projects_test-org.json',
+      );
+    });
+
+    it('should isolate state between commands using different prefixes', () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const repoState = {
+        completedSuccessfully: false,
+        processedRepos: ['repo1'],
+        currentCursor: 'repo-cursor',
+        lastSuccessfulCursor: 'repo-cursor',
+        lastProcessedRepo: 'repo1',
+        lastSuccessTimestamp: '2025-03-19T12:00:00Z',
+        outputFileName: null,
+      };
+
+      vi.mocked(readFileSync).mockReturnValue(JSON.stringify(repoState));
+
+      // repo-stats (no prefix)
+      const repoManager = new StateManager(outputDir, 'org1', mockLogger);
+      const { processedState: state1 } = repoManager.initialize(true);
+
+      expect(state1.processedRepos).toEqual(['repo1']);
+      expect(existsSync).toHaveBeenCalledWith(
+        '/test/output/last_known_state_org1.json',
+      );
+
+      vi.clearAllMocks();
+      vi.mocked(existsSync).mockReturnValue(false);
+
+      // project-stats (with prefix)
+      const projectManager = new StateManager(
+        outputDir,
+        'org1',
+        mockLogger,
+        'projects',
+      );
+      const { processedState: state2 } = projectManager.initialize(true);
+
+      expect(state2.processedRepos).toEqual([]);
+      expect(existsSync).toHaveBeenCalledWith(
+        '/test/output/last_known_state_projects_org1.json',
+      );
+    });
   });
 
   describe('update', () => {

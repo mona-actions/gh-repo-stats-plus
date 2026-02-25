@@ -15,11 +15,18 @@ export class StateManager {
   private readonly outputDir: string;
   private readonly organizationName: string;
   private readonly logger: Logger;
+  private readonly statePrefix: string | undefined;
 
-  constructor(outputDir: string, organizationName: string, logger: Logger) {
+  constructor(
+    outputDir: string,
+    organizationName: string,
+    logger: Logger,
+    statePrefix?: string,
+  ) {
     this.outputDir = outputDir;
     this.organizationName = organizationName;
     this.logger = logger;
+    this.statePrefix = statePrefix;
   }
 
   private sanitizeFilename(name: string): string {
@@ -31,6 +38,10 @@ export class StateManager {
 
   private getStateFileName(): string {
     const sanitizedOrg = this.sanitizeFilename(this.organizationName);
+    if (this.statePrefix) {
+      const sanitizedPrefix = this.sanitizeFilename(this.statePrefix);
+      return `last_known_state_${sanitizedPrefix}_${sanitizedOrg}.json`;
+    }
     return `last_known_state_${sanitizedOrg}.json`;
   }
 
