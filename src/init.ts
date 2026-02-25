@@ -79,7 +79,8 @@ export async function initCommand(
         `[init] Resuming from last state. Using existing file: ${fileName}`,
       );
     } else {
-      const baseFileName = config.generateFileName(orgName);
+      const baseFileName =
+        opts.outputFileName || config.generateFileName(orgName);
       fileName = await resolveOutputPath(opts.outputDir, baseFileName);
 
       config.initializeCsvFile(fileName, logger);
@@ -280,7 +281,8 @@ async function executeForOrg(
         `[init] Resuming from last state. Using existing file: ${fileName}`,
       );
     } else {
-      const baseFileName = config.generateFileName(orgName);
+      const baseFileName =
+        opts.outputFileName || config.generateFileName(orgName);
       fileName = await resolveOutputPath(opts.outputDir, baseFileName);
 
       config.initializeCsvFile(fileName, logger);

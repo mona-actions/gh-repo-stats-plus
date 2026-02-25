@@ -82,6 +82,10 @@ extract_output_file() {
   echo "$1" | grep '^output_file=' | tail -1 | cut -d= -f2-
 }
 
+generate_timestamp() {
+  date -u '+%Y%m%d%H%M'
+}
+
 # ── defaults ─────────────────────────────────────────────────────────
 
 ORG_NAME=""
@@ -157,22 +161,21 @@ fi
 if [ "$SKIP_REPO_STATS" = false ]; then
   echo "=== Step 1: Running repo-stats for ${ORG_NAME} ==="
 
-  REPO_STATS_OUTPUT=$(gh repo-stats-plus repo-stats \
+  TIMESTAMP=$(generate_timestamp)
+  REPO_STATS_FILENAME=$(echo "${ORG_NAME}" | tr '[:upper:]' '[:lower:]')-all_repos-${TIMESTAMP}_ts.csv
+  REPO_STATS_FILE="${OUTPUT_DIR}/${REPO_STATS_FILENAME}"
+
+  gh repo-stats-plus repo-stats \
     --org-name "$ORG_NAME" \
     $AUTH_ARGS \
     --base-url "$BASE_URL" \
     --output-dir "$OUTPUT_DIR" \
+    --output-file-name "$REPO_STATS_FILENAME" \
     --page-size "$PAGE_SIZE" \
     --extra-page-size "$EXTRA_PAGE_SIZE" \
-    $VERBOSE)
+    $VERBOSE
 
-  REPO_STATS_FILE=$(extract_output_file "$REPO_STATS_OUTPUT")
-
-  if [ -z "$REPO_STATS_FILE" ]; then
-    echo "Warning: Could not extract repo-stats output file path."
-  else
-    echo "Repo stats file: $REPO_STATS_FILE"
-  fi
+  echo "Repo stats file: $REPO_STATS_FILE"
 else
   echo "=== Step 1: Skipping repo-stats ==="
   if [ -n "$REPO_STATS_FILE" ]; then
@@ -185,20 +188,19 @@ fi
 if [ "$SKIP_PROJECT_STATS" = false ]; then
   echo "=== Step 2: Running project-stats for ${ORG_NAME} ==="
 
-  PROJECT_STATS_OUTPUT=$(gh repo-stats-plus project-stats \
+  TIMESTAMP=$(generate_timestamp)
+  PROJECT_STATS_FILENAME=$(echo "${ORG_NAME}" | tr '[:upper:]' '[:lower:]')-project-stats-${TIMESTAMP}_ts.csv
+  PROJECT_STATS_FILE="${OUTPUT_DIR}/${PROJECT_STATS_FILENAME}"
+
+  gh repo-stats-plus project-stats \
     --org-name "$ORG_NAME" \
     $AUTH_ARGS \
     --base-url "$BASE_URL" \
     --output-dir "$OUTPUT_DIR" \
-    $VERBOSE)
+    --output-file-name "$PROJECT_STATS_FILENAME" \
+    $VERBOSE
 
-  PROJECT_STATS_FILE=$(extract_output_file "$PROJECT_STATS_OUTPUT")
-
-  if [ -z "$PROJECT_STATS_FILE" ]; then
-    echo "Warning: Could not extract project-stats output file path."
-  else
-    echo "Project stats file: $PROJECT_STATS_FILE"
-  fi
+  echo "Project stats file: $PROJECT_STATS_FILE"
 else
   echo "=== Step 2: Skipping project-stats ==="
   if [ -n "$PROJECT_STATS_FILE" ]; then

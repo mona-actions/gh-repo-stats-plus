@@ -178,6 +178,12 @@ projectStatsCommand
   )
   .addOption(
     new Option(
+      '--output-file-name <name>',
+      'Name for the output CSV file (default: auto-generated with timestamp)',
+    ).env('OUTPUT_FILE_NAME'),
+  )
+  .addOption(
+    new Option(
       '--clean-state [value]',
       'Remove state file after successful completion',
     )
@@ -208,8 +214,11 @@ projectStatsCommand
     validate(options);
 
     console.log('Starting project-stats...');
-    await runProjectStats(options);
+    const outputFiles = await runProjectStats(options);
     console.log('Project-stats completed.');
+    for (const file of outputFiles) {
+      console.log(`output_file=${file}`);
+    }
   });
 
 export default projectStatsCommand;

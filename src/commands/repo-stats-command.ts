@@ -186,6 +186,12 @@ repoStatsCommand
   )
   .addOption(
     new Option(
+      '--output-file-name <name>',
+      'Name for the output CSV file (default: auto-generated with timestamp)',
+    ).env('OUTPUT_FILE_NAME'),
+  )
+  .addOption(
+    new Option(
       '--clean-state [value]',
       'Remove state file after successful completion',
     )
@@ -216,8 +222,11 @@ repoStatsCommand
     validate(options);
 
     console.log('Starting repo-stats...');
-    await run(options);
+    const outputFiles = await run(options);
     console.log('Repo-stats completed.');
+    for (const file of outputFiles) {
+      console.log(`output_file=${file}`);
+    }
   });
 
 export default repoStatsCommand;
