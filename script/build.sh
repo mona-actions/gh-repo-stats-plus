@@ -64,9 +64,9 @@ for PLATFORM in "${PLATFORMS[@]}"; do
     # Add .exe extension for Windows
     if [ "$OS" = "windows" ]; then
         OUTPUT_NAME="${OUTPUT_NAME}.exe"
-        PKG_TARGET="node18-win-${PKG_ARCH}"
+        PKG_TARGET="node20-win-${PKG_ARCH}"
     else
-        PKG_TARGET="node18-${OS}-${PKG_ARCH}"
+        PKG_TARGET="node20-${OS}-${PKG_ARCH}"
     fi
     
     echo "Building for ${OS}/${ARCH} (pkg: ${PKG_TARGET})..."

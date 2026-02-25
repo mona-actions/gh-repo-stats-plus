@@ -367,7 +367,7 @@ See the [Development Guide](docs/development.md) for detailed setup instructions
 
 ## Requirements
 
-- **Node.js** 18 or later
+- **Node.js** 20 or later
 - **GitHub CLI** (latest version recommended)
 - **GitHub Authentication** (personal token, GitHub App, or GitHub CLI)
 
