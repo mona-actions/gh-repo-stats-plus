@@ -268,7 +268,12 @@ async function processProjectStatsFromFile({
       const result = await client.getRepoProjectCounts(
         owner,
         repo,
-        opts.pageSize != null ? Number(opts.pageSize) : 100,
+        opts.pageSize != null ? Number(opts.pageSize) : 10,
+        (pageNumber, issuesInPage) => {
+          logger.info(
+            `[project-stats] ${owner}/${repo} - processed page ${pageNumber} (${issuesInPage} issues)`,
+          );
+        },
       );
 
       writeProjectStatsToCsv(result, fileName, logger);
@@ -346,7 +351,7 @@ async function processProjectStatsFromOrg({
   stateManager: StateManager;
 }): Promise<RepoProcessingResult> {
   const orgName = opts.orgName!;
-  const pageSize = opts.pageSize != null ? Number(opts.pageSize) : 100;
+  const pageSize = opts.pageSize != null ? Number(opts.pageSize) : 10;
 
   let reposIterator: AsyncGenerator<{ name: string }>;
 
@@ -385,6 +390,11 @@ async function processProjectStatsFromOrg({
         orgName,
         repoName,
         pageSize,
+        (pageNumber, issuesInPage) => {
+          logger.info(
+            `[project-stats] ${orgName}/${repoName} - processed page ${pageNumber} (${issuesInPage} issues)`,
+          );
+        },
       );
 
       logger.info(

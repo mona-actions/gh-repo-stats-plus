@@ -225,7 +225,7 @@ gh repo-stats-plus project-stats [options]
 
 #### Performance
 
-- `--page-size <size>`: Number of items per page (Default: 100)
+- `--page-size <size>`: Number of items per page (Default: 10)
 - `--rate-limit-check-interval <seconds>`: Interval for rate limit checks (Default: 60)
 
 #### Retry Logic

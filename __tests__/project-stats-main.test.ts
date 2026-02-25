@@ -218,7 +218,7 @@ describe('projects', () => {
         proxyUrl: undefined,
         verbose: false,
         outputDir: 'output',
-        pageSize: 100,
+        pageSize: 10,
         repoList: undefined,
       };
 
@@ -269,7 +269,7 @@ describe('projects', () => {
         proxyUrl: undefined,
         verbose: false,
         outputDir: 'output',
-        pageSize: 100,
+        pageSize: 10,
         retryMaxAttempts: 3,
         retryInitialDelay: 1000,
         retryMaxDelay: 30000,
@@ -288,12 +288,14 @@ describe('projects', () => {
       expect(mockGetRepoProjectCounts).toHaveBeenCalledWith(
         'test-org',
         'repo-a',
-        100,
+        10,
+        expect.any(Function),
       );
       expect(mockGetRepoProjectCounts).toHaveBeenCalledWith(
         'test-org',
         'repo-b',
-        100,
+        10,
+        expect.any(Function),
       );
     });
 
@@ -330,7 +332,7 @@ describe('projects', () => {
         proxyUrl: undefined,
         verbose: false,
         outputDir: 'output',
-        pageSize: 100,
+        pageSize: 10,
         retryMaxAttempts: 3,
         retryInitialDelay: 1000,
         retryMaxDelay: 30000,
@@ -343,7 +345,7 @@ describe('projects', () => {
       await runProjectStats(opts);
 
       // Should have fallen back to GraphQL
-      expect(mockListOrgRepoNames).toHaveBeenCalledWith('test-org', 100);
+      expect(mockListOrgRepoNames).toHaveBeenCalledWith('test-org', 10);
       // Should have logged a warning
       expect(mockLogger.warn).toHaveBeenCalledWith(
         expect.stringContaining('Repo names file not found'),
@@ -382,7 +384,7 @@ describe('projects', () => {
         proxyUrl: undefined,
         verbose: false,
         outputDir: 'output',
-        pageSize: 100,
+        pageSize: 10,
         retryMaxAttempts: 3,
         retryInitialDelay: 1000,
         retryMaxDelay: 30000,

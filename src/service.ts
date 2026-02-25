@@ -201,6 +201,7 @@ export class OctokitClient {
     owner: string,
     repo: string,
     per_page: number,
+    onPageProcessed?: (pageNumber: number, issuesInPage: number) => void,
   ): Promise<ProjectStatsResult> {
     const uniqueProjects = new Map<string, ProjectInfo>();
     let issuesLinkedToProjects = 0;
@@ -217,7 +218,10 @@ export class OctokitClient {
       );
 
     let isFirstPage = true;
+    let pageNumber = 0;
     for await (const response of iterator) {
+      pageNumber++;
+
       // Capture repo-level project count from the first page
       if (isFirstPage) {
         projectsLinkedToRepo = response.repository.projectsV2?.totalCount ?? 0;
@@ -242,6 +246,8 @@ export class OctokitClient {
           }
         }
       }
+
+      onPageProcessed?.(pageNumber, issues.length);
     }
 
     return {

@@ -64,7 +64,7 @@ describe('Commands - project-stats-command', () => {
       const pageSizeOption = projectStatsCommand.options.find(
         (opt) => opt.long === '--page-size',
       );
-      expect(pageSizeOption?.defaultValue).toBe(100);
+      expect(pageSizeOption?.defaultValue).toBe(10);
 
       const outputDirOption = projectStatsCommand.options.find(
         (opt) => opt.long === '--output-dir',
@@ -74,7 +74,7 @@ describe('Commands - project-stats-command', () => {
 
     it('should have numeric defaults as numbers not strings', () => {
       const numericOptions = [
-        { name: '--page-size', expected: 100 },
+        { name: '--page-size', expected: 10 },
         { name: '--rate-limit-check-interval', expected: 60 },
         { name: '--retry-max-attempts', expected: 3 },
         { name: '--retry-initial-delay', expected: 1000 },
