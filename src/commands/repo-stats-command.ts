@@ -222,11 +222,8 @@ repoStatsCommand
     validate(options);
 
     console.log('Starting repo-stats...');
-    const outputFiles = await run(options);
+    await run(options);
     console.log('Repo-stats completed.');
-    for (const file of outputFiles) {
-      console.log(`output_file=${file}`);
-    }
   });
 
 export default repoStatsCommand;

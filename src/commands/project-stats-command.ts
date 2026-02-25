@@ -214,11 +214,8 @@ projectStatsCommand
     validate(options);
 
     console.log('Starting project-stats...');
-    const outputFiles = await runProjectStats(options);
+    await runProjectStats(options);
     console.log('Project-stats completed.');
-    for (const file of outputFiles) {
-      console.log(`output_file=${file}`);
-    }
   });
 
 export default projectStatsCommand;
