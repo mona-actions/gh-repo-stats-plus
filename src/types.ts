@@ -519,4 +519,6 @@ export interface CommandConfig {
   initializeCsvFile: (fileName: string, logger: Logger) => void;
   /** The actual per-org processing logic */
   processOrg: (context: OrgContext) => Promise<void>;
+  /** Optional prefix for state files to separate state between commands (e.g. 'projects') */
+  statePrefix?: string;
 }

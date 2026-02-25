@@ -58,7 +58,12 @@ export async function initCommand(
 
   if (orgsToProcess.length === 1 && orgName) {
     const outputDir = opts.outputDir || 'output';
-    stateManager = new StateManager(outputDir, orgName, logger);
+    stateManager = new StateManager(
+      outputDir,
+      orgName,
+      logger,
+      config.statePrefix,
+    );
 
     logger.debug(
       `resumeFromLastSave option value: ${
@@ -263,7 +268,12 @@ async function executeForOrg(
     result.startTime = new Date();
 
     const outputDir = opts.outputDir || 'output';
-    const stateManager = new StateManager(outputDir, orgName, logger);
+    const stateManager = new StateManager(
+      outputDir,
+      orgName,
+      logger,
+      config.statePrefix,
+    );
 
     const { processedState, resumeFromLastState } = stateManager.initialize(
       opts.resumeFromLastSave || false,

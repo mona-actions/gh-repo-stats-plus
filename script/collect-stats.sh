@@ -33,6 +33,8 @@ set -e
 #   --skip-project-stats     Skip the project-stats step
 #   --repo-stats-file <file> Use an existing repo-stats CSV instead of running repo-stats
 #   --project-stats-file <f> Use an existing project-stats CSV instead of running project-stats
+#   --run-audit              Run migration audit (requires gh migration-audit extension)
+#   --audit-file <file>      Use an existing audit CSV instead of running audit
 #   --verbose                Enable verbose logging
 #   --help                   Show this help message
 #
@@ -42,6 +44,7 @@ set -e
 #   ACCESS_TOKEN=ghp_xxxx ./script/collect-stats.sh --org-name my-org
 #   GH_TOKEN=ghp_xxxx ./script/collect-stats.sh --org-name my-org
 #   ./script/collect-stats.sh --org-name my-org --repo-stats-file output/existing.csv
+#   ./script/collect-stats.sh --org-name my-org --run-audit
 
 # ── helpers ──────────────────────────────────────────────────────────
 
@@ -67,6 +70,8 @@ usage() {
   echo "  --skip-project-stats       Skip the project-stats step"
   echo "  --repo-stats-file <file>   Use existing repo-stats CSV (skips repo-stats)"
   echo "  --project-stats-file <f>   Use existing project-stats CSV (skips project-stats)"
+  echo "  --run-audit                Run migration audit (requires gh migration-audit)"
+  echo "  --audit-file <file>        Use existing audit CSV (implies --run-audit)"
   echo "  --verbose                  Enable verbose logging"
   echo "  --help                     Show this help message"
   echo ""
@@ -99,6 +104,8 @@ SKIP_REPO_STATS=false
 SKIP_PROJECT_STATS=false
 REPO_STATS_FILE=""
 PROJECT_STATS_FILE=""
+RUN_AUDIT=false
+AUDIT_FILE=""
 VERBOSE=""
 
 # ── parse arguments ──────────────────────────────────────────────────
@@ -127,6 +134,10 @@ while [[ $# -gt 0 ]]; do
       REPO_STATS_FILE="$2"; SKIP_REPO_STATS=true; shift 2 ;;
     --project-stats-file)
       PROJECT_STATS_FILE="$2"; SKIP_PROJECT_STATS=true; shift 2 ;;
+    --run-audit)
+      RUN_AUDIT=true; shift ;;
+    --audit-file)
+      AUDIT_FILE="$2"; RUN_AUDIT=true; shift 2 ;;
     --verbose)
       VERBOSE="--verbose"; shift ;;
     --help|-h)
@@ -208,7 +219,40 @@ else
   fi
 fi
 
-# ── step 3: combine-stats ───────────────────────────────────────────
+# ── step 3: migration audit (optional) ──────────────────────────────
+
+if [ "$RUN_AUDIT" = true ] && [ -z "$AUDIT_FILE" ]; then
+  # Check if gh migration-audit is installed
+  if gh extension list 2>/dev/null | grep -q 'migration-audit'; then
+    echo ""
+    echo "=== Step 3: Running migration audit for ${ORG_NAME} ==="
+
+    TIMESTAMP=$(generate_timestamp)
+    AUDIT_FILE="${OUTPUT_DIR}/$(echo "${ORG_NAME}" | tr '[:upper:]' '[:lower:]')-audit-${TIMESTAMP}_ts.csv"
+
+    gh migration-audit audit-all \
+      $AUTH_ARGS \
+      --owner "$ORG_NAME" \
+      --owner-type organization \
+      --output-path "$AUDIT_FILE" \
+      --base-url "$BASE_URL" \
+      --disable-telemetry
+
+    echo "Audit file: $AUDIT_FILE"
+  else
+    echo ""
+    echo "=== Step 3: Skipping migration audit (gh migration-audit extension not installed) ==="
+    echo "Install with: gh extension install github/gh-migration-audit"
+  fi
+elif [ "$RUN_AUDIT" = true ] && [ -n "$AUDIT_FILE" ]; then
+  echo ""
+  echo "=== Step 3: Using existing audit file: $AUDIT_FILE ==="
+else
+  echo ""
+  echo "=== Step 3: Skipping migration audit (not requested) ==="
+fi
+
+# ── step 4: combine-stats ───────────────────────────────────────────
 
 FILES_TO_COMBINE=""
 if [ -n "$REPO_STATS_FILE" ]; then
@@ -231,7 +275,7 @@ if [ "$FILE_COUNT" -lt 2 ]; then
 fi
 
 echo ""
-echo "=== Step 3: Combining stats ==="
+echo "=== Step 4: Combining stats ==="
 
 # shellcheck disable=SC2086
 gh repo-stats-plus combine-stats \

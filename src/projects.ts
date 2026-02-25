@@ -28,6 +28,7 @@ const projectStatsConfig: CommandConfig = {
   generateFileName: generateProjectStatsFileName,
   initializeCsvFile: initializeProjectStatsCsvFile,
   processOrg: processOrgProjectStats,
+  statePrefix: 'projects',
 };
 
 // --- Public entry point ---
