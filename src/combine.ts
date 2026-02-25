@@ -221,6 +221,7 @@ export async function runCombineStats(
   logger.info(`Combined ${options.files.length} files into: ${outputPath}`);
   logger.info(`  Total columns: ${headers.length}`);
   logger.info(`  Total rows: ${rows.length}`);
+  logger.info(`output_file=${outputPath}`);
 
   return outputPath;
 }

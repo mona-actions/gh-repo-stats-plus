@@ -227,6 +227,11 @@ export async function executeCommand(
   const outputFiles = results
     .filter((r) => r.success && r.outputFile)
     .map((r) => r.outputFile!);
+
+  for (const file of outputFiles) {
+    logger.info(`output_file=${file}`);
+  }
+
   return { outputFiles };
 }
 
