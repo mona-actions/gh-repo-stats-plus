@@ -9,25 +9,16 @@ import {
   CommandConfig,
 } from './types.js';
 import { StateManager } from './state.js';
-import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 
 import { withRetry } from './retry.js';
+import { generateProjectStatsFileName, formatElapsedTime } from './utils.js';
 import {
-  generateProjectStatsFileName,
-  formatElapsedTime,
-  escapeCsvField,
-} from './utils.js';
+  initializeCsvFile as initializeCsvFileGeneric,
+  appendCsvRow,
+  PROJECT_STATS_COLUMNS,
+} from './csv.js';
 import { initCommand, executeCommand } from './init.js';
-
-// --- CSV columns ---
-
-const PROJECT_STATS_COLUMNS = [
-  'Org_Name',
-  'Repo_Name',
-  'Issues_Linked_To_Projects',
-  'Unique_Projects_Linked_By_Issues',
-  'Projects_Linked_To_Repo',
-];
 
 // --- Command configuration ---
 
@@ -526,13 +517,7 @@ export function initializeProjectStatsCsvFile(
   fileName: string,
   logger: Logger,
 ): void {
-  if (!existsSync(fileName)) {
-    logger.info(`[project-stats] Creating new CSV file: ${fileName}`);
-    const headerRow = `${PROJECT_STATS_COLUMNS.join(',')}\n`;
-    writeFileSync(fileName, headerRow);
-  } else {
-    logger.info(`[project-stats] Using existing CSV file: ${fileName}`);
-  }
+  initializeCsvFileGeneric(fileName, PROJECT_STATS_COLUMNS, logger);
 }
 
 export function writeProjectStatsToCsv(
@@ -542,15 +527,14 @@ export function writeProjectStatsToCsv(
 ): void {
   try {
     const values = [
-      escapeCsvField(result.Org_Name),
-      escapeCsvField(result.Repo_Name),
+      result.Org_Name,
+      result.Repo_Name,
       result.Issues_Linked_To_Projects,
       result.Unique_Projects_Linked_By_Issues,
       result.Projects_Linked_To_Repo,
     ];
 
-    const csvRow = `${values.join(',')}\n`;
-    appendFileSync(fileName, csvRow);
+    appendCsvRow(fileName, values, logger);
 
     logger.debug(
       `[project-stats] Wrote result for ${result.Org_Name}/${result.Repo_Name}`,
