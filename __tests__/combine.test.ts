@@ -379,7 +379,6 @@ describe('combine', () => {
         .mockReturnValueOnce(file2Data);
 
       // Mock mkdir
-      const { mkdir } = await import('fs/promises');
       vi.mock('fs/promises', async () => {
         const actual =
           await vi.importActual<typeof import('fs/promises')>('fs/promises');
