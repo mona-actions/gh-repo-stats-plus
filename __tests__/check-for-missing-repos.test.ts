@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { checkForMissingRepos } from '../src/main.js';
-import { readFileSync, appendFileSync } from 'fs';
-import { parse } from 'csv-parse/sync';
+import { appendFileSync } from 'fs';
+import { readCsvFile } from '../src/csv.js';
 import { createLogger } from '../src/logger.js';
 import { createOctokit } from '../src/octokit.js';
 import { OctokitClient } from '../src/service.js';
 
 vi.mock('fs');
-vi.mock('csv-parse/sync', () => ({
-  parse: vi.fn(),
+vi.mock('../src/csv.js', () => ({
+  readCsvFile: vi.fn(),
 }));
 vi.mock('../src/logger.js');
 vi.mock('../src/auth.js', () => ({
@@ -66,12 +66,9 @@ describe('checkForMissingRepos', () => {
       };
 
       // Mock CSV file with only repo1 processed
-      vi.mocked(readFileSync).mockReturnValue(
-        'Org_Name,Repo_Name\ntest-org,repo1',
-      );
-      vi.mocked(parse).mockReturnValue([
+      vi.mocked(readCsvFile).mockReturnValue([
         { Org_Name: 'test-org', Repo_Name: 'repo1' },
-      ] as unknown as ReturnType<typeof parse>);
+      ]);
 
       const result = await checkForMissingRepos({
         opts: opts as unknown as Parameters<
@@ -107,12 +104,9 @@ describe('checkForMissingRepos', () => {
         repoList: ['test-org/repo-a', 'test-org/repo-b'],
       };
 
-      vi.mocked(readFileSync).mockReturnValue(
-        'Org_Name,Repo_Name\ntest-org,repo-a',
-      );
-      vi.mocked(parse).mockReturnValue([
+      vi.mocked(readCsvFile).mockReturnValue([
         { Org_Name: 'test-org', Repo_Name: 'repo-a' },
-      ] as unknown as ReturnType<typeof parse>);
+      ]);
 
       const result = await checkForMissingRepos({
         opts: opts as unknown as Parameters<
@@ -133,13 +127,10 @@ describe('checkForMissingRepos', () => {
         repoList: ['repo1', 'repo2'],
       };
 
-      vi.mocked(readFileSync).mockReturnValue(
-        'Org_Name,Repo_Name\ntest-org,repo1\ntest-org,repo2',
-      );
-      vi.mocked(parse).mockReturnValue([
+      vi.mocked(readCsvFile).mockReturnValue([
         { Org_Name: 'test-org', Repo_Name: 'repo1' },
         { Org_Name: 'test-org', Repo_Name: 'repo2' },
-      ] as unknown as ReturnType<typeof parse>);
+      ]);
 
       const result = await checkForMissingRepos({
         opts: opts as unknown as Parameters<
@@ -162,12 +153,9 @@ describe('checkForMissingRepos', () => {
         outputDir: 'output',
       };
 
-      vi.mocked(readFileSync).mockReturnValue(
-        'Org_Name,Repo_Name\ntest-org,repo1',
-      );
-      vi.mocked(parse).mockReturnValue([
+      vi.mocked(readCsvFile).mockReturnValue([
         { Org_Name: 'test-org', Repo_Name: 'repo1' },
-      ] as unknown as ReturnType<typeof parse>);
+      ]);
 
       // Mock org repos iterator
       async function* mockRepoIterator(): AsyncGenerator<{ name: string }> {
@@ -205,12 +193,9 @@ describe('checkForMissingRepos', () => {
         repoList: [],
       };
 
-      vi.mocked(readFileSync).mockReturnValue(
-        'Org_Name,Repo_Name\ntest-org,repo1',
-      );
-      vi.mocked(parse).mockReturnValue([
+      vi.mocked(readCsvFile).mockReturnValue([
         { Org_Name: 'test-org', Repo_Name: 'repo1' },
-      ] as unknown as ReturnType<typeof parse>);
+      ]);
 
       async function* mockRepoIterator(): AsyncGenerator<{ name: string }> {
         yield { name: 'repo1' };
