@@ -227,7 +227,7 @@ process_repo() {
   # Write CSV row
   if [ -n "$output_file" ]; then
     ensure_csv_header "$output_file"
-    echo "${org_name},${repo_name},${file_count},${formatted_size}" >> "$output_file"
+    echo "${org_name},${repo_name},${file_count},\"${formatted_size}\"" >> "$output_file"
     echo ""
     echo "CSV row written to: $output_file"
   fi
