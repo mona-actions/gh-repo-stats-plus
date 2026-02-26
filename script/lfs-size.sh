@@ -160,11 +160,21 @@ process_repo() {
   trap "rm -rf '$clone_dir'" RETURN
 
   echo "Cloning ${display_url} (bare, depth 1)..."
-  # When a token is embedded in the URL, disable credential helpers and
-  # interactive prompts so git doesn't override them with cached/stale creds
-  # (e.g. macOS Keychain, gh auth setup-git).
-  GIT_LFS_SKIP_SMUDGE=1 GIT_TERMINAL_PROMPT=0 \
-    git -c credential.helper= clone --bare --depth 1 "$repo_url" "$clone_dir" 2>&1 | grep -v "^remote:" || true
+  # Use GIT_ASKPASS to supply the token securely, avoiding exposure of
+  # credentials in process listings (e.g. ps, /proc/*/cmdline).
+  local git_env=(GIT_LFS_SKIP_SMUDGE=1 GIT_TERMINAL_PROMPT=0)
+  local git_config_args=(-c credential.helper=)
+  if [ -n "$TOKEN" ]; then
+    local askpass_script
+    askpass_script=$(mktemp)
+    chmod 700 "$askpass_script"
+    printf '#!/bin/sh\necho "%s"\n' "$TOKEN" > "$askpass_script"
+    git_env+=(GIT_ASKPASS="$askpass_script")
+    # shellcheck disable=SC2064
+    trap "rm -f '$askpass_script'; rm -rf '$clone_dir'" RETURN
+  fi
+  env "${git_env[@]}" \
+    git "${git_config_args[@]}" clone --bare --depth 1 "$repo_url" "$clone_dir" 2>&1 | grep -v "^remote:" || true
 
   # Check the exit status of the git clone command (first element of PIPESTATUS).
   # Even though we pipe through grep and use '|| true' to avoid set -e killing
@@ -213,14 +223,14 @@ process_repo() {
       local bytes
 
       case "$unit" in
-        B)  bytes=$(echo "$value * 1" | bc) ;;
-        KB) bytes=$(echo "$value * 1024" | bc) ;;
-        MB) bytes=$(echo "$value * 1048576" | bc) ;;
-        GB) bytes=$(echo "$value * 1073741824" | bc) ;;
-        TB) bytes=$(echo "$value * 1099511627776" | bc) ;;
+        B)  bytes=$(echo "scale=10; $value * 1" | bc) ;;
+        KB) bytes=$(echo "scale=10; $value * 1024" | bc) ;;
+        MB) bytes=$(echo "scale=10; $value * 1048576" | bc) ;;
+        GB) bytes=$(echo "scale=10; $value * 1073741824" | bc) ;;
+        TB) bytes=$(echo "scale=10; $value * 1099511627776" | bc) ;;
       esac
 
-      total_bytes=$(echo "$total_bytes + $bytes" | bc)
+      total_bytes=$(echo "scale=10; $total_bytes + $bytes" | bc)
       file_count=$((file_count + 1))
     fi
   done <<< "$lfs_output"
@@ -350,24 +360,12 @@ build_clone_url() {
 
   if [[ "$input" =~ ^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$ ]]; then
     # owner/repo shorthand
-    if [ -n "$TOKEN" ]; then
-      REPO_URL="https://x-access-token:${TOKEN}@${git_base_url#https://}/${input}.git"
-      DISPLAY_URL="${git_base_url}/${input}.git"
-    else
-      REPO_URL="${git_base_url}/${input}.git"
-      DISPLAY_URL="$REPO_URL"
-    fi
+    REPO_URL="${git_base_url}/${input}.git"
+    DISPLAY_URL="$REPO_URL"
   else
     # Full URL
-    if [ -n "$TOKEN" ] && [[ "$input" =~ ^https:// ]]; then
-      local domain
-      domain=$(echo "$input" | sed -E 's|https://([^/]+).*|\1|')
-      REPO_URL=$(echo "$input" | sed "s|https://${domain}|https://x-access-token:${TOKEN}@${domain}|")
-      DISPLAY_URL="$input"
-    else
-      REPO_URL="$input"
-      DISPLAY_URL="$REPO_URL"
-    fi
+    REPO_URL="$input"
+    DISPLAY_URL="$REPO_URL"
   fi
 }
 
