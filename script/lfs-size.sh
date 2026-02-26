@@ -398,7 +398,7 @@ else
   if [[ "$REPO_INPUT" =~ ^([a-zA-Z0-9._-]+)/([a-zA-Z0-9._-]+)$ ]]; then
     local_org="${BASH_REMATCH[1]}"
     local_repo="${BASH_REMATCH[2]}"
-  elif [[ "$REPO_INPUT" =~ github\.com[/:]([a-zA-Z0-9._-]+)/([a-zA-Z0-9._-]+)(\.git)?$ ]]; then
+  elif [[ "$REPO_INPUT" =~ ^https?://[^/]+[/:]([a-zA-Z0-9._-]+)/([a-zA-Z0-9._-]+)(\.git)?$ ]]; then
     local_org="${BASH_REMATCH[1]}"
     local_repo="${BASH_REMATCH[2]}"
   fi
