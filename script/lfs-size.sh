@@ -166,6 +166,14 @@ process_repo() {
   GIT_LFS_SKIP_SMUDGE=1 GIT_TERMINAL_PROMPT=0 \
     git -c credential.helper= clone --bare --depth 1 "$repo_url" "$clone_dir" 2>&1 | grep -v "^remote:" || true
 
+  # Check the exit status of the git clone command (first element of PIPESTATUS).
+  # Even though we pipe through grep and use '|| true' to avoid set -e killing
+  # the script on non-fatal pipeline errors, a non-zero status from git here
+  # indicates the clone failed and we should not continue.
+  if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+    echo "Error: git clone failed for ${display_url}. Skipping LFS inspection." >&2
+    return 1
+  fi
   echo ""
   echo "=== LFS Objects ==="
   echo ""
