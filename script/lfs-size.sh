@@ -383,8 +383,9 @@ if [ "$MODE" = "multi" ]; then
   echo ""
 
   for repo_name in "${REPO_LIST[@]}"; do
-    # Trim whitespace
-    repo_name=$(echo "$repo_name" | xargs)
+    # Trim leading and trailing whitespace without altering internal spaces
+    repo_name="${repo_name#"${repo_name%%[![:space:]]*}"}"
+    repo_name="${repo_name%"${repo_name##*[![:space:]]}"}"
     CURRENT=$((CURRENT + 1))
 
     echo "────────────────────────────────────────────────────────────"
