@@ -206,7 +206,12 @@ describe('Commands - app-install-stats-command', () => {
     });
 
     it('should parse default numeric options as numbers, not strings', () => {
-      appInstallStatsCommand.parseOptions(['-o', 'test-org', '-t', 'test-token']);
+      appInstallStatsCommand.parseOptions([
+        '-o',
+        'test-org',
+        '-t',
+        'test-token',
+      ]);
       const opts = appInstallStatsCommand.opts();
 
       expect(opts.pageSize).toBeTypeOf('number');
