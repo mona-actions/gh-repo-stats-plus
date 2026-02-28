@@ -18,6 +18,30 @@ export function generateProjectStatsFileName(orgName: string): string {
   return `${orgName.toLowerCase()}-project-stats-${timestamp}_ts.csv`;
 }
 
+export function generatePerRepoInstallFileName(orgName: string): string {
+  const timestamp = new Date()
+    .toISOString()
+    .replace(/[-:T\.Z]/g, '')
+    .slice(0, 12);
+  return `${orgName.toLowerCase()}-per-repo-installations-${timestamp}_ts.csv`;
+}
+
+export function generateRepoAppDetailFileName(orgName: string): string {
+  const timestamp = new Date()
+    .toISOString()
+    .replace(/[-:T\.Z]/g, '')
+    .slice(0, 12);
+  return `${orgName.toLowerCase()}-repo-app-details-${timestamp}_ts.csv`;
+}
+
+export function generateAppReposFileName(orgName: string): string {
+  const timestamp = new Date()
+    .toISOString()
+    .replace(/[-:T\.Z]/g, '')
+    .slice(0, 12);
+  return `${orgName.toLowerCase()}-app-repos-${timestamp}_ts.csv`;
+}
+
 /**
  * Converts kilobytes to megabytes
  * @param kb Size in kilobytes, can be null or undefined

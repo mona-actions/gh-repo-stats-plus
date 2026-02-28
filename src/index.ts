@@ -7,6 +7,7 @@ import VERSION from './version.js';
 import repoStatsCommand from './commands/repo-stats-command.js';
 import missingReposCommand from './commands/missing-repos-command.js';
 import projectStatsCommand from './commands/project-stats-command.js';
+import appInstallStatsCommand from './commands/app-install-stats-command.js';
 import combineStatsCommand from './commands/combine-stats-command.js';
 
 const program = new commander.Command();
@@ -19,6 +20,7 @@ program
   .addCommand(repoStatsCommand)
   .addCommand(missingReposCommand)
   .addCommand(projectStatsCommand)
+  .addCommand(appInstallStatsCommand)
   .addCommand(combineStatsCommand);
 
 program.parse(process.argv);

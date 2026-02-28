@@ -1,6 +1,8 @@
 import { Octokit } from 'octokit';
 import { components } from '@octokit/openapi-types';
 import {
+  AppInstallation,
+  AppInstallationData,
   AuthResponse,
   IssuesResponse,
   IssueStats,
@@ -340,6 +342,134 @@ export class OctokitClient {
       graphQLRemaining: rateLimitData.resources?.graphql.remaining || 0,
       coreRemaining: rateLimitData.resources?.core.remaining || 0,
       message: '',
+    };
+  }
+
+  // --- App Installation methods (REST API) ---
+
+  /**
+   * Fetches all app installations for a GitHub organization and categorizes
+   * them into org-wide and repo-specific installations.
+   *
+   * Requires a Personal Access Token with `admin:org` scope (classic) or
+   * `Administration: read` permission (fine-grained). The authenticated user
+   * must be an organization owner.
+   *
+   * Uses REST API: GET /orgs/{org}/installations
+   */
+  async getOrgInstallations(
+    org: string,
+  ): Promise<{
+    orgWideInstallations: AppInstallation[];
+    repoSpecificInstallations: AppInstallation[];
+  }> {
+    const orgWideInstallations: AppInstallation[] = [];
+    const repoSpecificInstallations: AppInstallation[] = [];
+
+    const iterator = this.octokit.paginate.iterator(
+      this.octokit.rest.orgs.listAppInstallations,
+      {
+        org,
+        per_page: 100,
+        headers: this.octokit_headers,
+      },
+    );
+
+    for await (const { data: installations } of iterator) {
+      for (const installation of installations) {
+        const entry: AppInstallation = {
+          id: installation.id,
+          app_slug: installation.app_slug || String(installation.app_id),
+          repository_selection: installation.repository_selection as
+            | 'all'
+            | 'selected',
+        };
+
+        if (installation.repository_selection === 'all') {
+          orgWideInstallations.push(entry);
+        } else if (installation.repository_selection === 'selected') {
+          repoSpecificInstallations.push(entry);
+        }
+      }
+    }
+
+    return { orgWideInstallations, repoSpecificInstallations };
+  }
+
+  /**
+   * Fetches the list of repository names for a specific app installation.
+   *
+   * Uses REST API: GET /user/installations/{installation_id}/repositories
+   */
+  async getInstallationRepositories(
+    installationId: number,
+  ): Promise<string[]> {
+    const repoNames: string[] = [];
+
+    const iterator = this.octokit.paginate.iterator(
+      this.octokit.rest.apps.listInstallationReposForAuthenticatedUser,
+      {
+        installation_id: installationId,
+        per_page: 100,
+        headers: this.octokit_headers,
+      },
+    );
+
+    for await (const { data: repositories } of iterator) {
+      for (const repo of repositories) {
+        repoNames.push(repo.name);
+      }
+    }
+
+    return repoNames;
+  }
+
+  /**
+   * Gathers complete app installation data for an organization.
+   * Fetches all installations, categorizes them, and for each repo-specific
+   * installation, fetches the list of repositories it's installed on.
+   *
+   * Returns an AppInstallationData object with all categorized data ready
+   * for CSV output.
+   */
+  async getOrgAppInstallationData(
+    org: string,
+    onInstallationProcessed?: (
+      appSlug: string,
+      repoCount: number,
+    ) => void,
+  ): Promise<AppInstallationData> {
+    const { orgWideInstallations, repoSpecificInstallations } =
+      await this.getOrgInstallations(org);
+
+    const installationRepos: Record<string, string[]> = {};
+    const repoApps: Record<string, string[]> = {};
+
+    for (const installation of repoSpecificInstallations) {
+      const repoNames = await this.getInstallationRepositories(
+        installation.id,
+      );
+      installationRepos[installation.app_slug] = repoNames;
+
+      for (const repoName of repoNames) {
+        if (!repoApps[repoName]) {
+          repoApps[repoName] = [];
+        }
+        repoApps[repoName].push(installation.app_slug);
+      }
+
+      onInstallationProcessed?.(
+        installation.app_slug,
+        repoNames.length,
+      );
+    }
+
+    return {
+      orgName: org,
+      orgWideInstallations,
+      repoSpecificInstallations,
+      installationRepos,
+      repoApps,
     };
   }
 }

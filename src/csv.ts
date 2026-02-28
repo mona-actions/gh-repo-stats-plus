@@ -61,6 +61,21 @@ export const PROJECT_STATS_COLUMNS = [
   'Projects_Linked_To_Repo',
 ];
 
+export const PER_REPO_INSTALL_COLUMNS = [
+  'Org_Name',
+  'Repo_Name',
+  'App_Installations',
+];
+
+export const REPO_APP_DETAIL_COLUMNS = [
+  'Org_Name',
+  'Repo_Name',
+  'App_Name',
+  'Configured',
+];
+
+export const APP_REPOS_COLUMNS = ['Org_Name', 'App_Name', 'Repos_Installed_In'];
+
 /** Default columns used for matching/joining CSV files */
 export const DEFAULT_MATCH_COLUMNS = ['Org_Name', 'Repo_Name'];
 

@@ -56,6 +56,11 @@ export interface Arguments {
   // multi-org options
   delayBetweenOrgs?: number;
   continueOnError?: boolean;
+
+  // app-install-stats CSV output toggles
+  skipPerRepoInstallCsv?: boolean;
+  skipRepoAppDetailCsv?: boolean;
+  skipAppReposCsv?: boolean;
 }
 
 export type AuthResponse = {
@@ -465,6 +470,43 @@ export interface ProjectStatsResult {
 export interface ProjectInfo {
   title: string;
   issueCount: number;
+}
+
+// --- App Install Stats types ---
+
+export interface AppInstallation {
+  id: number;
+  app_slug: string;
+  repository_selection: 'all' | 'selected';
+}
+
+export interface AppInstallationData {
+  orgName: string;
+  orgWideInstallations: AppInstallation[];
+  repoSpecificInstallations: AppInstallation[];
+  /** Map of app slug → list of repo names the app is installed on */
+  installationRepos: Record<string, string[]>;
+  /** Map of repo name → list of app slugs installed on that repo */
+  repoApps: Record<string, string[]>;
+}
+
+export interface PerRepoInstallationResult {
+  Org_Name: string;
+  Repo_Name: string;
+  App_Installations: number;
+}
+
+export interface RepoAppDetailResult {
+  Org_Name: string;
+  Repo_Name: string;
+  App_Name: string;
+  Configured: string;
+}
+
+export interface AppReposResult {
+  Org_Name: string;
+  App_Name: string;
+  Repos_Installed_In: number;
 }
 
 // --- Shared command infrastructure types ---
