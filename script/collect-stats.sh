@@ -2,7 +2,7 @@
 
 set -e
 
-# collect-stats.sh — Run repo-stats, project-stats, and combine-stats in sequence.
+# collect-stats.sh — Run repo-stats, project-stats, app-install-stats, and combine-stats in sequence.
 #
 # Collects repository and project statistics for a GitHub organization,
 # then combines the results into a single CSV file.
@@ -31,8 +31,10 @@ set -e
 #   --match-columns <cols>   Comma-separated match columns for combine (Default: Org_Name,Repo_Name)
 #   --skip-repo-stats        Skip the repo-stats step
 #   --skip-project-stats     Skip the project-stats step
+#   --skip-app-install-stats Skip the app-install-stats step
 #   --repo-stats-file <file> Use an existing repo-stats CSV instead of running repo-stats
 #   --project-stats-file <f> Use an existing project-stats CSV instead of running project-stats
+#   --app-install-stats-file <f> Use an existing app-install-stats CSV instead of running app-install-stats
 #   --lfs-file <file>        Include an existing LFS sizing CSV in combine-stats
 #   --run-audit              Run migration audit (requires gh migration-audit extension)
 #   --audit-file <file>      Use an existing audit CSV instead of running audit
@@ -70,8 +72,10 @@ usage() {
   echo "  --match-columns <cols>     Match columns for combine (Default: Org_Name,Repo_Name)"
   echo "  --skip-repo-stats          Skip the repo-stats step"
   echo "  --skip-project-stats       Skip the project-stats step"
+  echo "  --skip-app-install-stats   Skip the app-install-stats step"
   echo "  --repo-stats-file <file>   Use existing repo-stats CSV (skips repo-stats)"
   echo "  --project-stats-file <f>   Use existing project-stats CSV (skips project-stats)"
+  echo "  --app-install-stats-file <f> Use existing app-install-stats CSV (skips app-install-stats)"
   echo "  --lfs-file <file>          Include existing LFS sizing CSV in combine-stats"
   echo "  --run-audit                Run migration audit (requires gh migration-audit)"
   echo "  --audit-file <file>        Use existing audit CSV (implies --run-audit)"
@@ -105,8 +109,10 @@ EXTRA_PAGE_SIZE="25"
 MATCH_COLUMNS="Org_Name,Repo_Name"
 SKIP_REPO_STATS=false
 SKIP_PROJECT_STATS=false
+SKIP_APP_INSTALL_STATS=false
 REPO_STATS_FILE=""
 PROJECT_STATS_FILE=""
+APP_INSTALL_STATS_FILE=""
 LFS_FILE=""
 RUN_AUDIT=false
 AUDIT_FILE=""
@@ -134,10 +140,14 @@ while [[ $# -gt 0 ]]; do
       SKIP_REPO_STATS=true; shift ;;
     --skip-project-stats)
       SKIP_PROJECT_STATS=true; shift ;;
+    --skip-app-install-stats)
+      SKIP_APP_INSTALL_STATS=true; shift ;;
     --repo-stats-file)
       REPO_STATS_FILE="$2"; SKIP_REPO_STATS=true; shift 2 ;;
     --project-stats-file)
       PROJECT_STATS_FILE="$2"; SKIP_PROJECT_STATS=true; shift 2 ;;
+    --app-install-stats-file)
+      APP_INSTALL_STATS_FILE="$2"; SKIP_APP_INSTALL_STATS=true; shift 2 ;;
     --lfs-file)
       LFS_FILE="$2"; shift 2 ;;
     --run-audit)
@@ -182,6 +192,9 @@ if [ -n "$PROJECT_STATS_FILE" ] && [[ "$PROJECT_STATS_FILE" != /* ]]; then
 fi
 if [ -n "$AUDIT_FILE" ] && [[ "$AUDIT_FILE" != /* ]]; then
   AUDIT_FILE="${OUTPUT_DIR}/${AUDIT_FILE}"
+fi
+if [ -n "$APP_INSTALL_STATS_FILE" ] && [[ "$APP_INSTALL_STATS_FILE" != /* ]]; then
+  APP_INSTALL_STATS_FILE="${OUTPUT_DIR}/${APP_INSTALL_STATS_FILE}"
 fi
 if [ -n "$LFS_FILE" ] && [[ "$LFS_FILE" != /* ]]; then
   LFS_FILE="${OUTPUT_DIR}/${LFS_FILE}"
@@ -239,13 +252,38 @@ else
   fi
 fi
 
-# ── step 3: migration audit (optional) ──────────────────────────────
+# ── step 3: app-install-stats ────────────────────────────────────────
+
+if [ "$SKIP_APP_INSTALL_STATS" = false ]; then
+  echo "=== Step 3: Running app-install-stats for ${ORG_NAME} ==="
+
+  TIMESTAMP=$(generate_timestamp)
+  APP_INSTALL_STATS_FILENAME=$(echo "${ORG_NAME}" | tr '[:upper:]' '[:lower:]')-per-repo-installations-${TIMESTAMP}_ts.csv
+  APP_INSTALL_STATS_FILE="${OUTPUT_DIR}/${APP_INSTALL_STATS_FILENAME}"
+
+  gh repo-stats-plus app-install-stats \
+    --org-name "$ORG_NAME" \
+    $AUTH_ARGS \
+    --base-url "$BASE_URL" \
+    --output-dir "$OUTPUT_DIR" \
+    --output-file-name "$APP_INSTALL_STATS_FILENAME" \
+    $VERBOSE
+
+  echo "App install stats file: $APP_INSTALL_STATS_FILE"
+else
+  echo "=== Step 3: Skipping app-install-stats ==="
+  if [ -n "$APP_INSTALL_STATS_FILE" ]; then
+    echo "Using existing file: $APP_INSTALL_STATS_FILE"
+  fi
+fi
+
+# ── step 4: migration audit (optional) ──────────────────────────────
 
 if [ "$RUN_AUDIT" = true ] && [ -z "$AUDIT_FILE" ]; then
   # Check if gh migration-audit is installed
   if gh extension list 2>/dev/null | grep -q 'migration-audit'; then
     echo ""
-    echo "=== Step 3: Running migration audit for ${ORG_NAME} ==="
+    echo "=== Step 4: Running migration audit for ${ORG_NAME} ==="
 
     TIMESTAMP=$(generate_timestamp)
     AUDIT_FILE="${OUTPUT_DIR}/$(echo "${ORG_NAME}" | tr '[:upper:]' '[:lower:]')-audit-${TIMESTAMP}_ts.csv"
@@ -261,18 +299,18 @@ if [ "$RUN_AUDIT" = true ] && [ -z "$AUDIT_FILE" ]; then
     echo "Audit file: $AUDIT_FILE"
   else
     echo ""
-    echo "=== Step 3: Skipping migration audit (gh migration-audit extension not installed) ==="
+    echo "=== Step 4: Skipping migration audit (gh migration-audit extension not installed) ==="
     echo "Install with: gh extension install github/gh-migration-audit"
   fi
 elif [ "$RUN_AUDIT" = true ] && [ -n "$AUDIT_FILE" ]; then
   echo ""
-  echo "=== Step 3: Using existing audit file: $AUDIT_FILE ==="
+  echo "=== Step 4: Using existing audit file: $AUDIT_FILE ==="
 else
   echo ""
-  echo "=== Step 3: Skipping migration audit (not requested) ==="
+  echo "=== Step 4: Skipping migration audit (not requested) ==="
 fi
 
-# ── step 4: combine-stats ───────────────────────────────────────────
+# ── step 5: combine-stats ───────────────────────────────────────────
 
 FILES_TO_COMBINE=""
 if [ -n "$REPO_STATS_FILE" ]; then
@@ -288,6 +326,13 @@ fi
 if [ -n "$PROJECT_STATS_FILE" ]; then
   FILES_TO_COMBINE="$FILES_TO_COMBINE $PROJECT_STATS_FILE"
 fi
+if [ -n "$APP_INSTALL_STATS_FILE" ]; then
+  if [ ! -f "$APP_INSTALL_STATS_FILE" ]; then
+    echo "Warning: App install stats file not found: $APP_INSTALL_STATS_FILE (skipping)"
+  else
+    FILES_TO_COMBINE="$FILES_TO_COMBINE $APP_INSTALL_STATS_FILE"
+  fi
+fi
 
 # Count files (trim whitespace)
 FILE_COUNT=$(echo "$FILES_TO_COMBINE" | wc -w | tr -d ' ')
@@ -302,7 +347,7 @@ if [ "$FILE_COUNT" -lt 2 ]; then
 fi
 
 echo ""
-echo "=== Step 4: Combining stats ==="
+echo "=== Step 5: Combining stats ==="
 
 # shellcheck disable=SC2086
 gh repo-stats-plus combine-stats \

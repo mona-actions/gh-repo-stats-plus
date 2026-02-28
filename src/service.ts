@@ -357,9 +357,7 @@ export class OctokitClient {
    *
    * Uses REST API: GET /orgs/{org}/installations
    */
-  async getOrgInstallations(
-    org: string,
-  ): Promise<{
+  async getOrgInstallations(org: string): Promise<{
     orgWideInstallations: AppInstallation[];
     repoSpecificInstallations: AppInstallation[];
   }> {
@@ -401,9 +399,7 @@ export class OctokitClient {
    *
    * Uses REST API: GET /user/installations/{installation_id}/repositories
    */
-  async getInstallationRepositories(
-    installationId: number,
-  ): Promise<string[]> {
+  async getInstallationRepositories(installationId: number): Promise<string[]> {
     const repoNames: string[] = [];
 
     const iterator = this.octokit.paginate.iterator(
@@ -434,10 +430,7 @@ export class OctokitClient {
    */
   async getOrgAppInstallationData(
     org: string,
-    onInstallationProcessed?: (
-      appSlug: string,
-      repoCount: number,
-    ) => void,
+    onInstallationProcessed?: (appSlug: string, repoCount: number) => void,
   ): Promise<AppInstallationData> {
     const { orgWideInstallations, repoSpecificInstallations } =
       await this.getOrgInstallations(org);
@@ -446,9 +439,7 @@ export class OctokitClient {
     const repoApps: Record<string, string[]> = {};
 
     for (const installation of repoSpecificInstallations) {
-      const repoNames = await this.getInstallationRepositories(
-        installation.id,
-      );
+      const repoNames = await this.getInstallationRepositories(installation.id);
       installationRepos[installation.app_slug] = repoNames;
 
       for (const repoName of repoNames) {
@@ -458,10 +449,7 @@ export class OctokitClient {
         repoApps[repoName].push(installation.app_slug);
       }
 
-      onInstallationProcessed?.(
-        installation.app_slug,
-        repoNames.length,
-      );
+      onInstallationProcessed?.(installation.app_slug, repoNames.length);
     }
 
     return {

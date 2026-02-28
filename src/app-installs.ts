@@ -43,7 +43,7 @@ export async function runAppInstallStats(opts: Arguments): Promise<string[]> {
   // Warn if GitHub App auth options are set — they won't work for this endpoint
   if (opts.appId || opts.privateKey || opts.privateKeyFile) {
     console.warn(
-      'Warning: GitHub App authentication cannot view other apps\' installations. ' +
+      "Warning: GitHub App authentication cannot view other apps' installations. " +
         'A Personal Access Token (PAT) with admin:org scope is required for app-install-stats.',
     );
   }
@@ -55,9 +55,7 @@ export async function runAppInstallStats(opts: Arguments): Promise<string[]> {
 
 // --- Per-org processing (called by shared executeForOrg via config.processOrg) ---
 
-async function processOrgAppInstallStats(
-  context: OrgContext,
-): Promise<void> {
+async function processOrgAppInstallStats(context: OrgContext): Promise<void> {
   const {
     opts,
     logger,
@@ -69,14 +67,16 @@ async function processOrgAppInstallStats(
   } = context;
 
   const startTime = new Date();
-  logger.info(`Started app-install-stats processing at: ${startTime.toISOString()}`);
+  logger.info(
+    `Started app-install-stats processing at: ${startTime.toISOString()}`,
+  );
 
   // Warn if GitHub App auth is being used
   if (opts.appId || opts.privateKey || opts.privateKeyFile) {
     logger.warn(
       'GitHub App authentication detected. The GET /orgs/{org}/installations ' +
         'endpoint requires a Personal Access Token (PAT) — app tokens cannot view ' +
-        'other apps\' installations.',
+        "other apps' installations.",
     );
   }
 
@@ -89,16 +89,12 @@ async function processOrgAppInstallStats(
     async () => {
       const orgName = opts.orgName!;
 
-      logger.info(
-        `Fetching app installations for organization: ${orgName}`,
-      );
+      logger.info(`Fetching app installations for organization: ${orgName}`);
 
       const data = await client.getOrgAppInstallationData(
         orgName,
         (appSlug, repoCount) => {
-          logger.info(
-            `App: ${appSlug}, Installation repos: ${repoCount}`,
-          );
+          logger.info(`App: ${appSlug}, Installation repos: ${repoCount}`);
         },
       );
 
@@ -117,7 +113,9 @@ async function processOrgAppInstallStats(
           `Wrote ${perRepoData.length} rows to per-repo installations CSV: ${fileName}`,
         );
       } else {
-        logger.info('Skipping per-repo installations CSV (--skip-per-repo-install-csv)');
+        logger.info(
+          'Skipping per-repo installations CSV (--skip-per-repo-install-csv)',
+        );
       }
 
       // Write repo-app details CSV
@@ -137,7 +135,9 @@ async function processOrgAppInstallStats(
         );
         logger.info(`output_file=${repoAppDetailFileName}`);
       } else {
-        logger.info('Skipping repo-app details CSV (--skip-repo-app-detail-csv)');
+        logger.info(
+          'Skipping repo-app details CSV (--skip-repo-app-detail-csv)',
+        );
       }
 
       // Write app-repos summary CSV

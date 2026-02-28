@@ -43,7 +43,9 @@ describe('OctokitClient - App Installation Methods', () => {
 
   describe('getOrgInstallations', () => {
     it('should categorize installations by repository_selection', async () => {
-      const paginateIterator = (mockOctokit.paginate as Record<string, ReturnType<typeof vi.fn>>).iterator;
+      const paginateIterator = (
+        mockOctokit.paginate as Record<string, ReturnType<typeof vi.fn>>
+      ).iterator;
       paginateIterator.mockReturnValue({
         async *[Symbol.asyncIterator]() {
           yield {
@@ -93,13 +95,16 @@ describe('OctokitClient - App Installation Methods', () => {
       });
 
       expect(paginateIterator).toHaveBeenCalledWith(
-        (mockOctokit.rest as Record<string, Record<string, unknown>>).orgs.listAppInstallations,
+        (mockOctokit.rest as Record<string, Record<string, unknown>>).orgs
+          .listAppInstallations,
         expect.objectContaining({ org: 'test-org', per_page: 100 }),
       );
     });
 
     it('should use app_id as fallback when app_slug is empty', async () => {
-      const paginateIterator = (mockOctokit.paginate as Record<string, ReturnType<typeof vi.fn>>).iterator;
+      const paginateIterator = (
+        mockOctokit.paginate as Record<string, ReturnType<typeof vi.fn>>
+      ).iterator;
       paginateIterator.mockReturnValue({
         async *[Symbol.asyncIterator]() {
           yield {
@@ -121,7 +126,9 @@ describe('OctokitClient - App Installation Methods', () => {
     });
 
     it('should return empty arrays for no installations', async () => {
-      const paginateIterator = (mockOctokit.paginate as Record<string, ReturnType<typeof vi.fn>>).iterator;
+      const paginateIterator = (
+        mockOctokit.paginate as Record<string, ReturnType<typeof vi.fn>>
+      ).iterator;
       paginateIterator.mockReturnValue({
         async *[Symbol.asyncIterator]() {
           yield { data: [] };
@@ -137,15 +144,13 @@ describe('OctokitClient - App Installation Methods', () => {
 
   describe('getInstallationRepositories', () => {
     it('should return list of repository names', async () => {
-      const paginateIterator = (mockOctokit.paginate as Record<string, ReturnType<typeof vi.fn>>).iterator;
+      const paginateIterator = (
+        mockOctokit.paginate as Record<string, ReturnType<typeof vi.fn>>
+      ).iterator;
       paginateIterator.mockReturnValue({
         async *[Symbol.asyncIterator]() {
           yield {
-            data: [
-              { name: 'repo-a' },
-              { name: 'repo-b' },
-              { name: 'repo-c' },
-            ],
+            data: [{ name: 'repo-a' }, { name: 'repo-b' }, { name: 'repo-c' }],
           };
         },
       });
@@ -155,7 +160,8 @@ describe('OctokitClient - App Installation Methods', () => {
       expect(result).toEqual(['repo-a', 'repo-b', 'repo-c']);
 
       expect(paginateIterator).toHaveBeenCalledWith(
-        (mockOctokit.rest as Record<string, Record<string, unknown>>).apps.listInstallationReposForAuthenticatedUser,
+        (mockOctokit.rest as Record<string, Record<string, unknown>>).apps
+          .listInstallationReposForAuthenticatedUser,
         expect.objectContaining({
           installation_id: 123,
           per_page: 100,
@@ -164,7 +170,9 @@ describe('OctokitClient - App Installation Methods', () => {
     });
 
     it('should return empty array for no repositories', async () => {
-      const paginateIterator = (mockOctokit.paginate as Record<string, ReturnType<typeof vi.fn>>).iterator;
+      const paginateIterator = (
+        mockOctokit.paginate as Record<string, ReturnType<typeof vi.fn>>
+      ).iterator;
       paginateIterator.mockReturnValue({
         async *[Symbol.asyncIterator]() {
           yield { data: [] };
@@ -179,7 +187,9 @@ describe('OctokitClient - App Installation Methods', () => {
 
   describe('getOrgAppInstallationData', () => {
     it('should aggregate installations and build repo-app maps', async () => {
-      const paginateIterator = (mockOctokit.paginate as Record<string, ReturnType<typeof vi.fn>>).iterator;
+      const paginateIterator = (
+        mockOctokit.paginate as Record<string, ReturnType<typeof vi.fn>>
+      ).iterator;
       // First call: getOrgInstallations
       // Second call: getInstallationRepositories for selected-app
       paginateIterator
@@ -233,14 +243,13 @@ describe('OctokitClient - App Installation Methods', () => {
         'repo-b': ['selected-app'],
       });
 
-      expect(onInstallationProcessed).toHaveBeenCalledWith(
-        'selected-app',
-        2,
-      );
+      expect(onInstallationProcessed).toHaveBeenCalledWith('selected-app', 2);
     });
 
     it('should handle multiple apps on the same repo', async () => {
-      const paginateIterator = (mockOctokit.paginate as Record<string, ReturnType<typeof vi.fn>>).iterator;
+      const paginateIterator = (
+        mockOctokit.paginate as Record<string, ReturnType<typeof vi.fn>>
+      ).iterator;
       paginateIterator
         .mockReturnValueOnce({
           async *[Symbol.asyncIterator]() {
@@ -281,7 +290,9 @@ describe('OctokitClient - App Installation Methods', () => {
     });
 
     it('should handle org with only org-wide installations', async () => {
-      const paginateIterator = (mockOctokit.paginate as Record<string, ReturnType<typeof vi.fn>>).iterator;
+      const paginateIterator = (
+        mockOctokit.paginate as Record<string, ReturnType<typeof vi.fn>>
+      ).iterator;
       paginateIterator.mockReturnValueOnce({
         async *[Symbol.asyncIterator]() {
           yield {
@@ -306,7 +317,9 @@ describe('OctokitClient - App Installation Methods', () => {
     });
 
     it('should handle org with no installations', async () => {
-      const paginateIterator = (mockOctokit.paginate as Record<string, ReturnType<typeof vi.fn>>).iterator;
+      const paginateIterator = (
+        mockOctokit.paginate as Record<string, ReturnType<typeof vi.fn>>
+      ).iterator;
       paginateIterator.mockReturnValueOnce({
         async *[Symbol.asyncIterator]() {
           yield { data: [] };
@@ -322,7 +335,9 @@ describe('OctokitClient - App Installation Methods', () => {
     });
 
     it('should work without callback', async () => {
-      const paginateIterator = (mockOctokit.paginate as Record<string, ReturnType<typeof vi.fn>>).iterator;
+      const paginateIterator = (
+        mockOctokit.paginate as Record<string, ReturnType<typeof vi.fn>>
+      ).iterator;
       paginateIterator
         .mockReturnValueOnce({
           async *[Symbol.asyncIterator]() {
