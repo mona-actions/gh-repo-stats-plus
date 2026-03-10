@@ -299,7 +299,7 @@ export async function getRepoListForBatch({
   pageSize,
   logger,
 }: {
-  client: OctokitClient;
+  client: Pick<OctokitClient, 'listOrgRepoNames'>;
   orgName: string;
   batchSize: number;
   batchIndex: number;
