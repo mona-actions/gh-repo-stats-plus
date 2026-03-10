@@ -6,6 +6,7 @@ vi.mock('fs');
 
 import { getRepoListForBatch } from '../src/main.js';
 import repoStatsCommand from '../src/commands/repo-stats-command.js';
+import projectStatsCommand from '../src/commands/project-stats-command.js';
 
 // Mock the main module's run function to avoid side effects in command tests
 vi.mock('../src/main.js', async (importOriginal) => {
@@ -13,6 +14,15 @@ vi.mock('../src/main.js', async (importOriginal) => {
   return {
     ...mod,
     run: vi.fn(),
+  };
+});
+
+// Mock the projects module's runProjectStats function to avoid side effects
+vi.mock('../src/projects.js', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('../src/projects.js')>();
+  return {
+    ...mod,
+    runProjectStats: vi.fn(),
   };
 });
 
@@ -233,5 +243,56 @@ describe('repo-stats-command batch options', () => {
       (opt) => opt.long === '--batch-index',
     );
     expect(batchIndexOption?.envVar).toBe('BATCH_INDEX');
+  });
+});
+
+describe('project-stats-command batch options', () => {
+  it('should have batch-size option defined', () => {
+    const options = projectStatsCommand.options;
+    const optionNames = options.map((opt) => opt.long);
+    expect(optionNames).toContain('--batch-size');
+  });
+
+  it('should have batch-index option defined', () => {
+    const options = projectStatsCommand.options;
+    const optionNames = options.map((opt) => opt.long);
+    expect(optionNames).toContain('--batch-index');
+  });
+
+  it('should have batch-delay option defined', () => {
+    const options = projectStatsCommand.options;
+    const optionNames = options.map((opt) => opt.long);
+    expect(optionNames).toContain('--batch-delay');
+  });
+
+  it('should have batch-index default to 0', () => {
+    const batchIndexOption = projectStatsCommand.options.find(
+      (opt) => opt.long === '--batch-index',
+    );
+    expect(batchIndexOption?.defaultValue).toBe(0);
+  });
+
+  it('should have batch-delay default to 0', () => {
+    const batchDelayOption = projectStatsCommand.options.find(
+      (opt) => opt.long === '--batch-delay',
+    );
+    expect(batchDelayOption?.defaultValue).toBe(0);
+  });
+
+  it('should have environment variable mappings for batch options', () => {
+    const batchSizeOption = projectStatsCommand.options.find(
+      (opt) => opt.long === '--batch-size',
+    );
+    expect(batchSizeOption?.envVar).toBe('BATCH_SIZE');
+
+    const batchIndexOption = projectStatsCommand.options.find(
+      (opt) => opt.long === '--batch-index',
+    );
+    expect(batchIndexOption?.envVar).toBe('BATCH_INDEX');
+
+    const batchDelayOption = projectStatsCommand.options.find(
+      (opt) => opt.long === '--batch-delay',
+    );
+    expect(batchDelayOption?.envVar).toBe('BATCH_DELAY');
   });
 });
