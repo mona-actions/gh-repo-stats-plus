@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        batch-index: [0, 1, 2, 3, 4]  # 5 batches → up to 250 repos at 50/batch
+        batch-index: [0, 1, 2, 3, 4] # 5 batches → up to 250 repos at 50/batch
     steps:
       - uses: actions/checkout@v4
 
@@ -190,16 +190,16 @@ jobs:
 If you have multiple tokens, you can assign each batch its own token to get independent rate limits:
 
 ```yaml
-    steps:
-      - name: Collect stats
-        run: |
-          gh repo-stats-plus repo-stats \
-            --org-name ${{ inputs.org }} \
-            --batch-size ${{ inputs.batch-size }} \
-            --batch-index ${{ matrix.batch-index }} \
-            --output-dir output
-        env:
-          GH_TOKEN: ${{ secrets[format('STATS_TOKEN_{0}', matrix.batch-index)] }}
+steps:
+  - name: Collect stats
+    run: |
+      gh repo-stats-plus repo-stats \
+        --org-name ${{ inputs.org }} \
+        --batch-size ${{ inputs.batch-size }} \
+        --batch-index ${{ matrix.batch-index }} \
+        --output-dir output
+    env:
+      GH_TOKEN: ${{ secrets[format('STATS_TOKEN_{0}', matrix.batch-index)] }}
 ```
 
 This expects secrets named `STATS_TOKEN_0`, `STATS_TOKEN_1`, etc. With separate tokens, you can drop `--batch-delay` since each token has its own 5,000 requests/hour quota.
@@ -209,14 +209,14 @@ This expects secrets named `STATS_TOKEN_0`, `STATS_TOKEN_1`, etc. With separate 
 The same pattern works for `project-stats` — just swap the command:
 
 ```yaml
-      - name: Collect project stats (batch ${{ matrix.batch-index }})
-        run: |
-          gh repo-stats-plus project-stats \
-            --org-name ${{ inputs.org }} \
-            --batch-size ${{ inputs.batch-size }} \
-            --batch-index ${{ matrix.batch-index }} \
-            --batch-delay 5 \
-            --output-dir output
+- name: Collect project stats (batch ${{ matrix.batch-index }})
+  run: |
+    gh repo-stats-plus project-stats \
+      --org-name ${{ inputs.org }} \
+      --batch-size ${{ inputs.batch-size }} \
+      --batch-index ${{ matrix.batch-index }} \
+      --batch-delay 5 \
+      --output-dir output
 ```
 
 ## Tips
