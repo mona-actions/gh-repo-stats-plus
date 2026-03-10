@@ -91,10 +91,25 @@ async function processOrgAppInstallStats(context: OrgContext): Promise<void> {
 
       logger.info(`Fetching app installations for organization: ${orgName}`);
 
+      const rateLimitCheckIntervalMs =
+        typeof opts.rateLimitCheckInterval === 'number' &&
+        opts.rateLimitCheckInterval > 0
+          ? opts.rateLimitCheckInterval * 1000
+          : 0;
+      let lastRateLimitCheck = Date.now();
+
       const data = await client.getOrgAppInstallationData(
         orgName,
-        (appSlug, repoCount) => {
+        async (appSlug, repoCount) => {
           logger.info(`App: ${appSlug}, Installation repos: ${repoCount}`);
+
+          if (rateLimitCheckIntervalMs > 0) {
+            const now = Date.now();
+            if (now - lastRateLimitCheck >= rateLimitCheckIntervalMs) {
+              await client.checkRateLimits();
+              lastRateLimitCheck = now;
+            }
+          }
         },
       );
 
@@ -247,7 +262,7 @@ export function prepareRepoAppDetailsData(
         Org_Name: data.orgName,
         Repo_Name: repoName,
         App_Name: appName,
-        Configured: 'TRUE',
+        Configured: 'selected',
       });
     }
   }
@@ -258,7 +273,7 @@ export function prepareRepoAppDetailsData(
       Org_Name: data.orgName,
       Repo_Name: '_ORG_LEVEL_',
       App_Name: installation.app_slug,
-      Configured: 'TRUE',
+      Configured: 'all',
     });
   }
 
