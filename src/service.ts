@@ -430,7 +430,10 @@ export class OctokitClient {
    */
   async getOrgAppInstallationData(
     org: string,
-    onInstallationProcessed?: (appSlug: string, repoCount: number) => void,
+    onInstallationProcessed?: (
+      appSlug: string,
+      repoCount: number,
+    ) => void | Promise<void>,
   ): Promise<AppInstallationData> {
     const { orgWideInstallations, repoSpecificInstallations } =
       await this.getOrgInstallations(org);
@@ -449,7 +452,7 @@ export class OctokitClient {
         repoApps[repoName].push(installation.app_slug);
       }
 
-      onInstallationProcessed?.(installation.app_slug, repoNames.length);
+      await onInstallationProcessed?.(installation.app_slug, repoNames.length);
     }
 
     return {

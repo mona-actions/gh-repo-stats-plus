@@ -242,14 +242,14 @@ describe('app-installs', () => {
         Org_Name: 'test-org',
         Repo_Name: 'test-repo',
         App_Name: 'my-app',
-        Configured: 'TRUE',
+        Configured: 'selected',
       };
 
       writeRepoAppDetailCsv(result, '/tmp/test.csv', mockLogger);
 
       expect(appendFileSync).toHaveBeenCalledWith(
         '/tmp/test.csv',
-        'test-org,test-repo,my-app,TRUE\n',
+        'test-org,test-repo,my-app,selected\n',
       );
     });
 
@@ -262,7 +262,7 @@ describe('app-installs', () => {
         Org_Name: 'test-org',
         Repo_Name: 'test-repo',
         App_Name: 'my-app',
-        Configured: 'TRUE',
+        Configured: 'selected',
       };
 
       expect(() =>
@@ -375,19 +375,19 @@ describe('app-installs', () => {
         Org_Name: 'test-org',
         Repo_Name: 'repo-a',
         App_Name: 'app-1',
-        Configured: 'TRUE',
+        Configured: 'selected',
       });
       expect(results).toContainEqual({
         Org_Name: 'test-org',
         Repo_Name: 'repo-a',
         App_Name: 'app-2',
-        Configured: 'TRUE',
+        Configured: 'selected',
       });
       expect(results).toContainEqual({
         Org_Name: 'test-org',
         Repo_Name: 'repo-b',
         App_Name: 'app-1',
-        Configured: 'TRUE',
+        Configured: 'selected',
       });
     });
 
@@ -410,13 +410,13 @@ describe('app-installs', () => {
         Org_Name: 'test-org',
         Repo_Name: '_ORG_LEVEL_',
         App_Name: 'org-app-1',
-        Configured: 'TRUE',
+        Configured: 'all',
       });
       expect(results[1]).toEqual({
         Org_Name: 'test-org',
         Repo_Name: '_ORG_LEVEL_',
         App_Name: 'org-app-2',
-        Configured: 'TRUE',
+        Configured: 'all',
       });
     });
   });
