@@ -53,6 +53,11 @@ export interface Arguments {
   repoNamesFile?: string;
   autoProcessMissing?: boolean;
 
+  // batching
+  batchSize?: number;
+  batchIndex?: number;
+  batchDelay?: number;
+
   // multi-org options
   delayBetweenOrgs?: number;
   continueOnError?: boolean;
