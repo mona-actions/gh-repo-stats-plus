@@ -150,7 +150,9 @@ gh repo-stats-plus project-stats \
 Merge batch output files after all batches complete:
 
 ```bash
-gh repo-stats-plus combine-stats --input-dir output --output-file combined-project-stats.csv
+gh repo-stats-plus combine-stats \
+  --files output/*.csv \
+  --output-file-name combined-project-stats.csv
 ```
 
 ## Output

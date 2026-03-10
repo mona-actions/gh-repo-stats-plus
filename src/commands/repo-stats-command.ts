@@ -25,28 +25,26 @@ function validate(opts: Arguments) {
     );
   }
 
-  if (opts.batchIndex != null && opts.batchSize == null) {
-    throw new Error('--batch-index requires --batch-size to be specified');
-  }
+  if (opts.batchSize != null) {
+    if (opts.batchSize < 1) {
+      throw new Error('--batch-size must be at least 1');
+    }
 
-  if (opts.batchSize != null && opts.batchSize < 1) {
-    throw new Error('--batch-size must be at least 1');
-  }
+    if (opts.batchIndex != null && opts.batchIndex < 0) {
+      throw new Error('--batch-index must be 0 or greater');
+    }
 
-  if (opts.batchIndex != null && opts.batchIndex < 0) {
-    throw new Error('--batch-index must be 0 or greater');
-  }
+    if (opts.orgList) {
+      throw new Error(
+        'Batch mode (--batch-size) cannot be used with --org-list. Use with a single --org-name instead.',
+      );
+    }
 
-  if (opts.batchSize != null && opts.orgList) {
-    throw new Error(
-      'Batch mode (--batch-size) cannot be used with --org-list. Use with a single --org-name instead.',
-    );
-  }
-
-  if (opts.batchSize != null && opts.repoList) {
-    throw new Error(
-      'Batch mode (--batch-size) cannot be used with --repo-list. Batch mode generates its own repo list.',
-    );
+    if (opts.repoList) {
+      throw new Error(
+        'Batch mode (--batch-size) cannot be used with --repo-list. Batch mode generates its own repo list.',
+      );
+    }
   }
 }
 

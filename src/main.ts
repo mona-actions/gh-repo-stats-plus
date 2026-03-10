@@ -333,6 +333,11 @@ export async function getRepoListForBatch({
     `Total repositories: ${totalRepos}, Total batches: ${totalBatches} (batch size: ${batchSize})`,
   );
 
+  if (totalRepos === 0) {
+    logger.info(`Organization '${orgName}' has no repositories. Nothing to process.`);
+    return [];
+  }
+
   if (batchIndex >= totalBatches) {
     logger.warn(
       `Batch index ${batchIndex} is out of range (total batches: ${totalBatches}). No repositories to process.`,
