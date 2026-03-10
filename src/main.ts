@@ -334,7 +334,9 @@ export async function getRepoListForBatch({
   );
 
   if (totalRepos === 0) {
-    logger.info(`Organization '${orgName}' has no repositories. Nothing to process.`);
+    logger.info(
+      `Organization '${orgName}' has no repositories. Nothing to process.`,
+    );
     return [];
   }
 
