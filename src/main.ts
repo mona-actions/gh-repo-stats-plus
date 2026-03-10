@@ -55,8 +55,32 @@ const repoStatsConfig: CommandConfig = {
 // --- Public entry point ---
 
 export async function run(opts: Arguments): Promise<string[]> {
-  const context = await initCommand(opts, repoStatsConfig);
-  const result = await executeCommand(context, repoStatsConfig);
+  // Build batch-aware config if batch mode is enabled
+  const config = { ...repoStatsConfig };
+  if (opts.batchSize != null) {
+    const batchIndex = opts.batchIndex ?? 0;
+    config.statePrefix = `batch-${batchIndex}`;
+    config.generateFileName = (orgName: string) => {
+      const timestamp = new Date()
+        .toISOString()
+        .replace(/[-:T\.Z]/g, '')
+        .slice(0, 12);
+      return `${orgName.toLowerCase()}-all_repos-batch-${batchIndex}-${timestamp}_ts.csv`;
+    };
+
+    // Stagger batch start to avoid simultaneous API bursts
+    const batchDelay = opts.batchDelay ?? 0;
+    if (batchDelay > 0 && batchIndex > 0) {
+      const waitSeconds = batchIndex * batchDelay;
+      console.log(
+        `Batch ${batchIndex}: waiting ${waitSeconds}s before starting (${batchDelay}s per batch index)...`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1000));
+    }
+  }
+
+  const context = await initCommand(opts, config);
+  const result = await executeCommand(context, config);
   return result.outputFiles;
 }
 
@@ -269,6 +293,62 @@ async function processMissingRepositories({
 
 export function initializeCsvFile(fileName: string, logger: Logger): void {
   initializeCsvFileGeneric(fileName, REPO_STATS_COLUMNS, logger);
+}
+
+/**
+ * Fetches the full list of repository names for an organization using a
+ * lightweight GraphQL query, then returns the slice for the requested batch.
+ *
+ * Logs the total repository count and batch count so users know how many
+ * batches to run.
+ */
+export async function getRepoListForBatch({
+  client,
+  orgName,
+  batchSize,
+  batchIndex,
+  pageSize,
+  logger,
+}: {
+  client: OctokitClient;
+  orgName: string;
+  batchSize: number;
+  batchIndex: number;
+  pageSize: number;
+  logger: Logger;
+}): Promise<string[]> {
+  logger.info(
+    `Batch mode: fetching repository list for org '${orgName}' (batch size: ${batchSize}, batch index: ${batchIndex})`,
+  );
+
+  const allRepos: string[] = [];
+  for await (const repo of client.listOrgRepoNames(orgName, pageSize)) {
+    allRepos.push(`${repo.owner.login}/${repo.name}`);
+  }
+
+  const totalRepos = allRepos.length;
+  const totalBatches = Math.ceil(totalRepos / batchSize);
+
+  logger.info(
+    `Total repositories: ${totalRepos}, Total batches: ${totalBatches} (batch size: ${batchSize})`,
+  );
+
+  if (batchIndex >= totalBatches) {
+    logger.warn(
+      `Batch index ${batchIndex} is out of range (total batches: ${totalBatches}). No repositories to process.`,
+    );
+    return [];
+  }
+
+  const start = batchIndex * batchSize;
+  const end = Math.min(start + batchSize, totalRepos);
+  const batchRepos = allRepos.slice(start, end);
+
+  logger.info(
+    `Batch ${batchIndex} of ${totalBatches}: processing repositories ${start + 1}-${end} of ${totalRepos}`,
+  );
+
+  return batchRepos;
 }
 
 async function analyzeRepositoryStats({
@@ -523,6 +603,40 @@ async function processRepositories({
   logger.debug(
     `Starting/Resuming from cursor: ${processedState.currentCursor}`,
   );
+
+  // Batch mode: fetch repo names and process only the batch slice
+  if (opts.batchSize != null) {
+    const batchRepos = await getRepoListForBatch({
+      client,
+      orgName: opts.orgName!,
+      batchSize: opts.batchSize,
+      batchIndex: opts.batchIndex ?? 0,
+      pageSize: opts.pageSize || 10,
+      logger,
+    });
+
+    if (batchRepos.length === 0) {
+      logger.info('No repositories in this batch. Nothing to process.');
+      return {
+        cursor: null,
+        processedRepos: processedState.processedRepos,
+        processedCount: 0,
+        isComplete: true,
+        successCount: state.successCount,
+        retryCount: state.retryCount,
+      };
+    }
+
+    return processRepositoriesFromFile({
+      client,
+      logger,
+      opts: { ...opts, repoList: batchRepos },
+      processedState,
+      state,
+      fileName,
+      stateManager,
+    });
+  }
 
   if (opts.repoList && opts.repoList.length > 0) {
     return processRepositoriesFromFile({
