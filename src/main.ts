@@ -33,6 +33,7 @@ import {
   hasLfsTracking,
   formatElapsedTime,
   resolveOutputPath,
+  applyBatchStaggerDelay,
 } from './utils.js';
 import {
   initializeCsvFile as initializeCsvFileGeneric,
@@ -60,23 +61,11 @@ export async function run(opts: Arguments): Promise<string[]> {
   if (opts.batchSize != null) {
     const batchIndex = opts.batchIndex ?? 0;
     config.statePrefix = `batch-${batchIndex}`;
-    config.generateFileName = (orgName: string) => {
-      const timestamp = new Date()
-        .toISOString()
-        .replace(/[-:T\.Z]/g, '')
-        .slice(0, 12);
-      return `${orgName.toLowerCase()}-all_repos-batch-${batchIndex}-${timestamp}_ts.csv`;
-    };
+    config.generateFileName = (orgName: string) =>
+      generateRepoStatsFileName(orgName, batchIndex);
 
     // Stagger batch start to avoid simultaneous API bursts
-    const batchDelay = opts.batchDelay ?? 0;
-    if (batchDelay > 0 && batchIndex > 0) {
-      const waitSeconds = batchIndex * batchDelay;
-      console.log(
-        `Batch ${batchIndex}: waiting ${waitSeconds}s before starting (${batchDelay}s per batch index)...`,
-      );
-      await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1000));
-    }
+    await applyBatchStaggerDelay(batchIndex, opts.batchDelay ?? 0);
   }
 
   const context = await initCommand(opts, config);
