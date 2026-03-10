@@ -120,7 +120,7 @@ jobs:
           echo "Org has $REPO_COUNT repos → $TOTAL_BATCHES batches of $BATCH_SIZE"
 
           # Build JSON array [0, 1, 2, ...]
-          INDICES=$(python3 -c "import json; print(json.dumps(list(range($TOTAL_BATCHES))))")
+          INDICES=$(jq -nc "[range($TOTAL_BATCHES)]")
           echo "matrix={\"batch-index\":$INDICES}" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ secrets.STATS_TOKEN }}
