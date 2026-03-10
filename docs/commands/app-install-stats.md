@@ -134,11 +134,11 @@ Lists each app installed on each repository with its configuration status.
 
 Shows each app and the number of repositories where it is installed.
 
-| Column               | Description                                          |
-| -------------------- | ---------------------------------------------------- |
-| `Org_Name`           | Organization login                                   |
-| `App_Name`           | Name of the installed GitHub App                     |
-| `Repos_Installed_In` | Number of repositories the app is installed in       |
+| Column               | Description                                    |
+| -------------------- | ---------------------------------------------- |
+| `Org_Name`           | Organization login                             |
+| `App_Name`           | Name of the installed GitHub App               |
+| `Repos_Installed_In` | Number of repositories the app is installed in |
 
 ## Authentication Requirements
 
