@@ -24,6 +24,7 @@ const REPO_STATS_FIELDS = `
   }
   # includeParents is set to true by default for rulesets, so this count also
   # includes active rulesets configured at higher levels that apply to this repository.
+  # Explicitly setting it to true for safety in case the default behaviour changes.
   rulesets(includeParents: true) {
     totalCount
   }
