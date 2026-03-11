@@ -22,6 +22,9 @@ const REPO_STATS_FIELDS = `
   branchProtectionRules {
     totalCount
   }
+  rulesets {
+    totalCount
+  }
   commitComments {
     totalCount
   }

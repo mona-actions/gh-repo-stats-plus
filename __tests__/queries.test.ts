@@ -62,6 +62,7 @@ describe('GraphQL Queries', () => {
       const originalFields = [
         'branches',
         'branchProtectionRules',
+        'rulesets',
         'commitComments',
         'collaborators',
         'createdAt',
@@ -186,6 +187,7 @@ describe('GraphQL Queries', () => {
         'rebaseMergeAllowed',
         'releases',
         'repositoryTopics',
+        'rulesets',
         'squashMergeAllowed',
         'stargazerCount',
         'tags',

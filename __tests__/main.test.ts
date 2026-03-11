@@ -46,6 +46,7 @@ describe('initializeCsvFile', () => {
       'Record_Count',
       'Collaborator_Count',
       'Protected_Branch_Count',
+      'Ruleset_Count',
       'PR_Review_Count',
       'Milestone_Count',
       'Issue_Count',
@@ -96,7 +97,7 @@ describe('initializeCsvFile', () => {
     const headerLine = writtenContent.trim();
     const columns = headerLine.split(',');
 
-    expect(columns).toHaveLength(46);
+    expect(columns).toHaveLength(47);
 
     // Verify column order for new columns relative to neighbors
     const isTemplateIdx = columns.indexOf('isTemplate');
@@ -518,6 +519,7 @@ describe('mapToRepoStatsResult', () => {
     expect(result.Has_Wiki).toBe(true);
     expect(result.Collaborator_Count).toBe(5);
     expect(result.Protected_Branch_Count).toBe(1);
+    expect(result.Ruleset_Count).toBe(2);
     expect(result.Milestone_Count).toBe(1);
     expect(result.Branch_Count).toBe(3);
     expect(result.Tag_Count).toBe(3);

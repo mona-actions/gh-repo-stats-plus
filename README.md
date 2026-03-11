@@ -294,6 +294,7 @@ The CSV output includes detailed information about each repository:
 - `Record_Count`: Total number of database records this repository represents
 - `Collaborator_Count`: Number of users who have contributed to this repository
 - `Protected_Branch_Count`: Number of branch protection rules on this repository
+- `Ruleset_Count`: Number of rulesets on this repository
 - `PR_Review_Count`: Number of pull request reviews
 - `Milestone_Count`: Number of issue milestones
 - `Issue_Count`: Number of issues
