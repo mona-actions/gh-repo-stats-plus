@@ -24,6 +24,28 @@ function validate(opts: Arguments) {
       'Cannot specify both orgName (-o, --org-name <org>) and orgList (--org-list <file>)',
     );
   }
+
+  if (opts.batchSize != null) {
+    if (opts.batchSize < 1) {
+      throw new Error('--batch-size must be at least 1');
+    }
+
+    if (opts.batchIndex != null && opts.batchIndex < 0) {
+      throw new Error('--batch-index must be 0 or greater');
+    }
+
+    if (opts.orgList) {
+      throw new Error(
+        'Batch mode (--batch-size) cannot be used with --org-list. Use with a single --org-name instead.',
+      );
+    }
+
+    if (opts.repoList) {
+      throw new Error(
+        'Batch mode (--batch-size) cannot be used with --repo-list. Batch mode generates its own repo list.',
+      );
+    }
+  }
 }
 
 const projectStatsCommand = new commander.Command();
@@ -206,6 +228,32 @@ projectStatsCommand
     )
       .env('CONTINUE_ON_ERROR')
       .argParser(parseBooleanOption),
+  )
+  .addOption(
+    new Option(
+      '--batch-size <size>',
+      'Number of repositories per batch. Fetches the full repo list for the org and processes only the slice for the given batch index.',
+    )
+      .env('BATCH_SIZE')
+      .argParser(parseIntOption),
+  )
+  .addOption(
+    new Option(
+      '--batch-index <index>',
+      'Zero-based batch index to process (default: 0). Requires --batch-size.',
+    )
+      .env('BATCH_INDEX')
+      .default(0)
+      .argParser(parseIntOption),
+  )
+  .addOption(
+    new Option(
+      '--batch-delay <seconds>',
+      'Stagger delay in seconds per batch index before starting (e.g., batch 2 with delay 10 waits 20s). Useful when launching multiple batches simultaneously.',
+    )
+      .env('BATCH_DELAY')
+      .default(0)
+      .argParser(parseIntOption),
   )
   .action(async (options: Arguments) => {
     console.log('Version:', VERSION);

@@ -56,6 +56,18 @@ gh repo-stats-plus project-stats [options]
 - `--delay-between-orgs <seconds>`: Delay between processing organizations (Default: 5)
 - `--continue-on-error`: Continue processing other organizations if one fails
 
+### Batch Processing
+
+- `--batch-size <size>`: Number of repositories per batch. Fetches the full repo list for the org and processes only the slice for the given batch index.
+- `--batch-index <index>`: Zero-based batch index to process (Default: 0). Requires `--batch-size`.
+- `--batch-delay <seconds>`: Stagger delay in seconds per batch index before starting (Default: 0). Useful when launching multiple batches simultaneously.
+
+**Notes:**
+
+- Batch mode cannot be combined with `--org-list` or `--repo-list`.
+- Each batch produces its own output file (with batch index in the name) and state file.
+- Use the `combine-stats` command to merge batch output files after all batches complete.
+
 ## Examples
 
 ### Basic Usage
@@ -101,6 +113,46 @@ gh repo-stats-plus project-stats \
 
 ```bash
 gh repo-stats-plus project-stats --org-name my-org --resume-from-last-save
+```
+
+### Batch Processing
+
+Split a large org into batches of 50 repos and run batch 0:
+
+```bash
+gh repo-stats-plus project-stats \
+  --org-name my-org \
+  --batch-size 50 \
+  --batch-index 0
+```
+
+Run multiple batches in parallel (e.g., in CI matrix jobs):
+
+```bash
+# Job 0
+gh repo-stats-plus project-stats --org-name my-org --batch-size 50 --batch-index 0
+# Job 1
+gh repo-stats-plus project-stats --org-name my-org --batch-size 50 --batch-index 1
+# Job 2
+gh repo-stats-plus project-stats --org-name my-org --batch-size 50 --batch-index 2
+```
+
+Add a stagger delay to avoid simultaneous API bursts when sharing a token:
+
+```bash
+gh repo-stats-plus project-stats \
+  --org-name my-org \
+  --batch-size 50 \
+  --batch-index 2 \
+  --batch-delay 10
+```
+
+Merge batch output files after all batches complete:
+
+```bash
+gh repo-stats-plus combine-stats \
+  --files output/*.csv \
+  --output-file-name combined-project-stats.csv
 ```
 
 ## Output

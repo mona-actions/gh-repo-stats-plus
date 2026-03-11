@@ -12,13 +12,18 @@ import { StateManager } from './state.js';
 import { existsSync, readFileSync } from 'fs';
 
 import { withRetry } from './retry.js';
-import { generateProjectStatsFileName, formatElapsedTime } from './utils.js';
+import {
+  generateProjectStatsFileName,
+  formatElapsedTime,
+  applyBatchStaggerDelay,
+} from './utils.js';
 import {
   initializeCsvFile as initializeCsvFileGeneric,
   appendCsvRow,
   PROJECT_STATS_COLUMNS,
 } from './csv.js';
 import { initCommand, executeCommand } from './init.js';
+import { getRepoListForBatch } from './main.js';
 
 // --- Command configuration ---
 
@@ -34,8 +39,20 @@ const projectStatsConfig: CommandConfig = {
 // --- Public entry point ---
 
 export async function runProjectStats(opts: Arguments): Promise<string[]> {
-  const context = await initCommand(opts, projectStatsConfig);
-  const result = await executeCommand(context, projectStatsConfig);
+  // Build batch-aware config if batch mode is enabled
+  const config = { ...projectStatsConfig };
+  if (opts.batchSize != null) {
+    const batchIndex = opts.batchIndex ?? 0;
+    config.statePrefix = `batch-${batchIndex}-projects`;
+    config.generateFileName = (orgName: string) =>
+      generateProjectStatsFileName(orgName, batchIndex);
+
+    // Stagger batch start to avoid simultaneous API bursts
+    await applyBatchStaggerDelay(batchIndex, opts.batchDelay ?? 0);
+  }
+
+  const context = await initCommand(opts, config);
+  const result = await executeCommand(context, config);
   return result.outputFiles;
 }
 
@@ -135,6 +152,40 @@ async function processProjectStats({
   stateManager: StateManager;
 }): Promise<RepoProcessingResult> {
   logger.debug(`Starting/Resuming processing for ${opts.orgName}`);
+
+  // Batch mode: fetch repo names and process only the batch slice
+  if (opts.batchSize != null) {
+    const batchRepos = await getRepoListForBatch({
+      client,
+      orgName: opts.orgName!,
+      batchSize: opts.batchSize,
+      batchIndex: opts.batchIndex ?? 0,
+      pageSize: opts.pageSize || 100,
+      logger,
+    });
+
+    if (batchRepos.length === 0) {
+      logger.info('No repositories in this batch. Nothing to process.');
+      return {
+        cursor: null,
+        processedRepos: processedState.processedRepos,
+        processedCount: 0,
+        isComplete: true,
+        successCount: state.successCount,
+        retryCount: state.retryCount,
+      };
+    }
+
+    return processProjectStatsFromFile({
+      client,
+      logger,
+      opts: { ...opts, repoList: batchRepos },
+      processedState,
+      state,
+      fileName,
+      stateManager,
+    });
+  }
 
   if (opts.repoList && opts.repoList.length > 0) {
     return processProjectStatsFromFile({

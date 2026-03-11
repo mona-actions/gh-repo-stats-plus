@@ -91,6 +91,9 @@ vi.mock('../src/utils.js', () => ({
   generateProjectStatsFileName: vi
     .fn()
     .mockReturnValue('test-org-project-stats-20250101_000000_ts.csv'),
+  generateRepoStatsFileName: vi
+    .fn()
+    .mockReturnValue('test-org-all_repos-20250101_000000_ts.csv'),
   formatElapsedTime: vi.fn().mockReturnValue('0h 0m 1s'),
   resolveOutputPath: vi
     .fn()

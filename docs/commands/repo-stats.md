@@ -47,6 +47,14 @@ gh repo-stats-plus repo-stats [options]
 - `--output-dir <dir>`: Output directory for generated files and state files (Default: output)
 - `--clean-state`: Remove state file after successful completion
 
+### Batch Processing
+
+- `--batch-size <size>`: Number of repositories per batch. Fetches the full repo list for the org and processes only the slice for the given batch index.
+- `--batch-index <index>`: Zero-based batch index to process (Default: 0). Requires `--batch-size`.
+- `--batch-delay <seconds>`: Stagger delay in seconds per batch index before starting (Default: 0). For example, with `--batch-delay 10`, batch 0 starts immediately, batch 1 waits 10s, batch 2 waits 20s, etc. Useful when launching multiple batches simultaneously to avoid API bursts.
+
+Batch mode cannot be used with `--org-list` or `--repo-list`.
+
 ## Examples
 
 ### Basic Usage
@@ -95,6 +103,29 @@ gh repo-stats-plus repo-stats \
   --verbose
 ```
 
+### Batch Processing
+
+Split a large organization into batches that can run in parallel (e.g., in a GitHub Actions matrix). Each batch produces its own CSV and state file.
+
+```bash
+# Process batch 0 (repos 1-100)
+gh repo-stats-plus repo-stats --org-name github --batch-size 100 --batch-index 0
+
+# Process batch 1 (repos 101-200)
+gh repo-stats-plus repo-stats --org-name github --batch-size 100 --batch-index 1
+
+# Process batch 2 (repos 201-300)
+gh repo-stats-plus repo-stats --org-name github --batch-size 100 --batch-index 2
+
+# Combine all batch outputs
+gh repo-stats-plus combine-stats \
+  --files output/github-all_repos-batch-0-*.csv \
+         output/github-all_repos-batch-1-*.csv \
+         output/github-all_repos-batch-2-*.csv
+```
+
+The total number of batches is logged when batch mode starts (e.g., `Total batches: 5`), so you know how many batch indices to run.
+
 ## Output
 
 Generates:
@@ -104,3 +135,5 @@ Generates:
 - Log files in the `logs/` directory
 
 **Note**: Each organization maintains its own isolated state file in the output directory, allowing you to process multiple organizations without conflicts.
+
+In batch mode, each batch gets its own state file (e.g., `last_known_state_batch-0_<org>.json`) and output file (e.g., `<org>-all_repos-batch-0-<timestamp>.csv`), so batches can run concurrently without conflicts. Use `combine-stats` to merge the batch outputs afterward.

@@ -2,43 +2,43 @@ import { mkdir } from 'fs/promises';
 import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 
-export function generateRepoStatsFileName(orgName: string): string {
-  const timestamp = new Date()
+function generateTimestamp(): string {
+  return new Date()
     .toISOString()
     .replace(/[-:T\.Z]/g, '')
     .slice(0, 12);
-  return `${orgName.toLowerCase()}-all_repos-${timestamp}_ts.csv`;
 }
 
-export function generateProjectStatsFileName(orgName: string): string {
-  const timestamp = new Date()
-    .toISOString()
-    .replace(/[-:T\.Z]/g, '')
-    .slice(0, 12);
-  return `${orgName.toLowerCase()}-project-stats-${timestamp}_ts.csv`;
+export function generateRepoStatsFileName(
+  orgName: string,
+  batchIndex?: number,
+): string {
+  const timestamp = generateTimestamp();
+  const batchSuffix = batchIndex != null ? `-batch-${batchIndex}` : '';
+  return `${orgName.toLowerCase()}-all_repos${batchSuffix}-${timestamp}_ts.csv`;
+}
+
+export function generateProjectStatsFileName(
+  orgName: string,
+  batchIndex?: number,
+): string {
+  const timestamp = generateTimestamp();
+  const batchSuffix = batchIndex != null ? `-batch-${batchIndex}` : '';
+  return `${orgName.toLowerCase()}-project-stats${batchSuffix}-${timestamp}_ts.csv`;
 }
 
 export function generatePerRepoInstallFileName(orgName: string): string {
-  const timestamp = new Date()
-    .toISOString()
-    .replace(/[-:T\.Z]/g, '')
-    .slice(0, 12);
+  const timestamp = generateTimestamp();
   return `${orgName.toLowerCase()}-per-repo-installations-${timestamp}_ts.csv`;
 }
 
 export function generateRepoAppDetailFileName(orgName: string): string {
-  const timestamp = new Date()
-    .toISOString()
-    .replace(/[-:T\.Z]/g, '')
-    .slice(0, 12);
+  const timestamp = generateTimestamp();
   return `${orgName.toLowerCase()}-repo-app-details-${timestamp}_ts.csv`;
 }
 
 export function generateAppReposFileName(orgName: string): string {
-  const timestamp = new Date()
-    .toISOString()
-    .replace(/[-:T\.Z]/g, '')
-    .slice(0, 12);
+  const timestamp = generateTimestamp();
   return `${orgName.toLowerCase()}-app-repos-${timestamp}_ts.csv`;
 }
 
@@ -290,9 +290,19 @@ export function parseFileAsNewlineSeparatedOption(
 }
 
 export function generateCombinedStatsFileName(): string {
-  const timestamp = new Date()
-    .toISOString()
-    .replace(/[-:T\.Z]/g, '')
-    .slice(0, 12);
+  const timestamp = generateTimestamp();
   return `combined-stats-${timestamp}_ts.csv`;
+}
+
+export async function applyBatchStaggerDelay(
+  batchIndex: number,
+  batchDelay: number,
+): Promise<void> {
+  if (batchDelay > 0 && batchIndex > 0) {
+    const waitSeconds = batchIndex * batchDelay;
+    console.log(
+      `Batch ${batchIndex}: waiting ${waitSeconds}s before starting (${batchDelay}s per batch index)...`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1000));
+  }
 }
