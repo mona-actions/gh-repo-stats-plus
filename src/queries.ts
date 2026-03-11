@@ -22,6 +22,8 @@ const REPO_STATS_FIELDS = `
   branchProtectionRules {
     totalCount
   }
+  # includeParents is set to true by default for rulesets, so this count also
+  # includes rulesets configured at higher levels that apply to this repository.
   rulesets {
     totalCount
   }
