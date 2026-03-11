@@ -87,7 +87,7 @@ describe('initializeCsvFile', () => {
     }
   });
 
-  it('should include all 46 columns in correct order', () => {
+  it('should include all 47 columns in correct order', () => {
     vi.mocked(existsSync).mockReturnValue(false);
     const logger = createMockLogger();
 
