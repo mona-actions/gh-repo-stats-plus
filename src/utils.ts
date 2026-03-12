@@ -1,6 +1,7 @@
 import { mkdir } from 'fs/promises';
 import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
+import { VALID_API_VERSIONS } from './service.js';
 
 function generateTimestamp(): string {
   return new Date()
@@ -305,4 +306,14 @@ export async function applyBatchStaggerDelay(
     );
     await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1000));
   }
+}
+
+export function parseApiVersionOption(value: string): string {
+  const valid = VALID_API_VERSIONS as readonly string[];
+  if (!valid.includes(value)) {
+    throw new Error(
+      `Invalid API version: "${value}". Allowed values: ${valid.join(', ')}`,
+    );
+  }
+  return value;
 }

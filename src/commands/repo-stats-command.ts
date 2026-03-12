@@ -4,6 +4,7 @@ import {
   parseIntOption,
   parseBooleanOption,
   parseFileAsNewlineSeparatedOption,
+  parseApiVersionOption,
 } from '../utils.js';
 import { Arguments } from '../types.js';
 import VERSION from '../version.js';
@@ -82,6 +83,15 @@ repoStatsCommand
   )
   .addOption(
     new Option('--proxy-url <url>', 'Proxy URL if required').env('PROXY_URL'),
+  )
+  .addOption(
+    new Option(
+      '--api-version <version>',
+      'GitHub API version to use (2022-11-28 or 2026-03-10)',
+    )
+      .env('GITHUB_API_VERSION')
+      .default('2022-11-28')
+      .argParser(parseApiVersionOption),
   )
   .addOption(
     new Option('-v, --verbose', 'Enable verbose logging').env('VERBOSE'),

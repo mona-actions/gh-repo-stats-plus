@@ -1,4 +1,4 @@
-import { OctokitClient } from './service.js';
+import { OctokitClient, DEFAULT_API_VERSION } from './service.js';
 import { createOctokit } from './octokit.js';
 import {
   Arguments,
@@ -49,7 +49,7 @@ export async function initCommand(
     logger,
   );
 
-  const client = new OctokitClient(octokit);
+  const client = new OctokitClient(octokit, opts.apiVersion ?? DEFAULT_API_VERSION);
 
   // Only initialize StateManager for single-org mode
   let stateManager: StateManager | undefined;

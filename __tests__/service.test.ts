@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Octokit } from 'octokit';
-import { OctokitClient } from '../src/service.js';
+import { OctokitClient, DEFAULT_API_VERSION, VALID_API_VERSIONS } from '../src/service.js';
 
 // Setup mocks
 vi.mock('octokit');
@@ -594,6 +594,31 @@ describe('OctokitClient', () => {
       expect(finalResult.message).toContain(
         'We have run out of GraphQL calls and need to sleep',
       );
+    });
+  });
+
+  describe('constructor and API version', () => {
+    it('should export DEFAULT_API_VERSION as 2022-11-28', () => {
+      expect(DEFAULT_API_VERSION).toBe('2022-11-28');
+    });
+
+    it('should export VALID_API_VERSIONS containing both supported versions', () => {
+      expect(VALID_API_VERSIONS).toContain('2022-11-28');
+      expect(VALID_API_VERSIONS).toContain('2026-03-10');
+    });
+
+    it('should use the default API version when none is provided', () => {
+      const defaultClient = new OctokitClient(mockOctokit as unknown as Octokit);
+      // Verify it was created without errors (default version applied)
+      expect(defaultClient).toBeDefined();
+    });
+
+    it('should accept a custom API version', () => {
+      const customClient = new OctokitClient(
+        mockOctokit as unknown as Octokit,
+        '2026-03-10',
+      );
+      expect(customClient).toBeDefined();
     });
   });
 });
