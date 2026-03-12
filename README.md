@@ -55,6 +55,8 @@ This TypeScript rewrite offers several advantages:
 
 11. **Project Stats Tracking**: Counts unique ProjectsV2 linked to repositories via issues and directly, based on [jcantosz/Count-repo-projects](https://github.com/jcantosz/Count-repo-projects).
 
+12. **Batch Processing**: Split large organizations into parallel batches using `--batch-size` and `--batch-index`, ideal for GitHub Actions matrix strategies. Includes a `combine-stats` command to merge batch results. See the [Batch Processing Guide](docs/batch-processing.md).
+
 ## Technical Implementation
 
 The extension is built using modern TypeScript patterns with:
@@ -69,13 +71,14 @@ The extension is built using modern TypeScript patterns with:
 
 ## Documentation
 
-| Guide                                | Description                            |
-| ------------------------------------ | -------------------------------------- |
-| [Installation](docs/installation.md) | Prerequisites and installation methods |
-| [Usage Guide](docs/usage.md)         | Authentication and usage examples      |
-| [Commands](docs/commands.md)         | Complete command reference             |
-| [LFS Sizing](docs/lfs-sizing.md)     | Git LFS storage analysis per repo      |
-| [Development](docs/development.md)   | Setup and development workflow         |
+| Guide                                        | Description                                   |
+| -------------------------------------------- | --------------------------------------------- |
+| [Installation](docs/installation.md)         | Prerequisites and installation methods        |
+| [Usage Guide](docs/usage.md)                 | Authentication and usage examples             |
+| [Commands](docs/commands.md)                 | Complete command reference                    |
+| [LFS Sizing](docs/lfs-sizing.md)             | Git LFS storage analysis per repo             |
+| [Development](docs/development.md)           | Setup and development workflow                |
+| [Batch Processing](docs/batch-processing.md) | Parallel batch processing with GitHub Actions |
 
 ## Common Usage Examples
 
@@ -176,6 +179,23 @@ gh repo-stats-plus missing-repos \
 gh repo-stats-plus repo-stats --org-name my-org --auto-process-missing
 ```
 
+### Batch Processing
+
+Split a large organization into parallel batches (e.g., for GitHub Actions matrix jobs):
+
+```bash
+# Process batch 0 of 50 repos each
+gh repo-stats-plus repo-stats --org-name my-org --batch-size 50 --batch-index 0
+
+# Combine batch CSV files after all batches complete
+gh repo-stats-plus combine-stats \
+  --files output/*.csv \
+  --output-dir output \
+  --output-file-name combined-stats.csv
+```
+
+See the [Batch Processing Guide](docs/batch-processing.md) for complete GitHub Actions workflow examples.
+
 ### Project Statistics
 
 ```bash
@@ -218,6 +238,12 @@ gh repo-stats-plus project-stats --org-name my-org --resume-from-last-save
 - `--repo-list <file>`: Path to file containing list of repositories to process (format: owner/repo_name)
 - `--auto-process-missing`: Automatically process any missing repositories when main processing is complete
 - `--clean-state`: Remove state file after successful completion
+
+**Batch Processing**:
+
+- `--batch-size <size>`: Number of repositories per batch
+- `--batch-index <index>`: Zero-based index of the batch to process
+- `--batch-delay <seconds>`: Delay before starting a batch (multiplied by batch index to stagger parallel runs)
 
 **Configuration**:
 
