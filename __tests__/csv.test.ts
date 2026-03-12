@@ -249,7 +249,7 @@ describe('csv', () => {
     });
 
     it('should have expected repo stats column count', () => {
-      expect(REPO_STATS_COLUMNS).toHaveLength(46);
+      expect(REPO_STATS_COLUMNS).toHaveLength(47);
     });
 
     it('should have expected project stats column count', () => {

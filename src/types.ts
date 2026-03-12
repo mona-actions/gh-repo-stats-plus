@@ -179,6 +179,7 @@ export interface RepositoryStats {
   autoMergeAllowed: boolean;
   branches: TotalCount;
   branchProtectionRules: TotalCount;
+  rulesets: TotalCount;
   commitComments: TotalCount;
   collaborators: TotalCount;
   createdAt: string;
@@ -284,6 +285,7 @@ export interface RepoStatsResult {
   Record_Count: number;
   Collaborator_Count: number;
   Protected_Branch_Count: number;
+  Ruleset_Count: number;
   PR_Review_Count: number;
   Milestone_Count: number;
   Issue_Count: number;

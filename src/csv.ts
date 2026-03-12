@@ -18,6 +18,7 @@ export const REPO_STATS_COLUMNS = [
   'Record_Count',
   'Collaborator_Count',
   'Protected_Branch_Count',
+  'Ruleset_Count',
   'PR_Review_Count',
   'Milestone_Count',
   'Issue_Count',
