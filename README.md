@@ -184,13 +184,21 @@ gh repo-stats-plus repo-stats --org-name my-org --auto-process-missing
 Split a large organization into parallel batches (e.g., for GitHub Actions matrix jobs):
 
 ```bash
-# Process batch 0 of 50 repos each
-gh repo-stats-plus repo-stats --org-name my-org --batch-size 50 --batch-index 0
+# Use a dedicated directory for this workflow/run to avoid mixing CSVs from other commands
+RUN_OUTPUT_DIR="output/run-$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$RUN_OUTPUT_DIR"
 
-# Combine batch CSV files after all batches complete
+# Process batch 0 of 50 repos each
+gh repo-stats-plus repo-stats \
+  --org-name my-org \
+  --batch-size 50 \
+  --batch-index 0 \
+  --output-dir "$RUN_OUTPUT_DIR"
+
+# Combine only this run's batch CSV files after all batches complete
 gh repo-stats-plus combine-stats \
-  --files output/*.csv \
-  --output-dir output \
+  --files "$RUN_OUTPUT_DIR"/*.csv \
+  --output-dir "$RUN_OUTPUT_DIR" \
   --output-file-name combined-stats.csv
 ```
 
