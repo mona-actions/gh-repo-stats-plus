@@ -170,6 +170,61 @@ if [ "$SKIP_REPO_STATS" = true ] && [ "$SKIP_PROJECT_STATS" = true ]; then
   exit 1
 fi
 
+# Validate numeric options to avoid arithmetic errors later
+
+# BATCH_SIZE: integer >= 1
+if ! [[ "$BATCH_SIZE" =~ ^[0-9]+$ ]]; then
+  echo "Error: --batch-size must be a positive integer (got: '$BATCH_SIZE')"
+  exit 1
+fi
+if [ "$BATCH_SIZE" -lt 1 ]; then
+  echo "Error: --batch-size must be at least 1 (got: $BATCH_SIZE)"
+  exit 1
+fi
+
+# BATCH_INDEX: integer >= 0
+if ! [[ "$BATCH_INDEX" =~ ^[0-9]+$ ]]; then
+  echo "Error: --batch-index must be a non-negative integer (got: '$BATCH_INDEX')"
+  exit 1
+fi
+
+# BATCH_COUNT: optional, but if set must be integer >= 1
+if [ -n "$BATCH_COUNT" ]; then
+  if ! [[ "$BATCH_COUNT" =~ ^[0-9]+$ ]]; then
+    echo "Error: --batch-count must be a positive integer (got: '$BATCH_COUNT')"
+    exit 1
+  fi
+  if [ "$BATCH_COUNT" -lt 1 ]; then
+    echo "Error: --batch-count must be at least 1 (got: $BATCH_COUNT)"
+    exit 1
+  fi
+fi
+
+# BATCH_DELAY: integer >= 0
+if ! [[ "$BATCH_DELAY" =~ ^[0-9]+$ ]]; then
+  echo "Error: --batch-delay must be a non-negative integer (got: '$BATCH_DELAY')"
+  exit 1
+fi
+
+# PAGE_SIZE: integer >= 1
+if ! [[ "$PAGE_SIZE" =~ ^[0-9]+$ ]]; then
+  echo "Error: --page-size must be a positive integer (got: '$PAGE_SIZE')"
+  exit 1
+fi
+if [ "$PAGE_SIZE" -lt 1 ]; then
+  echo "Error: --page-size must be at least 1 (got: $PAGE_SIZE)"
+  exit 1
+fi
+
+# EXTRA_PAGE_SIZE: integer >= 1
+if ! [[ "$EXTRA_PAGE_SIZE" =~ ^[0-9]+$ ]]; then
+  echo "Error: --extra-page-size must be a positive integer (got: '$EXTRA_PAGE_SIZE')"
+  exit 1
+fi
+if [ "$EXTRA_PAGE_SIZE" -lt 1 ]; then
+  echo "Error: --extra-page-size must be at least 1 (got: $EXTRA_PAGE_SIZE)"
+  exit 1
+fi
 # Build the run command prefix
 if [ "$LOCAL" = true ]; then
   RUN_CMD="npx tsx src/index.ts"
