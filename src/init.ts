@@ -49,7 +49,10 @@ export async function initCommand(
     logger,
   );
 
-  const client = new OctokitClient(octokit, opts.apiVersion ?? DEFAULT_API_VERSION);
+  const client = new OctokitClient(
+    octokit,
+    opts.apiVersion ?? DEFAULT_API_VERSION,
+  );
 
   // Only initialize StateManager for single-org mode
   let stateManager: StateManager | undefined;
