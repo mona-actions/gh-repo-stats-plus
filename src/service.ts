@@ -29,12 +29,21 @@ import {
 
 type Repository = components['schemas']['repository'];
 
-export class OctokitClient {
-  private readonly octokit_headers = {
-    'X-GitHub-Api-Version': '2022-11-28',
-  };
+export const VALID_API_VERSIONS = ['2022-11-28', '2026-03-10'] as const;
+export type GitHubApiVersion = (typeof VALID_API_VERSIONS)[number];
+export const DEFAULT_API_VERSION: GitHubApiVersion = '2022-11-28';
 
-  constructor(private readonly octokit: Octokit) {}
+export class OctokitClient {
+  private readonly octokit_headers: { 'X-GitHub-Api-Version': string };
+
+  constructor(
+    private readonly octokit: Octokit,
+    apiVersion: string = DEFAULT_API_VERSION,
+  ) {
+    this.octokit_headers = {
+      'X-GitHub-Api-Version': apiVersion,
+    };
+  }
 
   async generateAppToken(): Promise<string> {
     const appToken = (await this.octokit.auth({

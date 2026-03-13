@@ -11,6 +11,7 @@ import {
   parseCommaSeparatedOption,
   parseNewlineSeparatedOption,
   parseFileAsNewlineSeparatedOption,
+  parseApiVersionOption,
 } from '../src/utils.js';
 import { existsSync, readFileSync } from 'fs';
 
@@ -505,6 +506,26 @@ describe('Utils', () => {
       const content =
         '*.jpg filter=lfs diff=lfs merge=lfs -text\r\n*.png binary\r\n';
       expect(hasLfsTracking(content)).toBe(true);
+    });
+  });
+
+  describe('parseApiVersionOption', () => {
+    it('should accept 2022-11-28 as a valid version', () => {
+      expect(parseApiVersionOption('2022-11-28')).toBe('2022-11-28');
+    });
+
+    it('should accept 2026-03-10 as a valid version', () => {
+      expect(parseApiVersionOption('2026-03-10')).toBe('2026-03-10');
+    });
+
+    it('should throw an error for an invalid version', () => {
+      expect(() => parseApiVersionOption('2024-01-01')).toThrow(
+        'Invalid API version: "2024-01-01"',
+      );
+    });
+
+    it('should throw an error for an empty string', () => {
+      expect(() => parseApiVersionOption('')).toThrow('Invalid API version');
     });
   });
 });
