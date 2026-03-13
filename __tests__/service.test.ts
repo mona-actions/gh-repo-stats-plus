@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Octokit } from 'octokit';
-import { OctokitClient, DEFAULT_API_VERSION, VALID_API_VERSIONS } from '../src/service.js';
+import {
+  OctokitClient,
+  DEFAULT_API_VERSION,
+  VALID_API_VERSIONS,
+} from '../src/service.js';
 
 // Setup mocks
 vi.mock('octokit');
@@ -608,7 +612,9 @@ describe('OctokitClient', () => {
     });
 
     it('should use the default API version header when none is provided', async () => {
-      const defaultClient = new OctokitClient(mockOctokit as unknown as Octokit);
+      const defaultClient = new OctokitClient(
+        mockOctokit as unknown as Octokit,
+      );
 
       mockOctokit.paginate.iterator.mockReturnValue({
         async *[Symbol.asyncIterator]() {
