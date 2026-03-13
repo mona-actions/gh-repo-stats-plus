@@ -7,6 +7,7 @@ import {
   parseApiVersionOption,
 } from '../utils.js';
 import { Arguments } from '../types.js';
+import { DEFAULT_API_VERSION, VALID_API_VERSIONS } from '../service.js';
 import VERSION from '../version.js';
 
 import { run } from '../main.js';
@@ -87,10 +88,10 @@ repoStatsCommand
   .addOption(
     new Option(
       '--api-version <version>',
-      'GitHub API version to use (2022-11-28 or 2026-03-10)',
+      `GitHub API version to use (${VALID_API_VERSIONS.join(' or ')})`,
     )
       .env('GITHUB_API_VERSION')
-      .default('2022-11-28')
+      .default(DEFAULT_API_VERSION)
       .argParser(parseApiVersionOption),
   )
   .addOption(

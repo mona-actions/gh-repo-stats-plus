@@ -607,18 +607,49 @@ describe('OctokitClient', () => {
       expect(VALID_API_VERSIONS).toContain('2026-03-10');
     });
 
-    it('should use the default API version when none is provided', () => {
+    it('should use the default API version header when none is provided', async () => {
       const defaultClient = new OctokitClient(mockOctokit as unknown as Octokit);
-      // Verify it was created without errors (default version applied)
-      expect(defaultClient).toBeDefined();
+
+      mockOctokit.paginate.iterator.mockReturnValue({
+        async *[Symbol.asyncIterator]() {
+          yield { data: [] };
+        },
+      });
+
+      for await (const _ of defaultClient.listReposForOrg('testorg', 10)) {
+        // consume
+      }
+
+      expect(mockOctokit.paginate.iterator).toHaveBeenCalledWith(
+        mockOctokit.rest.repos.listForOrg,
+        expect.objectContaining({
+          headers: { 'X-GitHub-Api-Version': '2022-11-28' },
+        }),
+      );
     });
 
-    it('should accept a custom API version', () => {
+    it('should use the custom API version header when 2026-03-10 is provided', async () => {
       const customClient = new OctokitClient(
         mockOctokit as unknown as Octokit,
         '2026-03-10',
       );
-      expect(customClient).toBeDefined();
+
+      mockOctokit.paginate.iterator.mockReturnValue({
+        async *[Symbol.asyncIterator]() {
+          yield { data: [] };
+        },
+      });
+
+      for await (const _ of customClient.listReposForOrg('testorg', 10)) {
+        // consume
+      }
+
+      expect(mockOctokit.paginate.iterator).toHaveBeenCalledWith(
+        mockOctokit.rest.repos.listForOrg,
+        expect.objectContaining({
+          headers: { 'X-GitHub-Api-Version': '2026-03-10' },
+        }),
+      );
     });
   });
 });
