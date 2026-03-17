@@ -55,6 +55,8 @@ This TypeScript rewrite offers several advantages:
 
 11. **Project Stats Tracking**: Counts unique ProjectsV2 linked to repositories via issues and directly, based on [jcantosz/Count-repo-projects](https://github.com/jcantosz/Count-repo-projects).
 
+12. **Batch Processing**: Split large organizations into parallel batches using `--batch-size` and `--batch-index`, ideal for GitHub Actions matrix strategies. Includes a `combine-stats` command to merge batch results. See the [Batch Processing Guide](docs/batch-processing.md).
+
 ## Technical Implementation
 
 The extension is built using modern TypeScript patterns with:
@@ -69,13 +71,14 @@ The extension is built using modern TypeScript patterns with:
 
 ## Documentation
 
-| Guide                                | Description                            |
-| ------------------------------------ | -------------------------------------- |
-| [Installation](docs/installation.md) | Prerequisites and installation methods |
-| [Usage Guide](docs/usage.md)         | Authentication and usage examples      |
-| [Commands](docs/commands.md)         | Complete command reference             |
-| [LFS Sizing](docs/lfs-sizing.md)     | Git LFS storage analysis per repo      |
-| [Development](docs/development.md)   | Setup and development workflow         |
+| Guide                                        | Description                                   |
+| -------------------------------------------- | --------------------------------------------- |
+| [Installation](docs/installation.md)         | Prerequisites and installation methods        |
+| [Usage Guide](docs/usage.md)                 | Authentication and usage examples             |
+| [Commands](docs/commands.md)                 | Complete command reference                    |
+| [LFS Sizing](docs/lfs-sizing.md)             | Git LFS storage analysis per repo             |
+| [Development](docs/development.md)           | Setup and development workflow                |
+| [Batch Processing](docs/batch-processing.md) | Parallel batch processing with GitHub Actions |
 
 ## Common Usage Examples
 
@@ -176,6 +179,31 @@ gh repo-stats-plus missing-repos \
 gh repo-stats-plus repo-stats --org-name my-org --auto-process-missing
 ```
 
+### Batch Processing
+
+Split a large organization into parallel batches (e.g., for GitHub Actions matrix jobs):
+
+```bash
+# Use a dedicated directory for this workflow/run to avoid mixing CSVs from other commands
+RUN_OUTPUT_DIR="output/run-$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$RUN_OUTPUT_DIR"
+
+# Process batch 0 of 50 repos each
+gh repo-stats-plus repo-stats \
+  --org-name my-org \
+  --batch-size 50 \
+  --batch-index 0 \
+  --output-dir "$RUN_OUTPUT_DIR"
+
+# Combine only this run's batch CSV files after all batches complete
+gh repo-stats-plus combine-stats \
+  --files "$RUN_OUTPUT_DIR"/*.csv \
+  --output-dir "$RUN_OUTPUT_DIR" \
+  --output-file-name combined-stats.csv
+```
+
+See the [Batch Processing Guide](docs/batch-processing.md) for complete GitHub Actions workflow examples.
+
 ### Project Statistics
 
 ```bash
@@ -218,6 +246,12 @@ gh repo-stats-plus project-stats --org-name my-org --resume-from-last-save
 - `--repo-list <file>`: Path to file containing list of repositories to process (format: owner/repo_name)
 - `--auto-process-missing`: Automatically process any missing repositories when main processing is complete
 - `--clean-state`: Remove state file after successful completion
+
+**Batch Processing**:
+
+- `--batch-size <size>`: Number of repositories per batch
+- `--batch-index <index>`: Zero-based index of the batch to process
+- `--batch-delay <seconds>`: Delay before starting a batch (multiplied by batch index to stagger parallel runs)
 
 **Configuration**:
 
@@ -294,7 +328,6 @@ The CSV output includes detailed information about each repository:
 - `Record_Count`: Total number of database records this repository represents
 - `Collaborator_Count`: Number of users who have contributed to this repository
 - `Protected_Branch_Count`: Number of branch protection rules on this repository
-- `Ruleset_Count`: Number of rulesets that apply to this repository, inclusive of active rulesets defined at the organization level
 - `PR_Review_Count`: Number of pull request reviews
 - `Milestone_Count`: Number of issue milestones
 - `Issue_Count`: Number of issues
