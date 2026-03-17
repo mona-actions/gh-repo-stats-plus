@@ -4,8 +4,10 @@ import {
   parseIntOption,
   parseBooleanOption,
   parseFileAsNewlineSeparatedOption,
+  parseApiVersionOption,
 } from '../utils.js';
 import { Arguments } from '../types.js';
+import { DEFAULT_API_VERSION, VALID_API_VERSIONS } from '../service.js';
 import VERSION from '../version.js';
 
 import { runProjectStats } from '../projects.js';
@@ -82,6 +84,15 @@ projectStatsCommand
   )
   .addOption(
     new Option('--proxy-url <url>', 'Proxy URL if required').env('PROXY_URL'),
+  )
+  .addOption(
+    new Option(
+      '--api-version <version>',
+      `GitHub API version to use (${VALID_API_VERSIONS.join(' or ')})`,
+    )
+      .env('GITHUB_API_VERSION')
+      .default(DEFAULT_API_VERSION)
+      .argParser(parseApiVersionOption),
   )
   .addOption(
     new Option('-v, --verbose', 'Enable verbose logging').env('VERBOSE'),

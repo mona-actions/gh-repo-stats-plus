@@ -1,7 +1,8 @@
 import * as commander from 'commander';
 import { resolve, isAbsolute } from 'path';
 import VERSION from '../version.js';
-import { parseIntOption } from '../utils.js';
+import { parseIntOption, parseApiVersionOption } from '../utils.js';
+import { DEFAULT_API_VERSION, VALID_API_VERSIONS } from '../service.js';
 import { Arguments } from '../types.js';
 import { checkForMissingRepos } from '../main.js';
 
@@ -40,6 +41,15 @@ missingReposCommand
   )
   .addOption(
     new Option('--proxy-url <url>', 'Proxy URL if required').env('PROXY_URL'),
+  )
+  .addOption(
+    new Option(
+      '--api-version <version>',
+      `GitHub API version to use (${VALID_API_VERSIONS.join(' or ')})`,
+    )
+      .env('GITHUB_API_VERSION')
+      .default(DEFAULT_API_VERSION)
+      .argParser(parseApiVersionOption),
   )
   .addOption(
     new Option('-v, --verbose', 'Enable verbose logging').env('VERBOSE'),

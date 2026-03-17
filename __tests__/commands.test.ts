@@ -345,5 +345,14 @@ describe('Commands', () => {
         expect(option).toBeDefined();
       });
     });
+
+    it('should have --api-version option with default 2022-11-28', () => {
+      const option = repoStatsCommand.options.find(
+        (opt) => opt.long === '--api-version',
+      );
+      expect(option).toBeDefined();
+      expect(option?.defaultValue).toBe('2022-11-28');
+      expect(option?.envVar).toBe('GITHUB_API_VERSION');
+    });
   });
 });

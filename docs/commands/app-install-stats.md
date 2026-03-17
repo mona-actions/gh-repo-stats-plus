@@ -27,6 +27,7 @@ gh repo-stats-plus app-install-stats [options]
 
 - `-u, --base-url <url>`: GitHub API base URL (Default: `https://api.github.com`)
 - `--proxy-url <url>`: Proxy URL if required
+- `--api-version <version>`: GitHub API version to use (`2022-11-28` or `2026-03-10`, Default: `2022-11-28`, Env: `GITHUB_API_VERSION`)
 - `--output-dir <dir>`: Output directory for generated files (Default: output)
 - `--output-file-name <name>`: Name for the primary output CSV file (default: auto-generated with timestamp)
 - `-v, --verbose`: Enable verbose logging

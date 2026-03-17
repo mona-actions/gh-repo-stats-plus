@@ -17,6 +17,7 @@ gh repo-stats-plus missing-repos [options]
 - `-t, --access-token <token>`: GitHub access token
 - `-u, --base-url <url>`: GitHub API base URL (Default: `https://api.github.com`)
 - `--proxy-url <url>`: Proxy URL if required
+- `--api-version <version>`: GitHub API version to use (`2022-11-28` or `2026-03-10`, Default: `2022-11-28`, Env: `GITHUB_API_VERSION`)
 - `-v, --verbose`: Enable verbose logging
 
 ### GitHub App Authentication

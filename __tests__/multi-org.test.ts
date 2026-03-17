@@ -86,6 +86,8 @@ vi.mock('../src/service.js', () => ({
       }),
     };
   }),
+  DEFAULT_API_VERSION: '2022-11-28',
+  VALID_API_VERSIONS: ['2022-11-28', '2026-03-10'],
 }));
 
 // Mock utils
