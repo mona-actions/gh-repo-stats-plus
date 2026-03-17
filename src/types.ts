@@ -66,6 +66,9 @@ export interface Arguments {
   skipPerRepoInstallCsv?: boolean;
   skipRepoAppDetailCsv?: boolean;
   skipAppReposCsv?: boolean;
+
+  // GitHub API version
+  apiVersion?: string;
 }
 
 export type AuthResponse = {
