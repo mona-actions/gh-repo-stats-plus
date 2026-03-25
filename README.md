@@ -57,6 +57,8 @@ This TypeScript rewrite offers several advantages:
 
 12. **Batch Processing**: Split large organizations into parallel batches using `--batch-size` and `--batch-index`, ideal for GitHub Actions matrix strategies. Includes a `combine-stats` command to merge batch results. See the [Batch Processing Guide](docs/batch-processing.md).
 
+13. **CSV Post-Processing**: Transform and standardize CSV data using configurable rules for pattern matching, value replacement, and indicator column generation. Based on [jcantosz/generate-repo-report/post-process](https://github.com/jcantosz/generate-repo-report/tree/main/post-process). See the [Post-Process Command Reference](docs/commands/post-process.md).
+
 ## Technical Implementation
 
 The extension is built using modern TypeScript patterns with:
@@ -71,14 +73,15 @@ The extension is built using modern TypeScript patterns with:
 
 ## Documentation
 
-| Guide                                        | Description                                   |
-| -------------------------------------------- | --------------------------------------------- |
-| [Installation](docs/installation.md)         | Prerequisites and installation methods        |
-| [Usage Guide](docs/usage.md)                 | Authentication and usage examples             |
-| [Commands](docs/commands.md)                 | Complete command reference                    |
-| [LFS Sizing](docs/lfs-sizing.md)             | Git LFS storage analysis per repo             |
-| [Development](docs/development.md)           | Setup and development workflow                |
-| [Batch Processing](docs/batch-processing.md) | Parallel batch processing with GitHub Actions |
+| Guide                                            | Description                                   |
+| ------------------------------------------------ | --------------------------------------------- |
+| [Installation](docs/installation.md)             | Prerequisites and installation methods        |
+| [Usage Guide](docs/usage.md)                     | Authentication and usage examples             |
+| [Commands](docs/commands.md)                     | Complete command reference                    |
+| [LFS Sizing](docs/lfs-sizing.md)                 | Git LFS storage analysis per repo             |
+| [Development](docs/development.md)               | Setup and development workflow                |
+| [Batch Processing](docs/batch-processing.md)     | Parallel batch processing with GitHub Actions |
+| [Post-Processing](docs/commands/post-process.md) | CSV transformation with configurable rules    |
 
 ## Common Usage Examples
 
@@ -219,6 +222,24 @@ gh repo-stats-plus project-stats --org-list orgs.txt --continue-on-error
 # Resume interrupted processing
 gh repo-stats-plus project-stats --org-name my-org --resume-from-last-save
 ```
+
+### Post-Processing
+
+```bash
+# Post-process a combined CSV with rules
+gh repo-stats-plus post-process \
+  --input output/combined-stats.csv \
+  --rules-file post-process.rules.json
+
+# Custom output file and directory
+gh repo-stats-plus post-process \
+  --input output/combined-stats.csv \
+  --rules-file rules.json \
+  --output-file-name final-report.csv \
+  --output-dir ./reports
+```
+
+See the [Post-Process Command Reference](docs/commands/post-process.md) for rules configuration details and examples. A sample rules file is included at [`docs/examples/post-process.rules.json`](docs/examples/post-process.rules.json).
 
 #### Repo Stats Options
 
