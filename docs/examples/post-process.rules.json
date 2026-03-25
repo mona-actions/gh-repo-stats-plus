@@ -1,0 +1,45 @@
+{
+  "rules": [
+    {
+      "columns": ["*"],
+      "pattern": "(\\d+)",
+      "fallback": "1+",
+      "emptyValue": "0",
+      "replacement": "$1"
+    },
+    {
+      "columns": [
+        "git-lfs-objects",
+        "git-submodules",
+        "repository-pages-customdomain",
+        "repository-code-scanning-default-setup"
+      ],
+      "fallback": true,
+      "emptyValue": false
+    },
+    {
+      "columns": ["repository-releases", "repository-disk-usage"],
+      "pattern": "(\\d+[.]?\\d*\\s+[KkMmGgTt][Bb])",
+      "fallback": ">1 GB",
+      "emptyValue": "No problem",
+      "replacement": "$1"
+    },
+    {
+      "columns": ["repository-releases"],
+      "pattern": "(\\d+[.]?\\d*\\s+[GgTt][Bb])",
+      "fallback": ">5 GB",
+      "replacement": ">$1"
+    }
+  ],
+  "processColumns": {
+    "columnRanges": [{ "start": 28 }]
+  },
+  "indicatorColumns": [
+    {
+      "name": "has_unmigratable",
+      "sourceColumnRanges": [{ "start": 28 }],
+      "trueValue": true,
+      "falseValue": false
+    }
+  ]
+}
