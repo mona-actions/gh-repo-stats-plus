@@ -38,6 +38,9 @@ set -e
 #   --lfs-file <file>        Include an existing LFS sizing CSV in combine-stats
 #   --run-audit              Run migration audit (requires gh migration-audit extension)
 #   --audit-file <file>      Use an existing audit CSV instead of running audit
+#   --post-process-rules <file> Path to post-process rules JSON file
+#   --skip-post-process      Skip the post-process step
+#   --post-process-file <f>  Use an existing post-processed CSV instead of running post-process
 #   --verbose                Enable verbose logging
 #   --help                   Show this help message
 #
@@ -79,6 +82,9 @@ usage() {
   echo "  --lfs-file <file>          Include existing LFS sizing CSV in combine-stats"
   echo "  --run-audit                Run migration audit (requires gh migration-audit)"
   echo "  --audit-file <file>        Use existing audit CSV (implies --run-audit)"
+  echo "  --post-process-rules <f>   Path to post-process rules JSON file"
+  echo "  --skip-post-process        Skip the post-process step"
+  echo "  --post-process-file <f>    Use existing post-processed CSV (skips post-process)"
   echo "  --verbose                  Enable verbose logging"
   echo "  --help                     Show this help message"
   echo ""
@@ -116,6 +122,9 @@ APP_INSTALL_STATS_FILE=""
 LFS_FILE=""
 RUN_AUDIT=false
 AUDIT_FILE=""
+POST_PROCESS_RULES=""
+SKIP_POST_PROCESS=false
+POST_PROCESS_FILE=""
 VERBOSE=""
 
 # ── parse arguments ──────────────────────────────────────────────────
@@ -154,6 +163,12 @@ while [[ $# -gt 0 ]]; do
       RUN_AUDIT=true; shift ;;
     --audit-file)
       AUDIT_FILE="$2"; RUN_AUDIT=true; shift 2 ;;
+    --post-process-rules)
+      POST_PROCESS_RULES="$2"; shift 2 ;;
+    --skip-post-process)
+      SKIP_POST_PROCESS=true; shift ;;
+    --post-process-file)
+      POST_PROCESS_FILE="$2"; SKIP_POST_PROCESS=true; shift 2 ;;
     --verbose)
       VERBOSE="--verbose"; shift ;;
     --help|-h)
@@ -198,6 +213,12 @@ if [ -n "$APP_INSTALL_STATS_FILE" ] && [[ "$APP_INSTALL_STATS_FILE" != /* ]]; th
 fi
 if [ -n "$LFS_FILE" ] && [[ "$LFS_FILE" != /* ]]; then
   LFS_FILE="${OUTPUT_DIR}/${LFS_FILE}"
+fi
+if [ -n "$POST_PROCESS_RULES" ] && [[ "$POST_PROCESS_RULES" != /* ]]; then
+  POST_PROCESS_RULES="$(pwd)/${POST_PROCESS_RULES}"
+fi
+if [ -n "$POST_PROCESS_FILE" ] && [[ "$POST_PROCESS_FILE" != /* ]]; then
+  POST_PROCESS_FILE="${OUTPUT_DIR}/${POST_PROCESS_FILE}"
 fi
 
 # ── step 1: repo-stats ──────────────────────────────────────────────
@@ -355,6 +376,40 @@ gh repo-stats-plus combine-stats \
   --match-columns "$MATCH_COLUMNS" \
   --output-dir "$OUTPUT_DIR" \
   $VERBOSE
+
+# ── step 6: post-process (optional) ─────────────────────────────────
+
+if [ "$SKIP_POST_PROCESS" = false ] && [ -n "$POST_PROCESS_RULES" ]; then
+  echo ""
+  echo "=== Step 6: Running post-process ==="
+
+  # Determine which file to post-process (the combined output)
+  # Look for the most recent combined-stats file in the output directory
+  COMBINED_FILE=$(ls -t "${OUTPUT_DIR}"/combined-stats-*_ts.csv 2>/dev/null | head -1)
+
+  if [ -z "$COMBINED_FILE" ]; then
+    echo "Warning: No combined-stats file found in ${OUTPUT_DIR}. Skipping post-process."
+  else
+    TIMESTAMP=$(generate_timestamp)
+    POST_PROCESS_FILENAME=$(echo "${ORG_NAME}" | tr '[:upper:]' '[:lower:]')-final-report-${TIMESTAMP}_ts.csv
+    POST_PROCESS_FILE="${OUTPUT_DIR}/${POST_PROCESS_FILENAME}"
+
+    gh repo-stats-plus post-process \
+      --input "$COMBINED_FILE" \
+      --rules-file "$POST_PROCESS_RULES" \
+      --output-dir "$OUTPUT_DIR" \
+      --output-file-name "$POST_PROCESS_FILENAME" \
+      $VERBOSE
+
+    echo "Post-processed file: $POST_PROCESS_FILE"
+  fi
+elif [ "$SKIP_POST_PROCESS" = true ] && [ -n "$POST_PROCESS_FILE" ]; then
+  echo ""
+  echo "=== Step 6: Using existing post-processed file: $POST_PROCESS_FILE ==="
+else
+  echo ""
+  echo "=== Step 6: Skipping post-process (no rules file provided) ==="
+fi
 
 echo ""
 echo "=== Done ==="

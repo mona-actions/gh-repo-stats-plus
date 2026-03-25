@@ -11,6 +11,7 @@ This page provides an overview of all available commands. See the individual com
 | [project-stats](commands/project-stats.md)         | Count unique ProjectsV2 linked to repositories                                 |
 | [app-install-stats](commands/app-install-stats.md) | Retrieve GitHub App installation statistics for an organization (PAT only)     |
 | [combine-stats](commands/combine-stats.md)         | Merge multiple CSV output files into a single combined report                  |
+| [post-process](commands/post-process.md)           | Transform CSV data using configurable rules for pattern matching and cleanup   |
 
 ## Quick Start
 
@@ -29,6 +30,9 @@ gh repo-stats-plus app-install-stats --org-name my-org
 
 # Combine multiple CSV files
 gh repo-stats-plus combine-stats --files file1.csv file2.csv
+
+# Post-process CSV data with rules
+gh repo-stats-plus post-process --input combined.csv --rules-file rules.json
 ```
 
 ## Output
@@ -57,11 +61,16 @@ gh repo-stats-plus app-install-stats --org-name myorg
 # 5. Combine repo-stats and project-stats into a single report
 gh repo-stats-plus combine-stats \
   --files output/myorg-all_repos-*.csv output/myorg-project-stats-*.csv
+
+# 6. Post-process the combined report with custom rules
+gh repo-stats-plus post-process \
+  --input output/combined-stats.csv \
+  --rules-file post-process.rules.json
 ```
 
 ### Scripted Pipeline
 
-The `script/collect-stats.sh` script runs repo-stats, project-stats, app-install-stats, and combine-stats in sequence, automatically passing output file paths between steps.
+The `script/collect-stats.sh` script runs repo-stats, project-stats, app-install-stats, combine-stats, and optionally post-process in sequence, automatically passing output file paths between steps.
 
 ```bash
 # Basic usage
