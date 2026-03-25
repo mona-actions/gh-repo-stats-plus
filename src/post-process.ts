@@ -56,11 +56,52 @@ export function validateRulesConfig(config: unknown): PostProcessRulesConfig {
         );
       }
     }
+    if (rule.pattern !== undefined && typeof rule.pattern !== 'string') {
+      throw new Error(`Rule at index ${i}: "pattern" must be a string`);
+    }
+    if (rule.pattern !== undefined) {
+      try {
+        new RegExp(rule.pattern as string);
+      } catch {
+        throw new Error(
+          `Rule at index ${i}: "pattern" is not a valid regex: ${rule.pattern}`,
+        );
+      }
+    }
+    if (
+      rule.replacement !== undefined &&
+      typeof rule.replacement !== 'string'
+    ) {
+      throw new Error(`Rule at index ${i}: "replacement" must be a string`);
+    }
   }
 
   if (cfg.processColumns !== undefined) {
     if (typeof cfg.processColumns !== 'object' || cfg.processColumns === null) {
       throw new Error('"processColumns" must be an object if provided');
+    }
+    const pc = cfg.processColumns as Record<string, unknown>;
+    if (pc.columns !== undefined) {
+      if (!Array.isArray(pc.columns)) {
+        throw new Error('"processColumns.columns" must be an array');
+      }
+      for (const col of pc.columns) {
+        if (typeof col !== 'string') {
+          throw new Error('"processColumns.columns" must contain only strings');
+        }
+      }
+    }
+    if (pc.columnRanges !== undefined) {
+      if (!Array.isArray(pc.columnRanges)) {
+        throw new Error('"processColumns.columnRanges" must be an array');
+      }
+      for (const range of pc.columnRanges) {
+        if (typeof range !== 'number' && typeof range !== 'object') {
+          throw new Error(
+            '"processColumns.columnRanges" entries must be numbers or objects',
+          );
+        }
+      }
     }
   }
 
@@ -82,6 +123,27 @@ export function validateRulesConfig(config: unknown): PostProcessRulesConfig {
         throw new Error(
           `Indicator column at index ${i} must have "trueValue" and "falseValue"`,
         );
+      }
+      if (ind.sourceColumns !== undefined) {
+        if (!Array.isArray(ind.sourceColumns)) {
+          throw new Error(
+            `Indicator column at index ${i}: "sourceColumns" must be an array`,
+          );
+        }
+        for (const col of ind.sourceColumns) {
+          if (typeof col !== 'string') {
+            throw new Error(
+              `Indicator column at index ${i}: "sourceColumns" must contain only strings`,
+            );
+          }
+        }
+      }
+      if (ind.sourceColumnRanges !== undefined) {
+        if (!Array.isArray(ind.sourceColumnRanges)) {
+          throw new Error(
+            `Indicator column at index ${i}: "sourceColumnRanges" must be an array`,
+          );
+        }
       }
     }
   }
@@ -303,13 +365,13 @@ export function processCell(
  */
 export function processRow(
   row: Record<string, string>,
-  columnsToProcess: string[],
+  columnsToProcess: Set<string>,
   rules: PostProcessRule[],
 ): Record<string, string> {
   const processedRow = { ...row };
 
   for (const column of Object.keys(row)) {
-    if (!columnsToProcess.includes(column)) {
+    if (!columnsToProcess.has(column)) {
       continue;
     }
 
@@ -340,10 +402,17 @@ export function addIndicatorColumns(
     return csvData;
   }
 
-  // Find default empty value from wildcard rule if available
-  const wildcardRule = config.rules?.find(
-    (r) => r.columns && r.columns.includes('*'),
-  );
+  // Find default empty value from the *last* wildcard rule (last rule wins per precedence)
+  let wildcardRule: PostProcessRule | undefined;
+  if (config.rules && Array.isArray(config.rules)) {
+    for (let i = config.rules.length - 1; i >= 0; i--) {
+      const rule = config.rules[i];
+      if (rule.columns && rule.columns.includes('*')) {
+        wildcardRule = rule;
+        break;
+      }
+    }
+  }
   const defaultEmptyValue =
     wildcardRule?.emptyValue !== undefined ? wildcardRule.emptyValue : '0';
 
@@ -404,7 +473,7 @@ export function processData(
   }
 
   const rulesArray = Array.isArray(config.rules) ? config.rules : [];
-  const columnsToProcess = getColumnsToProcess(config, csvData[0]);
+  const columnsToProcess = new Set(getColumnsToProcess(config, csvData[0]));
 
   // Process each row
   const processedData = csvData.map((row) =>

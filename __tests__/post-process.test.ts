@@ -25,6 +25,15 @@ vi.mock('../src/logger.js', () => ({
   }),
 }));
 
+vi.mock('fs/promises', async () => {
+  const actual =
+    await vi.importActual<typeof import('fs/promises')>('fs/promises');
+  return {
+    ...actual,
+    mkdir: vi.fn().mockResolvedValue(undefined),
+  };
+});
+
 import { parse } from 'csv-parse/sync';
 import {
   validateRulesConfig,
@@ -129,6 +138,53 @@ describe('post-process', () => {
           indicatorColumns: [{ trueValue: true, falseValue: false }],
         }),
       ).toThrow('non-empty "name" string');
+    });
+
+    it('should throw if rule pattern is not a string', () => {
+      expect(() =>
+        validateRulesConfig({ rules: [{ columns: ['*'], pattern: 123 }] }),
+      ).toThrow('"pattern" must be a string');
+    });
+
+    it('should throw if rule pattern is invalid regex', () => {
+      expect(() =>
+        validateRulesConfig({
+          rules: [{ columns: ['*'], pattern: '[invalid' }],
+        }),
+      ).toThrow('not a valid regex');
+    });
+
+    it('should throw if rule replacement is not a string', () => {
+      expect(() =>
+        validateRulesConfig({
+          rules: [{ columns: ['*'], replacement: true }],
+        }),
+      ).toThrow('"replacement" must be a string');
+    });
+
+    it('should throw if processColumns.columns contains non-string', () => {
+      expect(() =>
+        validateRulesConfig({
+          rules: [{ columns: ['*'] }],
+          processColumns: { columns: [123] },
+        }),
+      ).toThrow('must contain only strings');
+    });
+
+    it('should throw if indicatorColumns sourceColumns contains non-string', () => {
+      expect(() =>
+        validateRulesConfig({
+          rules: [{ columns: ['*'] }],
+          indicatorColumns: [
+            {
+              name: 'ind',
+              trueValue: true,
+              falseValue: false,
+              sourceColumns: [123],
+            },
+          ],
+        }),
+      ).toThrow('must contain only strings');
     });
 
     it('should throw if indicatorColumns entry is missing trueValue', () => {
@@ -439,7 +495,7 @@ describe('post-process', () => {
           emptyValue: '0',
         },
       ];
-      const result = processRow(row, ['A', 'B'], rules);
+      const result = processRow(row, new Set(['A', 'B']), rules);
 
       expect(result.A).toBe('10');
       expect(result.B).toBe('20');
@@ -458,7 +514,11 @@ describe('post-process', () => {
         },
         { columns: ['HasLFS'], fallback: true, emptyValue: false },
       ];
-      const result = processRow(row, ['Size', 'HasLFS', 'Count'], rules);
+      const result = processRow(
+        row,
+        new Set(['Size', 'HasLFS', 'Count']),
+        rules,
+      );
 
       expect(result.Size).toBe('100');
       expect(result.HasLFS).toBe('false'); // emptyValue = false, stringified
@@ -684,16 +744,6 @@ describe('post-process', () => {
       ];
       vi.mocked(parse).mockReturnValue(csvData);
 
-      // Mock mkdir
-      vi.mock('fs/promises', async () => {
-        const actual =
-          await vi.importActual<typeof import('fs/promises')>('fs/promises');
-        return {
-          ...actual,
-          mkdir: vi.fn().mockResolvedValue(undefined),
-        };
-      });
-
       const outputPath = await runPostProcess({
         input: 'input.csv',
         rulesFile: 'rules.json',
@@ -720,15 +770,6 @@ describe('post-process', () => {
         .mockReturnValueOnce('');
 
       vi.mocked(parse).mockReturnValue([]);
-
-      vi.mock('fs/promises', async () => {
-        const actual =
-          await vi.importActual<typeof import('fs/promises')>('fs/promises');
-        return {
-          ...actual,
-          mkdir: vi.fn().mockResolvedValue(undefined),
-        };
-      });
 
       const outputPath = await runPostProcess({
         input: 'empty.csv',
