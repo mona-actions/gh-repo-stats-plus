@@ -574,3 +574,42 @@ export interface CommandConfig {
   /** Optional prefix for state files to separate state between commands (e.g. 'projects') */
   statePrefix?: string;
 }
+
+// --- Post-Process types ---
+
+export type ColumnRange = number | { start?: number; end?: number };
+
+export interface PostProcessRule {
+  columns: string[];
+  pattern?: string;
+  replacement?: string;
+  fallback?: string | boolean | number;
+  emptyValue?: string | boolean | number;
+}
+
+export interface ProcessColumnsConfig {
+  columns?: string[];
+  columnRanges?: ColumnRange[];
+}
+
+export interface IndicatorColumnConfig {
+  name: string;
+  sourceColumns?: string[];
+  sourceColumnRanges?: ColumnRange[];
+  trueValue: string | boolean | number;
+  falseValue: string | boolean | number;
+}
+
+export interface PostProcessRulesConfig {
+  rules: PostProcessRule[];
+  processColumns?: ProcessColumnsConfig;
+  indicatorColumns?: IndicatorColumnConfig[];
+}
+
+export interface PostProcessOptions {
+  input: string;
+  rulesFile: string;
+  outputFileName?: string;
+  outputDir?: string;
+  verbose?: boolean;
+}
