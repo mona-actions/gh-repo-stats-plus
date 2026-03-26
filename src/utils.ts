@@ -89,12 +89,12 @@ export function checkIfHasMigrationIssues({
   return false;
 }
 
-export function parseIntOption(value: string, defaultValue?: number): number {
+export function parseIntOption(
+  value: string | null | undefined,
+  defaultValue?: number,
+): number | undefined {
   if (value == null || value.trim() === '') {
-    if (defaultValue !== undefined) {
-      return defaultValue;
-    }
-    return undefined as unknown as number;
+    return defaultValue;
   }
   const parsed = parseInt(value, 10);
   if (isNaN(parsed)) {
@@ -106,12 +106,12 @@ export function parseIntOption(value: string, defaultValue?: number): number {
   return parsed;
 }
 
-export function parseFloatOption(value: string, defaultValue?: number): number {
+export function parseFloatOption(
+  value: string | null | undefined,
+  defaultValue?: number,
+): number | undefined {
   if (value == null || value.trim() === '') {
-    if (defaultValue !== undefined) {
-      return defaultValue;
-    }
-    return undefined as unknown as number;
+    return defaultValue;
   }
   const parsed = parseFloat(value);
   if (isNaN(parsed)) {
