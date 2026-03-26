@@ -114,7 +114,16 @@ describe('Utils', () => {
       expect(() => parseIntOption('invalid')).toThrow(
         'Invalid number: invalid',
       );
-      expect(() => parseIntOption('')).toThrow('Invalid number: ');
+    });
+
+    it('should return undefined for empty string when no default provided', () => {
+      expect(parseIntOption('')).toBeUndefined();
+      expect(parseIntOption('  ')).toBeUndefined();
+    });
+
+    it('should return default value for empty string when default provided', () => {
+      expect(parseIntOption('', 50)).toBe(50);
+      expect(parseIntOption('  ', 10)).toBe(10);
     });
 
     it('should handle edge cases', () => {
@@ -141,10 +150,19 @@ describe('Utils', () => {
       expect(() => parseFloatOption('invalid')).toThrow(
         'Invalid number: invalid',
       );
-      expect(() => parseFloatOption('')).toThrow('Invalid number: ');
       expect(() => parseFloatOption('not-a-number')).toThrow(
         'Invalid number: not-a-number',
       );
+    });
+
+    it('should return undefined for empty string when no default provided', () => {
+      expect(parseFloatOption('')).toBeUndefined();
+      expect(parseFloatOption('  ')).toBeUndefined();
+    });
+
+    it('should return default value for empty string when default provided', () => {
+      expect(parseFloatOption('', 50.25)).toBe(50.25);
+      expect(parseFloatOption('  ', 10.5)).toBe(10.5);
     });
 
     it('should handle edge cases', () => {

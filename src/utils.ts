@@ -90,6 +90,12 @@ export function checkIfHasMigrationIssues({
 }
 
 export function parseIntOption(value: string, defaultValue?: number): number {
+  if (value == null || value.trim() === '') {
+    if (defaultValue !== undefined) {
+      return defaultValue;
+    }
+    return undefined as unknown as number;
+  }
   const parsed = parseInt(value, 10);
   if (isNaN(parsed)) {
     if (defaultValue !== undefined) {
@@ -101,6 +107,12 @@ export function parseIntOption(value: string, defaultValue?: number): number {
 }
 
 export function parseFloatOption(value: string, defaultValue?: number): number {
+  if (value == null || value.trim() === '') {
+    if (defaultValue !== undefined) {
+      return defaultValue;
+    }
+    return undefined as unknown as number;
+  }
   const parsed = parseFloat(value);
   if (isNaN(parsed)) {
     if (defaultValue !== undefined) {
