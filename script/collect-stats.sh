@@ -2,7 +2,7 @@
 
 set -e
 
-# collect-stats.sh — Run repo-stats, project-stats, app-install-stats, and combine-stats in sequence.
+# collect-stats.sh — Run repo-stats, project-stats, app-install-stats, combine-stats, and rows-to-columns in sequence.
 #
 # Collects repository and project statistics for a GitHub organization,
 # then combines the results into a single CSV file.
@@ -41,6 +41,11 @@ set -e
 #   --post-process-rules <file> Path to post-process rules JSON file
 #   --skip-post-process      Skip the post-process step
 #   --post-process-file <f>  Use an existing post-processed CSV instead of running post-process
+#   --skip-rows-to-columns   Skip the rows-to-columns step
+#   --rows-to-columns-file <f> Use an existing rows-to-columns CSV instead of running it
+#   --rtc-header-keys <col>  Column in audit CSV to use as headers (Default: type)
+#   --rtc-header-values <col> Column in audit CSV to use as values (Default: message)
+#   --rtc-additional-columns <cols> Comma-separated match columns in audit CSV (Default: owner,name)
 #   --verbose                Enable verbose logging
 #   --help                   Show this help message
 #
@@ -85,6 +90,11 @@ usage() {
   echo "  --post-process-rules <f>   Path to post-process rules JSON file"
   echo "  --skip-post-process        Skip the post-process step"
   echo "  --post-process-file <f>    Use existing post-processed CSV (skips post-process)"
+  echo "  --skip-rows-to-columns     Skip the rows-to-columns step"
+  echo "  --rows-to-columns-file <f> Use existing rows-to-columns CSV"
+  echo "  --rtc-header-keys <col>    Column in audit CSV for headers (Default: type)"
+  echo "  --rtc-header-values <col>  Column in audit CSV for values (Default: message)"
+  echo "  --rtc-additional-columns <cols> Match columns in audit CSV (Default: owner,name)"
   echo "  --verbose                  Enable verbose logging"
   echo "  --help                     Show this help message"
   echo ""
@@ -125,6 +135,11 @@ AUDIT_FILE=""
 POST_PROCESS_RULES=""
 SKIP_POST_PROCESS=false
 POST_PROCESS_FILE=""
+SKIP_ROWS_TO_COLUMNS=false
+ROWS_TO_COLUMNS_FILE=""
+RTC_HEADER_KEYS="type"
+RTC_HEADER_VALUES="message"
+RTC_ADDITIONAL_COLUMNS="owner,name"
 VERBOSE=""
 
 # ── parse arguments ──────────────────────────────────────────────────
@@ -169,6 +184,16 @@ while [[ $# -gt 0 ]]; do
       SKIP_POST_PROCESS=true; shift ;;
     --post-process-file)
       POST_PROCESS_FILE="$2"; SKIP_POST_PROCESS=true; shift 2 ;;
+    --skip-rows-to-columns)
+      SKIP_ROWS_TO_COLUMNS=true; shift ;;
+    --rows-to-columns-file)
+      ROWS_TO_COLUMNS_FILE="$2"; SKIP_ROWS_TO_COLUMNS=true; shift 2 ;;
+    --rtc-header-keys)
+      RTC_HEADER_KEYS="$2"; shift 2 ;;
+    --rtc-header-values)
+      RTC_HEADER_VALUES="$2"; shift 2 ;;
+    --rtc-additional-columns)
+      RTC_ADDITIONAL_COLUMNS="$2"; shift 2 ;;
     --verbose)
       VERBOSE="--verbose"; shift ;;
     --help|-h)
@@ -219,6 +244,9 @@ if [ -n "$POST_PROCESS_RULES" ] && [[ "$POST_PROCESS_RULES" != /* ]]; then
 fi
 if [ -n "$POST_PROCESS_FILE" ] && [[ "$POST_PROCESS_FILE" != /* ]]; then
   POST_PROCESS_FILE="${OUTPUT_DIR}/${POST_PROCESS_FILE}"
+fi
+if [ -n "$ROWS_TO_COLUMNS_FILE" ] && [[ "$ROWS_TO_COLUMNS_FILE" != /* ]]; then
+  ROWS_TO_COLUMNS_FILE="${OUTPUT_DIR}/${ROWS_TO_COLUMNS_FILE}"
 fi
 
 # ── step 1: repo-stats ──────────────────────────────────────────────
@@ -409,6 +437,57 @@ elif [ "$SKIP_POST_PROCESS" = true ] && [ -n "$POST_PROCESS_FILE" ]; then
 else
   echo ""
   echo "=== Step 6: Skipping post-process (no rules file provided) ==="
+fi
+
+# ── step 7: rows-to-columns (optional, requires audit file) ─────────
+
+if [ "$SKIP_ROWS_TO_COLUMNS" = false ] && [ -n "$AUDIT_FILE" ] && [ -f "$AUDIT_FILE" ]; then
+  echo ""
+  echo "=== Step 7: Running rows-to-columns ==="
+
+  # Determine which file to use as the base CSV
+  # Prefer: post-processed > combined > repo-stats
+  RTC_BASE_FILE=""
+  if [ -n "$POST_PROCESS_FILE" ] && [ -f "$POST_PROCESS_FILE" ]; then
+    RTC_BASE_FILE="$POST_PROCESS_FILE"
+  else
+    # Look for the most recent combined-stats file
+    RTC_BASE_FILE=$(ls -t "${OUTPUT_DIR}"/combined-stats-*_ts.csv 2>/dev/null | head -1)
+  fi
+
+  if [ -z "$RTC_BASE_FILE" ] && [ -n "$REPO_STATS_FILE" ] && [ -f "$REPO_STATS_FILE" ]; then
+    RTC_BASE_FILE="$REPO_STATS_FILE"
+  fi
+
+  if [ -z "$RTC_BASE_FILE" ]; then
+    echo "Warning: No suitable base CSV found in ${OUTPUT_DIR}. Skipping rows-to-columns."
+  else
+    TIMESTAMP=$(generate_timestamp)
+    RTC_FILENAME=$(echo "${ORG_NAME}" | tr '[:upper:]' '[:lower:]')-with-audit-${TIMESTAMP}_ts.csv
+    ROWS_TO_COLUMNS_FILE="${OUTPUT_DIR}/${RTC_FILENAME}"
+
+    gh repo-stats-plus rows-to-columns \
+      --base-csv-file "$RTC_BASE_FILE" \
+      --additional-csv-file "$AUDIT_FILE" \
+      --header-column-keys "$RTC_HEADER_KEYS" \
+      --header-column-values "$RTC_HEADER_VALUES" \
+      --base-csv-columns "$MATCH_COLUMNS" \
+      --additional-csv-columns "$RTC_ADDITIONAL_COLUMNS" \
+      --output-dir "$OUTPUT_DIR" \
+      --output-file-name "$RTC_FILENAME" \
+      $VERBOSE
+
+    echo "Rows-to-columns file: $ROWS_TO_COLUMNS_FILE"
+  fi
+elif [ "$SKIP_ROWS_TO_COLUMNS" = true ] && [ -n "$ROWS_TO_COLUMNS_FILE" ]; then
+  echo ""
+  echo "=== Step 7: Using existing rows-to-columns file: $ROWS_TO_COLUMNS_FILE ==="
+elif [ "$RUN_AUDIT" = true ] && [ -z "$AUDIT_FILE" ]; then
+  echo ""
+  echo "=== Step 7: Skipping rows-to-columns (no audit file available) ==="
+else
+  echo ""
+  echo "=== Step 7: Skipping rows-to-columns (no audit requested) ==="
 fi
 
 echo ""

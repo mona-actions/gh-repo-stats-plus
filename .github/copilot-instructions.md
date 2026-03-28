@@ -42,3 +42,14 @@ Take into consideration the following when providing responses:
 - We use `tsx` for compiling and running our code and we prefer to have any responses be for a more modern approach.
 
 Code should always be readable and maintainable. Break things down into separate functions and into separate files where it makes sense to do so.
+
+## Verification Before Completion
+
+**IMPORTANT**: When implementing features, fixing bugs, or making any code changes, always run the following checks before considering the work complete:
+
+1. **Lint**: `npm run lint` — Ensure there are no linting errors
+2. **Format**: `npm run format:check` — Ensure code formatting is correct (run `npm run format:write` to fix)
+3. **Tests**: `npm run test:ci` — Ensure all tests pass
+4. **Type Check**: `npx tsc --noEmit` — Ensure TypeScript compiles without errors
+
+Do not skip these steps. CI will fail if any of these checks do not pass.
