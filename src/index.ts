@@ -10,6 +10,7 @@ import projectStatsCommand from './commands/project-stats-command.js';
 import appInstallStatsCommand from './commands/app-install-stats-command.js';
 import combineStatsCommand from './commands/combine-stats-command.js';
 import postProcessCommand from './commands/post-process-command.js';
+import rowsToColumnsCommand from './commands/rows-to-columns-command.js';
 
 const program = new commander.Command();
 
@@ -23,6 +24,7 @@ program
   .addCommand(projectStatsCommand)
   .addCommand(appInstallStatsCommand)
   .addCommand(combineStatsCommand)
-  .addCommand(postProcessCommand);
+  .addCommand(postProcessCommand)
+  .addCommand(rowsToColumnsCommand);
 
 program.parse(process.argv);
