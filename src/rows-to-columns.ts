@@ -40,18 +40,6 @@ export function generateRowsToColumnsFileName(): string {
 // --- Core logic ---
 
 /**
- * Compares two string values in a case-insensitive, trimmed manner.
- */
-function safeCompareValues(
-  val1: string | undefined | null,
-  val2: string | undefined | null,
-): boolean {
-  const stringVal1 = (val1 ?? '').toString().trim().toLowerCase();
-  const stringVal2 = (val2 ?? '').toString().trim().toLowerCase();
-  return stringVal1 === stringVal2;
-}
-
-/**
  * Converts rows from an additional CSV into new columns in a base CSV.
  *
  * For each row in the base CSV, finds matching rows in the additional CSV
@@ -86,22 +74,33 @@ export function rowsToColumns(
   // Collect unique header key values from the additional CSV
   const headerTypes = new Set<string>();
   for (const row of additionalCsvData) {
-    const keyValue = row[headerColumnKeys];
-    if (keyValue !== undefined && keyValue !== '') {
+    const keyValue = (row[headerColumnKeys] ?? '').trim();
+    if (keyValue !== '') {
       headerTypes.add(keyValue);
     }
   }
 
-  const combinedData = baseCsvData.map((baseRow) => {
-    // Find matching rows in the additional CSV
-    const matchingRows = additionalCsvData.filter((additionalRow) =>
-      baseCsvColumns.every((col, index) =>
-        safeCompareValues(
-          baseRow[col],
-          additionalRow[additionalCsvColumns[index]],
-        ),
-      ),
+  // Build an index of additional rows keyed by the composite of match columns
+  const buildMatchKey = (values: (string | undefined)[]): string =>
+    values.map((v) => (v ?? '').trim().toLowerCase()).join('\0');
+
+  const additionalIndex = new Map<string, Record<string, string>[]>();
+  for (const additionalRow of additionalCsvData) {
+    const key = buildMatchKey(
+      additionalCsvColumns.map((col) => additionalRow[col]),
     );
+    const existing = additionalIndex.get(key);
+    if (existing) {
+      existing.push(additionalRow);
+    } else {
+      additionalIndex.set(key, [additionalRow]);
+    }
+  }
+
+  const combinedData = baseCsvData.map((baseRow) => {
+    // Find matching rows via the prebuilt index
+    const matchKey = buildMatchKey(baseCsvColumns.map((col) => baseRow[col]));
+    const matchingRows = additionalIndex.get(matchKey) ?? [];
 
     // Start with a copy of the base row
     const combinedRow: Record<string, string> = { ...baseRow };
@@ -113,7 +112,11 @@ export function rowsToColumns(
 
     // Fill in values from matching rows
     for (const matchRow of matchingRows) {
-      const key = matchRow[headerColumnKeys];
+      const key = (matchRow[headerColumnKeys] ?? '').trim();
+      if (key === '') {
+        continue;
+      }
+
       const rawValue = matchRow[headerColumnValues] ?? '';
 
       // Parse digits from the value
@@ -157,11 +160,14 @@ export function determineHeaders(
 
 /**
  * Orchestrates the rows-to-columns workflow:
- * 1. Validates inputs (files exist, columns provided)
+ * 1. Validates that input files exist
  * 2. Reads both CSV files
  * 3. Converts rows to columns
  * 4. Writes the combined output CSV
  * 5. Logs a summary
+ *
+ * Note: Option-level validation (non-empty columns, equal column-mapping lengths,
+ * required header column names) is handled by the command layer's validate function.
  */
 export async function runRowsToColumns(
   options: RowsToColumnsOptions,

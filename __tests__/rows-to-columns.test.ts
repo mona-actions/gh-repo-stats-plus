@@ -25,6 +25,15 @@ vi.mock('../src/logger.js', () => ({
   }),
 }));
 
+vi.mock('fs/promises', async () => {
+  const actual =
+    await vi.importActual<typeof import('fs/promises')>('fs/promises');
+  return {
+    ...actual,
+    mkdir: vi.fn().mockResolvedValue(undefined),
+  };
+});
+
 import { parse } from 'csv-parse/sync';
 import {
   rowsToColumns,
@@ -281,6 +290,47 @@ describe('rows-to-columns', () => {
 
       // Last matching row with same key overwrites
       expect(combinedData[0]['large_files']).toBe('10');
+    });
+
+    it('should skip additional rows with empty or missing header key column', () => {
+      const baseCsv = [{ Org_Name: 'myorg', Repo_Name: 'repo1' }];
+
+      const additionalCsv = [
+        {
+          owner: 'myorg',
+          name: 'repo1',
+          type: 'large_files',
+          message: '5 files',
+        },
+        {
+          owner: 'myorg',
+          name: 'repo1',
+          type: '',
+          message: 'should be skipped',
+        },
+        {
+          owner: 'myorg',
+          name: 'repo1',
+          type: '  ',
+          message: 'whitespace only key',
+        },
+      ];
+
+      const { combinedData, headerTypes } = rowsToColumns(
+        baseCsv,
+        additionalCsv,
+        ['Org_Name', 'Repo_Name'],
+        ['owner', 'name'],
+        'type',
+        'message',
+      );
+
+      // Only 'large_files' should appear as a header type
+      expect(headerTypes.size).toBe(1);
+      expect(headerTypes.has('large_files')).toBe(true);
+      expect(combinedData[0]['large_files']).toBe('5');
+      // No '' or '  ' key columns should be created
+      expect(combinedData[0]['']).toBeUndefined();
     });
   });
 
