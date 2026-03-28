@@ -1,9 +1,6 @@
 import * as commander from 'commander';
 import { existsSync } from 'fs';
-import {
-  RowsToColumnsOptions,
-  runRowsToColumns,
-} from '../rows-to-columns.js';
+import { RowsToColumnsOptions, runRowsToColumns } from '../rows-to-columns.js';
 import VERSION from '../version.js';
 
 const { Option } = commander;
@@ -73,10 +70,7 @@ export function createRowsToColumnsCommand(): commander.Command {
     )
     .version(VERSION)
     .addOption(
-      new Option(
-        '--base-csv-file <file>',
-        'Path to the base CSV file',
-      )
+      new Option('--base-csv-file <file>', 'Path to the base CSV file')
         .env('BASE_CSV_FILE')
         .makeOptionMandatory(true),
     )
@@ -139,10 +133,7 @@ export function createRowsToColumnsCommand(): commander.Command {
       ).env('ROWS_TO_COLUMNS_OUTPUT_FILE'),
     )
     .addOption(
-      new Option(
-        '--output-dir <dir>',
-        'Output directory for the combined file',
-      )
+      new Option('--output-dir <dir>', 'Output directory for the combined file')
         .env('OUTPUT_DIR')
         .default('output'),
     )
