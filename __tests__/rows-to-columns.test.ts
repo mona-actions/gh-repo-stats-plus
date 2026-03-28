@@ -325,8 +325,6 @@ describe('rows-to-columns', () => {
 
   describe('runRowsToColumns', () => {
     const baseCsvContent = 'Org_Name,Repo_Name\nmyorg,repo1\nmyorg,repo2';
-    const additionalCsvContent =
-      'owner,name,type,message\nmyorg,repo1,large_files,Found 5 files';
 
     beforeEach(() => {
       vi.mocked(existsSync).mockReturnValue(true);
