@@ -12,6 +12,7 @@ This page provides an overview of all available commands. See the individual com
 | [app-install-stats](commands/app-install-stats.md) | Retrieve GitHub App installation statistics for an organization (PAT only)     |
 | [combine-stats](commands/combine-stats.md)         | Merge multiple CSV output files into a single combined report                  |
 | [post-process](commands/post-process.md)           | Transform CSV data using configurable rules for pattern matching and cleanup   |
+| [rows-to-columns](commands/rows-to-columns.md)     | Pivot rows from an additional CSV into columns in a base CSV                   |
 
 ## Quick Start
 
@@ -33,6 +34,13 @@ gh repo-stats-plus combine-stats --files file1.csv file2.csv
 
 # Post-process CSV data with rules
 gh repo-stats-plus post-process --input combined.csv --rules-file rules.json
+
+# Pivot additional CSV rows into columns (e.g., migration audit data)
+gh repo-stats-plus rows-to-columns \
+  --base-csv-file stats.csv \
+  --additional-csv-file audit.csv \
+  --header-column-keys type \
+  --header-column-values message
 ```
 
 ## Output
@@ -66,11 +74,18 @@ gh repo-stats-plus combine-stats \
 gh repo-stats-plus post-process \
   --input output/combined-stats.csv \
   --rules-file post-process.rules.json
+
+# 7. Combine with migration audit data (if available)
+gh repo-stats-plus rows-to-columns \
+  --base-csv-file output/combined-stats.csv \
+  --additional-csv-file output/migration-audit.csv \
+  --header-column-keys type \
+  --header-column-values message
 ```
 
 ### Scripted Pipeline
 
-The `script/collect-stats.sh` script runs repo-stats, project-stats, app-install-stats, combine-stats, and optionally post-process in sequence, automatically passing output file paths between steps.
+The `script/collect-stats.sh` script runs repo-stats, project-stats, app-install-stats, combine-stats, and optionally post-process and rows-to-columns in sequence, automatically passing output file paths between steps.
 
 ```bash
 # Basic usage

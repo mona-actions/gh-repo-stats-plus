@@ -59,6 +59,8 @@ This TypeScript rewrite offers several advantages:
 
 13. **CSV Post-Processing**: Transform and standardize CSV data using configurable rules for pattern matching, value replacement, and indicator column generation. Based on [jcantosz/generate-repo-report/post-process](https://github.com/jcantosz/generate-repo-report/tree/main/post-process). See the [Post-Process Command Reference](docs/commands/post-process.md).
 
+14. **Rows-to-Columns Pivot**: Convert rows from an additional CSV (e.g., migration audit data) into new columns in a base CSV by matching rows and pivoting values. Based on [jcantosz/generate-repo-report/rows-to-columns](https://github.com/jcantosz/generate-repo-report/tree/main/rows-to-columns). See the [Rows-to-Columns Command Reference](docs/commands/rows-to-columns.md).
+
 ## Technical Implementation
 
 The extension is built using modern TypeScript patterns with:
@@ -73,15 +75,16 @@ The extension is built using modern TypeScript patterns with:
 
 ## Documentation
 
-| Guide                                            | Description                                   |
-| ------------------------------------------------ | --------------------------------------------- |
-| [Installation](docs/installation.md)             | Prerequisites and installation methods        |
-| [Usage Guide](docs/usage.md)                     | Authentication and usage examples             |
-| [Commands](docs/commands.md)                     | Complete command reference                    |
-| [LFS Sizing](docs/lfs-sizing.md)                 | Git LFS storage analysis per repo             |
-| [Development](docs/development.md)               | Setup and development workflow                |
-| [Batch Processing](docs/batch-processing.md)     | Parallel batch processing with GitHub Actions |
-| [Post-Processing](docs/commands/post-process.md) | CSV transformation with configurable rules    |
+| Guide                                               | Description                                   |
+| --------------------------------------------------- | --------------------------------------------- |
+| [Installation](docs/installation.md)                | Prerequisites and installation methods        |
+| [Usage Guide](docs/usage.md)                        | Authentication and usage examples             |
+| [Commands](docs/commands.md)                        | Complete command reference                    |
+| [LFS Sizing](docs/lfs-sizing.md)                    | Git LFS storage analysis per repo             |
+| [Development](docs/development.md)                  | Setup and development workflow                |
+| [Batch Processing](docs/batch-processing.md)        | Parallel batch processing with GitHub Actions |
+| [Post-Processing](docs/commands/post-process.md)    | CSV transformation with configurable rules    |
+| [Rows-to-Columns](docs/commands/rows-to-columns.md) | Pivot additional CSV rows into columns        |
 
 ## Common Usage Examples
 
@@ -240,6 +243,29 @@ gh repo-stats-plus post-process \
 ```
 
 See the [Post-Process Command Reference](docs/commands/post-process.md) for rules configuration details and examples. A sample rules file is included at [`docs/examples/post-process.rules.json`](docs/examples/post-process.rules.json).
+
+### Rows-to-Columns
+
+```bash
+# Combine repo-stats with migration audit data
+gh repo-stats-plus rows-to-columns \
+  --base-csv-file output/combined-stats.csv \
+  --additional-csv-file output/migration-audit.csv \
+  --header-column-keys type \
+  --header-column-values message
+
+# Custom column mappings and output
+gh repo-stats-plus rows-to-columns \
+  --base-csv-file output/stats.csv \
+  --additional-csv-file output/audit.csv \
+  --header-column-keys type \
+  --header-column-values message \
+  --base-csv-columns Org_Name,Repo_Name \
+  --additional-csv-columns owner,name \
+  --output-file-name final-report.csv
+```
+
+See the [Rows-to-Columns Command Reference](docs/commands/rows-to-columns.md) for details on how values are parsed and examples.
 
 #### Repo Stats Options
 
