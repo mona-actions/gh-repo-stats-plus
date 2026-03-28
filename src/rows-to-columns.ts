@@ -127,7 +127,8 @@ export function rowsToColumns(
     }
 
     // Add Has_Unmigratable indicator
-    combinedRow['Has_Unmigratable'] = matchingRows.length > 0 ? 'TRUE' : 'FALSE';
+    combinedRow['Has_Unmigratable'] =
+      matchingRows.length > 0 ? 'TRUE' : 'FALSE';
 
     return combinedRow;
   });
@@ -195,14 +196,10 @@ export async function runRowsToColumns(
 
   // Read CSV files
   const baseCsvData = readCsvFile(options.baseCsvFile);
-  logger.info(
-    `Read base CSV: ${baseCsvData.length} rows`,
-  );
+  logger.info(`Read base CSV: ${baseCsvData.length} rows`);
 
   const additionalCsvData = readCsvFile(options.additionalCsvFile);
-  logger.info(
-    `Read additional CSV: ${additionalCsvData.length} rows`,
-  );
+  logger.info(`Read additional CSV: ${additionalCsvData.length} rows`);
 
   // Convert rows to columns
   logger.info('Converting rows to columns...');
