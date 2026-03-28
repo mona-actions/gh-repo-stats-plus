@@ -46,9 +46,24 @@ describe('rows-to-columns', () => {
       ];
 
       const additionalCsv = [
-        { owner: 'myorg', name: 'repo1', type: 'large_files', message: 'Found 5 large files' },
-        { owner: 'myorg', name: 'repo1', type: 'git_lfs', message: 'Has 3 LFS objects' },
-        { owner: 'myorg', name: 'repo2', type: 'large_files', message: 'Found 10 large files' },
+        {
+          owner: 'myorg',
+          name: 'repo1',
+          type: 'large_files',
+          message: 'Found 5 large files',
+        },
+        {
+          owner: 'myorg',
+          name: 'repo1',
+          type: 'git_lfs',
+          message: 'Has 3 LFS objects',
+        },
+        {
+          owner: 'myorg',
+          name: 'repo2',
+          type: 'large_files',
+          message: 'Found 10 large files',
+        },
       ];
 
       const { combinedData, headerTypes } = rowsToColumns(
@@ -76,12 +91,15 @@ describe('rows-to-columns', () => {
     });
 
     it('should set Has_Unmigratable to FALSE when no matches', () => {
-      const baseCsv = [
-        { Org_Name: 'myorg', Repo_Name: 'repo1' },
-      ];
+      const baseCsv = [{ Org_Name: 'myorg', Repo_Name: 'repo1' }];
 
       const additionalCsv = [
-        { owner: 'otherorg', name: 'repo2', type: 'large_files', message: '5 files' },
+        {
+          owner: 'otherorg',
+          name: 'repo2',
+          type: 'large_files',
+          message: '5 files',
+        },
       ];
 
       const { combinedData } = rowsToColumns(
@@ -98,12 +116,15 @@ describe('rows-to-columns', () => {
     });
 
     it('should handle case-insensitive matching', () => {
-      const baseCsv = [
-        { Org_Name: 'MyOrg', Repo_Name: 'MyRepo' },
-      ];
+      const baseCsv = [{ Org_Name: 'MyOrg', Repo_Name: 'MyRepo' }];
 
       const additionalCsv = [
-        { owner: 'myorg', name: 'myrepo', type: 'warning', message: '42 issues' },
+        {
+          owner: 'myorg',
+          name: 'myrepo',
+          type: 'warning',
+          message: '42 issues',
+        },
       ];
 
       const { combinedData } = rowsToColumns(
@@ -120,12 +141,15 @@ describe('rows-to-columns', () => {
     });
 
     it('should use "1+" when value has no digits', () => {
-      const baseCsv = [
-        { Org_Name: 'myorg', Repo_Name: 'repo1' },
-      ];
+      const baseCsv = [{ Org_Name: 'myorg', Repo_Name: 'repo1' }];
 
       const additionalCsv = [
-        { owner: 'myorg', name: 'repo1', type: 'issue', message: 'no numbers here' },
+        {
+          owner: 'myorg',
+          name: 'repo1',
+          type: 'issue',
+          message: 'no numbers here',
+        },
       ];
 
       const { combinedData } = rowsToColumns(
@@ -141,12 +165,15 @@ describe('rows-to-columns', () => {
     });
 
     it('should extract first digit sequence from values', () => {
-      const baseCsv = [
-        { Org_Name: 'myorg', Repo_Name: 'repo1' },
-      ];
+      const baseCsv = [{ Org_Name: 'myorg', Repo_Name: 'repo1' }];
 
       const additionalCsv = [
-        { owner: 'myorg', name: 'repo1', type: 'large_files', message: 'Found 123 large files over 100MB' },
+        {
+          owner: 'myorg',
+          name: 'repo1',
+          type: 'large_files',
+          message: 'Found 123 large files over 100MB',
+        },
       ];
 
       const { combinedData } = rowsToColumns(
@@ -163,7 +190,12 @@ describe('rows-to-columns', () => {
 
     it('should preserve base row data', () => {
       const baseCsv = [
-        { Org_Name: 'myorg', Repo_Name: 'repo1', Size: '100', Language: 'TypeScript' },
+        {
+          Org_Name: 'myorg',
+          Repo_Name: 'repo1',
+          Size: '100',
+          Language: 'TypeScript',
+        },
       ];
 
       const additionalCsv = [
@@ -186,9 +218,7 @@ describe('rows-to-columns', () => {
     });
 
     it('should handle empty additional CSV', () => {
-      const baseCsv = [
-        { Org_Name: 'myorg', Repo_Name: 'repo1' },
-      ];
+      const baseCsv = [{ Org_Name: 'myorg', Repo_Name: 'repo1' }];
 
       const { combinedData, headerTypes } = rowsToColumns(
         baseCsv,
@@ -223,13 +253,21 @@ describe('rows-to-columns', () => {
     });
 
     it('should handle multiple matching rows with same type (last wins)', () => {
-      const baseCsv = [
-        { Org_Name: 'myorg', Repo_Name: 'repo1' },
-      ];
+      const baseCsv = [{ Org_Name: 'myorg', Repo_Name: 'repo1' }];
 
       const additionalCsv = [
-        { owner: 'myorg', name: 'repo1', type: 'large_files', message: '5 files' },
-        { owner: 'myorg', name: 'repo1', type: 'large_files', message: '10 files' },
+        {
+          owner: 'myorg',
+          name: 'repo1',
+          type: 'large_files',
+          message: '5 files',
+        },
+        {
+          owner: 'myorg',
+          name: 'repo1',
+          type: 'large_files',
+          message: '10 files',
+        },
       ];
 
       const { combinedData } = rowsToColumns(
@@ -248,9 +286,7 @@ describe('rows-to-columns', () => {
 
   describe('determineHeaders', () => {
     it('should combine base headers with header types and Has_Unmigratable', () => {
-      const baseCsv = [
-        { Org_Name: 'myorg', Repo_Name: 'repo1', Size: '100' },
-      ];
+      const baseCsv = [{ Org_Name: 'myorg', Repo_Name: 'repo1', Size: '100' }];
       const headerTypes = new Set(['large_files', 'git_lfs']);
 
       const headers = determineHeaders(baseCsv, headerTypes);
