@@ -10,6 +10,7 @@ This page provides an overview of all available commands. See the individual com
 | [missing-repos](commands/missing-repos.md)         | Identify repositories in an organization that are missing from a CSV file      |
 | [project-stats](commands/project-stats.md)         | Count unique ProjectsV2 linked to repositories                                 |
 | [app-install-stats](commands/app-install-stats.md) | Retrieve GitHub App installation statistics for an organization (PAT only)     |
+| [package-stats](commands/package-stats.md)         | Retrieve package statistics (Maven, npm, etc.) for an organization             |
 | [combine-stats](commands/combine-stats.md)         | Merge multiple CSV output files into a single combined report                  |
 | [post-process](commands/post-process.md)           | Transform CSV data using configurable rules for pattern matching and cleanup   |
 | [rows-to-columns](commands/rows-to-columns.md)     | Pivot rows from an additional CSV into columns in a base CSV                   |
@@ -28,6 +29,12 @@ gh repo-stats-plus project-stats --org-name my-org
 
 # Collect app installation statistics (PAT required)
 gh repo-stats-plus app-install-stats --org-name my-org
+
+# Collect package statistics (Maven by default)
+gh repo-stats-plus package-stats --org-name my-org
+
+# Collect package statistics for NPM
+gh repo-stats-plus package-stats --org-name my-org --package-type NPM
 
 # Combine multiple CSV files
 gh repo-stats-plus combine-stats --files file1.csv file2.csv
@@ -65,6 +72,9 @@ gh repo-stats-plus project-stats --org-name myorg
 
 # 4. Gather app installation statistics
 gh repo-stats-plus app-install-stats --org-name myorg
+
+# 5. Gather package statistics
+gh repo-stats-plus package-stats --org-name myorg
 
 # 5. Combine repo-stats and project-stats into a single report
 gh repo-stats-plus combine-stats \
@@ -108,6 +118,7 @@ Run `./script/collect-stats.sh --help` for a full list of options.
 # Using org-list for commands that support it
 gh repo-stats-plus project-stats --org-list orgs.txt --continue-on-error
 gh repo-stats-plus app-install-stats --org-list orgs.txt --continue-on-error
+gh repo-stats-plus package-stats --org-list orgs.txt --continue-on-error
 
 # Sequential processing for repo-stats
 gh repo-stats-plus repo-stats --org-name org1
