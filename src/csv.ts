@@ -77,6 +77,24 @@ export const REPO_APP_DETAIL_COLUMNS = [
 
 export const APP_REPOS_COLUMNS = ['Org_Name', 'App_Name', 'Repos_Installed_In'];
 
+export const PACKAGE_STATS_COLUMNS = [
+  'Org_Name',
+  'Package_Name',
+  'Package_Type',
+  'Repo_Name',
+  'Repo_Archived',
+  'Repo_Visibility',
+  'Downloads_Count',
+  'Last_Published',
+  'Latest_Version',
+  'Latest_Version_Size_Bytes',
+  'Latest_Version_Size',
+  'Total_Versions',
+  'Total_Files',
+  'Total_Size_Bytes',
+  'Total_Size',
+];
+
 /** Default columns used for matching/joining CSV files */
 export const DEFAULT_MATCH_COLUMNS = ['Org_Name', 'Repo_Name'];
 
