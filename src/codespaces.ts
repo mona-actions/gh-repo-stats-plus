@@ -1,7 +1,7 @@
 import {
   Arguments,
   Logger,
-  CodespaceRepository,
+  Codespace,
   CodespaceStatsResult,
   OrgContext,
   CommandConfig,
@@ -71,55 +71,30 @@ function writeCodespaceStatsCsv(
 
 // --- Data mapping ---
 
-export function codespaceRepositoryToResults(
+export function codespaceToResult(
   orgName: string,
-  repo: CodespaceRepository,
-): CodespaceStatsResult[] {
-  const results: CodespaceStatsResult[] = [];
-
-  if (repo.codespaces.totalCount === 0) {
-    results.push({
-      Org_Name: orgName,
-      Repo_Name: repo.name,
-      Codespace_Name: 'N/A',
-      State: 'N/A',
-      Machine_Name: 'N/A',
-      CPU_Size: 'N/A',
-      Memory_Size_GB: 'N/A',
-      Storage_GB: 'N/A',
-      Billable_Owner: 'N/A',
-      Owner: 'N/A',
-      Last_Used_At: 'N/A',
-      Created_At: 'N/A',
-    });
-  } else {
-    for (const codespace of repo.codespaces.nodes) {
-      results.push({
-        Org_Name: orgName,
-        Repo_Name: repo.name,
-        Codespace_Name: codespace.name,
-        State: codespace.state,
-        Machine_Name: codespace.machine ? codespace.machine.name : 'N/A',
-        CPU_Size: codespace.machine
-          ? codespace.machine.cpuSize.toString()
-          : 'N/A',
-        Memory_Size_GB: codespace.machine
-          ? codespace.machine.memorySize.toString()
-          : 'N/A',
-        Storage_GB: codespace.machine
-          ? codespace.machine.storage.toString()
-          : 'N/A',
-        Billable_Owner: codespace.billableOwner
-          ? codespace.billableOwner.login
-          : 'N/A',
-        Owner: codespace.owner ? codespace.owner.login : 'N/A',
-        Last_Used_At: codespace.lastUsedAt || 'N/A',
-        Created_At: codespace.createdAt,
-      });
-    }
-  }
-
-  return results;
+  codespace: Codespace,
+): CodespaceStatsResult {
+  return {
+    Org_Name: orgName,
+    Repo_Name: codespace.repository ? codespace.repository.name : 'Unknown',
+    Codespace_Name: codespace.name,
+    State: codespace.state,
+    Machine_Name: codespace.machine ? codespace.machine.name : 'N/A',
+    CPU_Size: codespace.machine ? codespace.machine.cpuSize.toString() : 'N/A',
+    Memory_Size_GB: codespace.machine
+      ? codespace.machine.memorySize.toString()
+      : 'N/A',
+    Storage_GB: codespace.machine
+      ? codespace.machine.storage.toString()
+      : 'N/A',
+    Billable_Owner: codespace.billableOwner
+      ? codespace.billableOwner.login
+      : 'N/A',
+    Owner: codespace.owner ? codespace.owner.login : 'N/A',
+    Last_Used_At: codespace.lastUsedAt || 'N/A',
+    Created_At: codespace.createdAt,
+  };
 }
 
 // --- Per-org processing (called by shared executeForOrg via config.processOrg) ---
@@ -153,31 +128,24 @@ async function processOrgCodespaceStats(context: OrgContext): Promise<void> {
 
       logger.info(`Fetching codespaces for organization: ${orgName}`);
 
-      let repositoryCount = 0;
       let totalCodespaces = 0;
-      let repositoriesWithCodespaces = 0;
+      const uniqueRepos = new Set<string>();
 
-      for await (const repo of client.getOrgCodespaces(
+      for await (const codespace of client.getOrgCodespaces(
         orgName,
         pageSize,
         logger,
       )) {
-        const rows = codespaceRepositoryToResults(orgName, repo);
-        for (const row of rows) {
-          writeCodespaceStatsCsv(row, fileName, logger);
-        }
+        const row = codespaceToResult(orgName, codespace);
+        writeCodespaceStatsCsv(row, fileName, logger);
 
-        totalCodespaces += repo.codespaces.totalCount;
-        if (repo.codespaces.totalCount > 0) {
-          repositoriesWithCodespaces++;
-        }
-
-        repositoryCount++;
+        uniqueRepos.add(row.Repo_Name);
+        totalCodespaces++;
         processingState.successCount++;
 
-        if (repositoryCount % 100 === 0) {
+        if (totalCodespaces % 100 === 0) {
           logger.info(
-            `Processed ${repositoryCount} repositories so far for ${orgName}`,
+            `Processed ${totalCodespaces} codespaces so far for ${orgName}`,
           );
         }
       }
@@ -193,8 +161,7 @@ async function processOrgCodespaceStats(context: OrgContext): Promise<void> {
           `Start time: ${startTime.toISOString()}\n` +
           `End time: ${endTime.toISOString()}\n` +
           `Total elapsed time: ${elapsedTime}\n` +
-          `Repositories processed: ${repositoryCount}\n` +
-          `Repositories with codespaces: ${repositoriesWithCodespaces}\n` +
+          `Unique repositories: ${uniqueRepos.size}\n` +
           `Total codespaces found: ${totalCodespaces}\n` +
           `Output saved to: ${fileName}`,
       );

@@ -660,16 +660,6 @@ export interface Codespace {
   createdAt: string;
 }
 
-export interface CodespacesConnection {
-  totalCount: number;
-  nodes: Codespace[];
-}
-
-export interface CodespaceRepository {
-  name: string;
-  codespaces: CodespacesConnection;
-}
-
 export interface CodespaceStatsResult {
   Org_Name: string;
   Repo_Name: string;

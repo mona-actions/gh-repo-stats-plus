@@ -5,7 +5,6 @@ import {
   AppInstallationData,
   AuthResponse,
   Codespace,
-  CodespaceRepository,
   IssuesResponse,
   IssueStats,
   Logger,
@@ -656,8 +655,8 @@ export class OctokitClient {
 
   /**
    * Fetches codespaces for an organization using the REST API.
-   * Groups codespaces by repository and yields CodespaceRepository objects
-   * via an async generator for streaming / incremental processing.
+   * Yields individual Codespace objects via an async generator
+   * for streaming / incremental processing.
    *
    * Uses REST API: GET /orgs/{org}/codespaces
    *
@@ -667,7 +666,7 @@ export class OctokitClient {
     org: string,
     pageSize: number,
     logger: Logger,
-  ): AsyncGenerator<CodespaceRepository, void, unknown> {
+  ): AsyncGenerator<Codespace, void, unknown> {
     let totalFetched = 0;
     let pageCount = 0;
 
@@ -684,11 +683,7 @@ export class OctokitClient {
       logger.info(`Fetching codespaces page ${pageCount}`);
       logger.info(`Retrieved ${codespaces.length} codespaces from API`);
 
-      // Group codespaces by repository
-      const repositoryMap = new Map<string, Codespace[]>();
       for (const codespace of codespaces) {
-        const repoName = codespace.repository?.name || 'Unknown';
-
         const converted: Codespace = {
           name: codespace.name,
           state: codespace.state,
@@ -714,35 +709,17 @@ export class OctokitClient {
           createdAt: codespace.created_at,
         };
 
-        if (!repositoryMap.has(repoName)) {
-          repositoryMap.set(repoName, []);
-        }
-        repositoryMap.get(repoName)!.push(converted);
+        totalFetched++;
+        yield converted;
       }
 
-      // Convert to CodespaceRepository objects
-      const repositories: CodespaceRepository[] = Array.from(
-        repositoryMap.entries(),
-      ).map(([name, codespaces]) => ({
-        name,
-        codespaces: {
-          totalCount: codespaces.length,
-          nodes: codespaces,
-        },
-      }));
-
-      totalFetched += repositories.length;
       logger.info(
-        `Page ${pageCount}: Retrieved ${repositories.length} repositories (${totalFetched} total so far)`,
+        `Page ${pageCount}: ${totalFetched} codespaces fetched so far`,
       );
-
-      for (const repo of repositories) {
-        yield repo;
-      }
     }
 
     logger.info(
-      `Reached final page. Total repositories fetched: ${totalFetched}`,
+      `Reached final page. Total codespaces fetched: ${totalFetched}`,
     );
   }
 }

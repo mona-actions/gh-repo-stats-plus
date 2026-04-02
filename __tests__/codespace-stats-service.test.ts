@@ -48,7 +48,7 @@ describe('OctokitClient - Codespace Stats Methods', () => {
   });
 
   describe('getOrgCodespaces', () => {
-    it('should yield codespace repositories from a single page', async () => {
+    it('should yield individual codespaces from a single page', async () => {
       const paginateIterator = (
         mockOctokit.paginate as ReturnType<typeof vi.fn> & {
           iterator: ReturnType<typeof vi.fn>;
@@ -80,30 +80,27 @@ describe('OctokitClient - Codespace Stats Methods', () => {
         })(),
       );
 
-      const repos = [];
-      for await (const repo of client.getOrgCodespaces(
+      const codespaces = [];
+      for await (const cs of client.getOrgCodespaces(
         'test-org',
         100,
         mockLogger,
       )) {
-        repos.push(repo);
+        codespaces.push(cs);
       }
 
-      expect(repos).toHaveLength(1);
-      expect(repos[0].name).toBe('my-repo');
-      expect(repos[0].codespaces.totalCount).toBe(1);
-      expect(repos[0].codespaces.nodes[0].name).toBe('codespace-1');
-      expect(repos[0].codespaces.nodes[0].state).toBe('Available');
-      expect(repos[0].codespaces.nodes[0].machine?.cpuSize).toBe(2);
-      expect(repos[0].codespaces.nodes[0].machine?.memorySize).toBe(4);
-      expect(repos[0].codespaces.nodes[0].machine?.storage).toBe(32);
-      expect(repos[0].codespaces.nodes[0].billableOwner?.login).toBe(
-        'org-owner',
-      );
-      expect(repos[0].codespaces.nodes[0].owner?.login).toBe('dev-user');
+      expect(codespaces).toHaveLength(1);
+      expect(codespaces[0].name).toBe('codespace-1');
+      expect(codespaces[0].state).toBe('Available');
+      expect(codespaces[0].machine?.cpuSize).toBe(2);
+      expect(codespaces[0].machine?.memorySize).toBe(4);
+      expect(codespaces[0].machine?.storage).toBe(32);
+      expect(codespaces[0].billableOwner?.login).toBe('org-owner');
+      expect(codespaces[0].owner?.login).toBe('dev-user');
+      expect(codespaces[0].repository?.name).toBe('my-repo');
     });
 
-    it('should group codespaces by repository', async () => {
+    it('should yield multiple codespaces from the same page', async () => {
       const paginateIterator = (
         mockOctokit.paginate as ReturnType<typeof vi.fn> & {
           iterator: ReturnType<typeof vi.fn>;
@@ -167,24 +164,22 @@ describe('OctokitClient - Codespace Stats Methods', () => {
         })(),
       );
 
-      const repos = [];
-      for await (const repo of client.getOrgCodespaces(
+      const codespaces = [];
+      for await (const cs of client.getOrgCodespaces(
         'test-org',
         100,
         mockLogger,
       )) {
-        repos.push(repo);
+        codespaces.push(cs);
       }
 
-      expect(repos).toHaveLength(2);
-
-      const repoA = repos.find((r) => r.name === 'repo-a');
-      expect(repoA).toBeDefined();
-      expect(repoA!.codespaces.totalCount).toBe(2);
-
-      const repoB = repos.find((r) => r.name === 'repo-b');
-      expect(repoB).toBeDefined();
-      expect(repoB!.codespaces.totalCount).toBe(1);
+      expect(codespaces).toHaveLength(3);
+      expect(codespaces[0].name).toBe('cs-1');
+      expect(codespaces[0].repository?.name).toBe('repo-a');
+      expect(codespaces[1].name).toBe('cs-2');
+      expect(codespaces[1].repository?.name).toBe('repo-a');
+      expect(codespaces[2].name).toBe('cs-3');
+      expect(codespaces[2].repository?.name).toBe('repo-b');
     });
 
     it('should handle codespace with null machine', async () => {
@@ -213,20 +208,20 @@ describe('OctokitClient - Codespace Stats Methods', () => {
         })(),
       );
 
-      const repos = [];
-      for await (const repo of client.getOrgCodespaces(
+      const codespaces = [];
+      for await (const cs of client.getOrgCodespaces(
         'test-org',
         100,
         mockLogger,
       )) {
-        repos.push(repo);
+        codespaces.push(cs);
       }
 
-      expect(repos).toHaveLength(1);
-      expect(repos[0].codespaces.nodes[0].machine).toBeNull();
-      expect(repos[0].codespaces.nodes[0].billableOwner).toBeNull();
-      expect(repos[0].codespaces.nodes[0].owner).toBeNull();
-      expect(repos[0].codespaces.nodes[0].lastUsedAt).toBeNull();
+      expect(codespaces).toHaveLength(1);
+      expect(codespaces[0].machine).toBeNull();
+      expect(codespaces[0].billableOwner).toBeNull();
+      expect(codespaces[0].owner).toBeNull();
+      expect(codespaces[0].lastUsedAt).toBeNull();
     });
 
     it('should handle codespace with no repository', async () => {
@@ -261,18 +256,17 @@ describe('OctokitClient - Codespace Stats Methods', () => {
         })(),
       );
 
-      const repos = [];
-      for await (const repo of client.getOrgCodespaces(
+      const codespaces = [];
+      for await (const cs of client.getOrgCodespaces(
         'test-org',
         100,
         mockLogger,
       )) {
-        repos.push(repo);
+        codespaces.push(cs);
       }
 
-      expect(repos).toHaveLength(1);
-      expect(repos[0].name).toBe('Unknown');
-      expect(repos[0].codespaces.nodes[0].repository).toBeNull();
+      expect(codespaces).toHaveLength(1);
+      expect(codespaces[0].repository).toBeNull();
     });
 
     it('should handle empty codespaces list', async () => {
@@ -290,19 +284,19 @@ describe('OctokitClient - Codespace Stats Methods', () => {
         })(),
       );
 
-      const repos = [];
-      for await (const repo of client.getOrgCodespaces(
+      const codespaces = [];
+      for await (const cs of client.getOrgCodespaces(
         'empty-org',
         100,
         mockLogger,
       )) {
-        repos.push(repo);
+        codespaces.push(cs);
       }
 
-      expect(repos).toHaveLength(0);
+      expect(codespaces).toHaveLength(0);
     });
 
-    it('should paginate through multiple pages', async () => {
+    it('should yield codespaces across multiple pages without duplication', async () => {
       const paginateIterator = (
         mockOctokit.paginate as ReturnType<typeof vi.fn> & {
           iterator: ReturnType<typeof vi.fn>;
@@ -325,7 +319,7 @@ describe('OctokitClient - Codespace Stats Methods', () => {
                 },
                 billable_owner: { login: 'owner' },
                 owner: { login: 'user1' },
-                repository: { name: 'repo-1' },
+                repository: { name: 'repo-a' },
                 last_used_at: '2025-06-15T10:00:00Z',
                 created_at: '2025-06-01T08:00:00Z',
               },
@@ -345,7 +339,7 @@ describe('OctokitClient - Codespace Stats Methods', () => {
                 },
                 billable_owner: { login: 'owner' },
                 owner: { login: 'user2' },
-                repository: { name: 'repo-2' },
+                repository: { name: 'repo-a' },
                 last_used_at: '2025-06-10T14:00:00Z',
                 created_at: '2025-05-20T09:00:00Z',
               },
@@ -354,18 +348,21 @@ describe('OctokitClient - Codespace Stats Methods', () => {
         })(),
       );
 
-      const repos = [];
-      for await (const repo of client.getOrgCodespaces(
+      const codespaces = [];
+      for await (const cs of client.getOrgCodespaces(
         'test-org',
         1,
         mockLogger,
       )) {
-        repos.push(repo);
+        codespaces.push(cs);
       }
 
-      expect(repos).toHaveLength(2);
-      expect(repos[0].name).toBe('repo-1');
-      expect(repos[1].name).toBe('repo-2');
+      // Both codespaces from the same repo should be yielded individually
+      expect(codespaces).toHaveLength(2);
+      expect(codespaces[0].name).toBe('cs-page1');
+      expect(codespaces[0].repository?.name).toBe('repo-a');
+      expect(codespaces[1].name).toBe('cs-page2');
+      expect(codespaces[1].repository?.name).toBe('repo-a');
     });
   });
 });

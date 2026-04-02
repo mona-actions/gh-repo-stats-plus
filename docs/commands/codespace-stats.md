@@ -110,7 +110,7 @@ The command generates a CSV file in the output directory with the following colu
 | ---------------- | ---------------------------------------------------------- |
 | `Org_Name`       | Organization name                                          |
 | `Repo_Name`      | Repository name the codespace belongs to (or `Unknown`)    |
-| `Codespace_Name` | Name of the codespace (or `N/A` if repo has no codespaces) |
+| `Codespace_Name` | Name of the codespace                                      |
 | `State`          | Current state of the codespace (e.g., Available, Shutdown) |
 | `Machine_Name`   | Machine type name (e.g., `basicLinux32gb`)                 |
 | `CPU_Size`       | Number of CPUs allocated                                   |

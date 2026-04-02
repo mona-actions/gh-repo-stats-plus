@@ -87,12 +87,12 @@ gh repo-stats-plus codespace-stats --org-name myorg
 gh repo-stats-plus combine-stats \
   --files output/myorg-all_repos-*.csv output/myorg-project-stats-*.csv
 
-# 6. Post-process the combined report with custom rules
+# 8. Post-process the combined report with custom rules
 gh repo-stats-plus post-process \
   --input output/combined-stats.csv \
   --rules-file post-process.rules.json
 
-# 7. Combine with migration audit data (if available)
+# 9. Combine with migration audit data (if available)
 gh repo-stats-plus rows-to-columns \
   --base-csv-file output/combined-stats.csv \
   --additional-csv-file output/migration-audit.csv \
