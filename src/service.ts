@@ -4,6 +4,7 @@ import {
   AppInstallation,
   AppInstallationData,
   AuthResponse,
+  Codespace,
   IssuesResponse,
   IssueStats,
   Logger,
@@ -648,5 +649,77 @@ export class OctokitClient {
     }
 
     return { totalFiles, totalSize, totalVersions };
+  }
+
+  // --- Codespace Stats methods (REST API) ---
+
+  /**
+   * Fetches codespaces for an organization using the REST API.
+   * Yields individual Codespace objects via an async generator
+   * for streaming / incremental processing.
+   *
+   * Uses REST API: GET /orgs/{org}/codespaces
+   *
+   * Based on the approach from https://github.com/scottluskcis/gh-data-fetch
+   */
+  async *getOrgCodespaces(
+    org: string,
+    pageSize: number,
+    logger: Logger,
+  ): AsyncGenerator<Codespace, void, unknown> {
+    let totalFetched = 0;
+    let pageCount = 0;
+
+    const iterator = this.octokit.paginate.iterator(
+      'GET /orgs/{org}/codespaces',
+      {
+        org,
+        per_page: pageSize,
+      },
+    );
+
+    for await (const { data: codespaces } of iterator) {
+      pageCount++;
+      logger.info(`Fetching codespaces page ${pageCount}`);
+      logger.info(`Retrieved ${codespaces.length} codespaces from API`);
+
+      for (const codespace of codespaces) {
+        const converted: Codespace = {
+          name: codespace.name,
+          state: codespace.state,
+          machine: codespace.machine
+            ? {
+                name: codespace.machine.name,
+                displayName: codespace.machine.display_name,
+                cpuSize: codespace.machine.cpus,
+                memorySize:
+                  codespace.machine.memory_in_bytes / (1024 * 1024 * 1024),
+                storage:
+                  codespace.machine.storage_in_bytes / (1024 * 1024 * 1024),
+              }
+            : null,
+          billableOwner: codespace.billable_owner
+            ? { login: codespace.billable_owner.login }
+            : null,
+          owner: codespace.owner ? { login: codespace.owner.login } : null,
+          repository: codespace.repository
+            ? { name: codespace.repository.name }
+            : null,
+          lastUsedAt: codespace.last_used_at,
+          createdAt: codespace.created_at,
+        };
+
+        totalFetched++;
+        yield converted;
+      }
+
+      logger.info(
+        `Page ${pageCount}: ${totalFetched} codespaces fetched so far`,
+      );
+    }
+
+    logger.info(
+      `Reached final page. Total codespaces fetched: ${totalFetched}`,
+    );
   }
 }

@@ -95,6 +95,21 @@ export const PACKAGE_STATS_COLUMNS = [
   'Total_Size',
 ];
 
+export const CODESPACE_STATS_COLUMNS = [
+  'Org_Name',
+  'Repo_Name',
+  'Codespace_Name',
+  'State',
+  'Machine_Name',
+  'CPU_Size',
+  'Memory_Size_GB',
+  'Storage_GB',
+  'Billable_Owner',
+  'Owner',
+  'Last_Used_At',
+  'Created_At',
+];
+
 /** Default columns used for matching/joining CSV files */
 export const DEFAULT_MATCH_COLUMNS = ['Org_Name', 'Repo_Name'];
 

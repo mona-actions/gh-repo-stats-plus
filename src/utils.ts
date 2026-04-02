@@ -43,6 +43,11 @@ export function generateAppReposFileName(orgName: string): string {
   return `${orgName.toLowerCase()}-app-repos-${timestamp}_ts.csv`;
 }
 
+export function generateCodespaceStatsFileName(orgName: string): string {
+  const timestamp = generateTimestamp();
+  return `${orgName.toLowerCase()}-codespace-stats-${timestamp}_ts.csv`;
+}
+
 export function generatePackageStatsFileName(orgName: string): string {
   const timestamp = generateTimestamp();
   return `${orgName.toLowerCase()}-package-stats-${timestamp}_ts.csv`;

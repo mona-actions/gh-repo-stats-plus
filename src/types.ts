@@ -633,6 +633,48 @@ export interface PackageStatsResult {
   Total_Size: string;
 }
 
+// --- Codespace Stats types ---
+
+export interface CodespaceMachine {
+  name: string;
+  displayName: string;
+  cpuSize: number;
+  memorySize: number;
+  storage: number;
+}
+
+export interface CodespaceOwner {
+  login: string;
+}
+
+export interface Codespace {
+  name: string;
+  state: string;
+  machine: CodespaceMachine | null;
+  billableOwner: CodespaceOwner | null;
+  owner: CodespaceOwner | null;
+  repository: {
+    name: string;
+  } | null;
+  lastUsedAt: string | null;
+  createdAt: string;
+}
+
+export interface CodespaceStatsResult {
+  Org_Name: string;
+  Repo_Name: string;
+  Codespace_Name: string;
+  State: string;
+  Machine_Name: string;
+  CPU_Size: string;
+  Memory_Size_GB: string;
+  Storage_GB: string;
+  Billable_Owner: string;
+  Owner: string;
+  Last_Used_At: string;
+  Created_At: string;
+}
+
 // --- Shared command infrastructure types ---
 
 import type { OctokitClient } from './service.js';

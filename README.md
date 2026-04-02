@@ -63,6 +63,8 @@ This TypeScript rewrite offers several advantages:
 
 15. **Package Stats**: Retrieve package statistics (Maven, npm, Docker, NuGet, RubyGems, PyPI) for organizations, including version counts, file counts, download counts, and total storage sizes. Based on [scottluskcis/gh-data-fetch](https://github.com/scottluskcis/gh-data-fetch). See the [Package Stats Command Reference](docs/commands/package-stats.md).
 
+16. **Codespace Stats**: Retrieve codespace usage statistics for organizations, including machine details (CPU, memory, storage), ownership information, and lifecycle timestamps. Based on [scottluskcis/gh-data-fetch](https://github.com/scottluskcis/gh-data-fetch). See the [Codespace Stats Command Reference](docs/commands/codespace-stats.md).
+
 ## Technical Implementation
 
 The extension is built using modern TypeScript patterns with:
@@ -88,6 +90,7 @@ The extension is built using modern TypeScript patterns with:
 | [Post-Processing](docs/commands/post-process.md)    | CSV transformation with configurable rules    |
 | [Rows-to-Columns](docs/commands/rows-to-columns.md) | Pivot additional CSV rows into columns        |
 | [Package Stats](docs/commands/package-stats.md)     | Retrieve package statistics for organizations |
+| [Codespace Stats](docs/commands/codespace-stats.md) | Retrieve codespace usage for organizations    |
 
 ## Common Usage Examples
 
