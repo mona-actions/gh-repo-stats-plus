@@ -61,6 +61,8 @@ This TypeScript rewrite offers several advantages:
 
 14. **Rows-to-Columns Pivot**: Convert rows from an additional CSV (e.g., migration audit data) into new columns in a base CSV by matching rows and pivoting values. Based on [jcantosz/generate-repo-report/rows-to-columns](https://github.com/jcantosz/generate-repo-report/tree/main/rows-to-columns). See the [Rows-to-Columns Command Reference](docs/commands/rows-to-columns.md).
 
+15. **Package Stats**: Retrieve package statistics (Maven, npm, Docker, NuGet, RubyGems, PyPI) for organizations, including version counts, file counts, download counts, and total storage sizes. Based on [scottluskcis/gh-data-fetch](https://github.com/scottluskcis/gh-data-fetch). See the [Package Stats Command Reference](docs/commands/package-stats.md).
+
 ## Technical Implementation
 
 The extension is built using modern TypeScript patterns with:
@@ -85,6 +87,7 @@ The extension is built using modern TypeScript patterns with:
 | [Batch Processing](docs/batch-processing.md)        | Parallel batch processing with GitHub Actions |
 | [Post-Processing](docs/commands/post-process.md)    | CSV transformation with configurable rules    |
 | [Rows-to-Columns](docs/commands/rows-to-columns.md) | Pivot additional CSV rows into columns        |
+| [Package Stats](docs/commands/package-stats.md)     | Retrieve package statistics for organizations |
 
 ## Common Usage Examples
 
