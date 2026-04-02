@@ -310,3 +310,110 @@ export const REPO_PROJECT_COUNTS_QUERY = `
     }
   }
 `;
+
+// --- Package Stats queries ---
+
+/**
+ * Query for fetching package details for an organization.
+ * Paginates through packages using cursor-based pagination.
+ *
+ * Based on the approach from https://github.com/scottluskcis/gh-data-fetch
+ */
+export const ORG_PACKAGE_DETAILS_QUERY = `
+  query orgPackageDetails($organization: String!, $packageType: PackageType!, $pageSize: Int!, $endCursor: String) {
+    organization(login: $organization) {
+      packages(first: $pageSize, packageType: $packageType, after: $endCursor) {
+        nodes {
+          name
+          packageType
+          repository {
+            name
+            isArchived
+            visibility
+          }
+          statistics {
+            downloadsTotalCount
+          }
+          latestVersion {
+            files(first: 100, orderBy: {field: UPDATED_AT, direction: DESC}) {
+              nodes {
+                name
+                size
+                updatedAt
+              }
+              totalCount
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+            }
+            version
+          }
+          versions {
+            totalCount
+          }
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }
+  }
+`;
+
+/**
+ * Query for fetching all versions of a specific package in an organization.
+ * Used to compute total file count and total size across all versions.
+ */
+export const PACKAGE_VERSIONS_QUERY = `
+  query packageVersions($organization: String!, $packageName: String!, $pageSize: Int!, $endCursor: String) {
+    organization(login: $organization) {
+      packages(first: 1, names: [$packageName]) {
+        nodes {
+          versions(first: $pageSize, after: $endCursor) {
+            nodes {
+              id
+              files(first: 100) {
+                nodes {
+                  size
+                }
+                totalCount
+                pageInfo {
+                  hasNextPage
+                  endCursor
+                }
+              }
+            }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
+/**
+ * Query for fetching additional file pages for a specific package version.
+ * Used when a version has more than 100 files.
+ */
+export const PACKAGE_VERSION_FILES_QUERY = `
+  query packageVersionFiles($versionId: ID!, $pageSize: Int!, $endCursor: String) {
+    node(id: $versionId) {
+      ... on PackageVersion {
+        files(first: $pageSize, after: $endCursor) {
+          nodes {
+            size
+          }
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+        }
+      }
+    }
+  }
+`;
