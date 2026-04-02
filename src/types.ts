@@ -533,6 +533,11 @@ export interface PackageFile {
 export interface PackageVersion {
   files: {
     nodes: PackageFile[];
+    totalCount: number;
+    pageInfo: {
+      hasNextPage: boolean;
+      endCursor: string | null;
+    };
   };
   version: string;
 }
@@ -585,17 +590,15 @@ export interface PackageVersionNode {
 export interface PackageVersionsResponse {
   organization: {
     packages: {
-      nodes: [
-        {
-          versions: {
-            nodes: PackageVersionNode[];
-            pageInfo: {
-              hasNextPage: boolean;
-              endCursor: string | null;
-            };
+      nodes: {
+        versions: {
+          nodes: PackageVersionNode[];
+          pageInfo: {
+            hasNextPage: boolean;
+            endCursor: string | null;
           };
-        },
-      ];
+        };
+      }[];
     };
   };
 }

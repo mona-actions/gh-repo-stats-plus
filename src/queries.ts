@@ -335,11 +335,16 @@ export const ORG_PACKAGE_DETAILS_QUERY = `
             downloadsTotalCount
           }
           latestVersion {
-            files(last: 100, orderBy: {field: CREATED_AT, direction: ASC}) {
+            files(first: 100, orderBy: {field: UPDATED_AT, direction: DESC}) {
               nodes {
                 name
                 size
                 updatedAt
+              }
+              totalCount
+              pageInfo {
+                hasNextPage
+                endCursor
               }
             }
             version

@@ -95,6 +95,7 @@ export function packageDetailToResult(
   const downloads = pkg.statistics ? pkg.statistics.downloadsTotalCount : 0;
   const version = pkg.latestVersion ? pkg.latestVersion.version : 'N/A';
 
+  // nodes[0] is the most recently updated file (query orders by UPDATED_AT DESC)
   const updatedAt =
     pkg.latestVersion &&
     pkg.latestVersion.files &&
@@ -102,6 +103,9 @@ export function packageDetailToResult(
       ? pkg.latestVersion.files.nodes[0].updatedAt
       : 'N/A';
 
+  // Sum of file sizes from the first page (up to 100).
+  // For versions with >100 files, this is an approximation;
+  // the accurate total across all versions is in Total_Size_Bytes.
   const latestVersionSize =
     pkg.latestVersion &&
     pkg.latestVersion.files &&

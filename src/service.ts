@@ -577,9 +577,7 @@ export class OctokitClient {
           },
         );
 
-      const packageNode = response.organization.packages.nodes[0] as
-        | PackageVersionsResponse['organization']['packages']['nodes'][0]
-        | undefined;
+      const packageNode = response.organization.packages.nodes[0];
       if (!packageNode) {
         break;
       }

@@ -14,6 +14,15 @@ import { runPackageStats } from '../packages.js';
 
 const { Option } = commander;
 
+const SUPPORTED_PACKAGE_TYPES = [
+  'maven',
+  'npm',
+  'docker',
+  'nuget',
+  'rubygems',
+  'pypi',
+] as const;
+
 function validate(opts: Arguments) {
   if (!opts.orgName && !opts.orgList) {
     throw new Error(
@@ -25,6 +34,20 @@ function validate(opts: Arguments) {
     throw new Error(
       'Cannot specify both orgName (-o, --org-name <org>) and orgList (--org-list <file>)',
     );
+  }
+
+  if (opts.packageType) {
+    const normalized = opts.packageType.toLowerCase();
+    if (
+      !SUPPORTED_PACKAGE_TYPES.includes(
+        normalized as (typeof SUPPORTED_PACKAGE_TYPES)[number],
+      )
+    ) {
+      throw new Error(
+        `Unsupported package type: '${opts.packageType}'. ` +
+          `Supported types are: ${SUPPORTED_PACKAGE_TYPES.join(', ')}`,
+      );
+    }
   }
 }
 

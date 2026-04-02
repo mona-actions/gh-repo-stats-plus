@@ -72,6 +72,8 @@ describe('OctokitClient - Package Stats Methods', () => {
                         updatedAt: '2025-01-15T10:00:00Z',
                       },
                     ],
+                    totalCount: 1,
+                    pageInfo: { hasNextPage: false, endCursor: null },
                   },
                   version: '1.0.0',
                 },
