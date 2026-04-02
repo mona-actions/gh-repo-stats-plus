@@ -11,6 +11,7 @@ This page provides an overview of all available commands. See the individual com
 | [project-stats](commands/project-stats.md)         | Count unique ProjectsV2 linked to repositories                                 |
 | [app-install-stats](commands/app-install-stats.md) | Retrieve GitHub App installation statistics for an organization (PAT only)     |
 | [package-stats](commands/package-stats.md)         | Retrieve package statistics (Maven, npm, etc.) for an organization             |
+| [codespace-stats](commands/codespace-stats.md)     | Retrieve codespace usage statistics for an organization                        |
 | [combine-stats](commands/combine-stats.md)         | Merge multiple CSV output files into a single combined report                  |
 | [post-process](commands/post-process.md)           | Transform CSV data using configurable rules for pattern matching and cleanup   |
 | [rows-to-columns](commands/rows-to-columns.md)     | Pivot rows from an additional CSV into columns in a base CSV                   |
@@ -35,6 +36,9 @@ gh repo-stats-plus package-stats --org-name my-org
 
 # Collect package statistics for NPM
 gh repo-stats-plus package-stats --org-name my-org --package-type NPM
+
+# Collect codespace usage statistics
+gh repo-stats-plus codespace-stats --org-name my-org
 
 # Combine multiple CSV files
 gh repo-stats-plus combine-stats --files file1.csv file2.csv
@@ -76,7 +80,10 @@ gh repo-stats-plus app-install-stats --org-name myorg
 # 5. Gather package statistics
 gh repo-stats-plus package-stats --org-name myorg
 
-# 5. Combine repo-stats and project-stats into a single report
+# 6. Gather codespace usage statistics
+gh repo-stats-plus codespace-stats --org-name myorg
+
+# 7. Combine repo-stats and project-stats into a single report
 gh repo-stats-plus combine-stats \
   --files output/myorg-all_repos-*.csv output/myorg-project-stats-*.csv
 
