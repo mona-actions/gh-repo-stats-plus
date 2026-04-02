@@ -4,6 +4,8 @@ import {
   AppInstallation,
   AppInstallationData,
   AuthResponse,
+  Codespace,
+  CodespaceRepository,
   IssuesResponse,
   IssueStats,
   Logger,
@@ -648,5 +650,99 @@ export class OctokitClient {
     }
 
     return { totalFiles, totalSize, totalVersions };
+  }
+
+  // --- Codespace Stats methods (REST API) ---
+
+  /**
+   * Fetches codespaces for an organization using the REST API.
+   * Groups codespaces by repository and yields CodespaceRepository objects
+   * via an async generator for streaming / incremental processing.
+   *
+   * Uses REST API: GET /orgs/{org}/codespaces
+   *
+   * Based on the approach from https://github.com/scottluskcis/gh-data-fetch
+   */
+  async *getOrgCodespaces(
+    org: string,
+    pageSize: number,
+    logger: Logger,
+  ): AsyncGenerator<CodespaceRepository, void, unknown> {
+    let totalFetched = 0;
+    let pageCount = 0;
+
+    const iterator = this.octokit.paginate.iterator(
+      'GET /orgs/{org}/codespaces',
+      {
+        org,
+        per_page: pageSize,
+      },
+    );
+
+    for await (const { data: codespaces } of iterator) {
+      pageCount++;
+      logger.info(`Fetching codespaces page ${pageCount}`);
+      logger.info(`Retrieved ${codespaces.length} codespaces from API`);
+
+      // Group codespaces by repository
+      const repositoryMap = new Map<string, Codespace[]>();
+      for (const codespace of codespaces) {
+        const repoName = codespace.repository?.name || 'Unknown';
+
+        const converted: Codespace = {
+          name: codespace.name,
+          state: codespace.state,
+          machine: codespace.machine
+            ? {
+                name: codespace.machine.name,
+                displayName: codespace.machine.display_name,
+                cpuSize: codespace.machine.cpus,
+                memorySize:
+                  codespace.machine.memory_in_bytes / (1024 * 1024 * 1024),
+                storage:
+                  codespace.machine.storage_in_bytes / (1024 * 1024 * 1024),
+              }
+            : null,
+          billableOwner: codespace.billable_owner
+            ? { login: codespace.billable_owner.login }
+            : null,
+          owner: codespace.owner ? { login: codespace.owner.login } : null,
+          repository: codespace.repository
+            ? { name: codespace.repository.name }
+            : null,
+          lastUsedAt: codespace.last_used_at,
+          createdAt: codespace.created_at,
+        };
+
+        if (!repositoryMap.has(repoName)) {
+          repositoryMap.set(repoName, []);
+        }
+        repositoryMap.get(repoName)!.push(converted);
+      }
+
+      // Convert to CodespaceRepository objects
+      const repositories: CodespaceRepository[] = Array.from(
+        repositoryMap.entries(),
+      ).map(([name, codespaces]) => ({
+        name,
+        codespaces: {
+          totalCount: codespaces.length,
+          nodes: codespaces,
+        },
+      }));
+
+      totalFetched += repositories.length;
+      logger.info(
+        `Page ${pageCount}: Retrieved ${repositories.length} repositories (${totalFetched} total so far)`,
+      );
+
+      for (const repo of repositories) {
+        yield repo;
+      }
+    }
+
+    logger.info(
+      `Reached final page. Total repositories fetched: ${totalFetched}`,
+    );
   }
 }
