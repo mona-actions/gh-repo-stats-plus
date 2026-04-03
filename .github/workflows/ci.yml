@@ -63,6 +63,7 @@ jobs:
       - name: Extract shell scripts from action.yml
         id: extract
         run: |
+          pip install pyyaml
           mkdir -p /tmp/scripts
           python3 -c "
           import yaml, os
@@ -84,7 +85,7 @@ jobs:
         run: |
           if ls /tmp/scripts/*.sh 1>/dev/null 2>&1; then
             echo "Running ShellCheck on extracted scripts..."
-            shellcheck --severity=warning /tmp/scripts/*.sh || true
+            shellcheck --severity=warning /tmp/scripts/*.sh
           else
             echo "No shell scripts found to lint"
           fi
@@ -100,4 +101,8 @@ jobs:
       - name: Lint YAML files
         run: |
           pip install yamllint
-          yamllint -c action/.yamllint.yml action.yml action/examples/*.yml
+          files="action.yml"
+          while IFS= read -r file; do
+            files="$files $file"
+          done < <(find action/examples -type f \( -name '*.yml' -o -name '*.yaml' \) | sort)
+          yamllint -c action/.yamllint.yml $files

@@ -36,7 +36,9 @@ jobs:
   parse-info:
     runs-on: ubuntu-latest
     if: |
-      contains(github.event.issue.labels.*.name, 'stats') && startsWith(github.event.comment.body, '/run-stats')
+      github.event_name == 'issue_comment' &&
+      contains(github.event.issue.labels.*.name, 'stats') &&
+      startsWith(github.event.comment.body, '/run-stats')
 
     outputs:
       organization: ${{ steps.repo-info.outputs.organization }}
