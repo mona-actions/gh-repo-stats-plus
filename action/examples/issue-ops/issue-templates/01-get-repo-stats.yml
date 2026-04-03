@@ -1,0 +1,26 @@
+name: Get Repo Stats
+description: Gathers statistics about a repository.
+title: "Gather Stats: [Repo Name]"
+labels: ["stats", "repository"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please provide the following information to gather statistics.
+
+  - type: input
+    id: name
+    attributes:
+      label: Name
+      description: Enter the full path in the format `organization/repository`.
+      placeholder: org/repo
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: options
+    attributes:
+      label: Additional Options
+      description: Select any additional types of statistics you would like to gather.
+      options:
+        - label: Migration Audit

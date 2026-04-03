@@ -1,0 +1,115 @@
+# Example: Batch Organization Stats
+#
+# Gathers stats for all repositories in a large organization using
+# batch processing with matrix strategy for parallel execution.
+#
+# The workflow has three jobs:
+# 1. setup  - calculates how many batches are needed based on org repo count
+# 2. collect - runs batches in parallel using matrix strategy
+# 3. combine - merges all batch results into a single CSV
+#
+# See: https://github.com/mona-actions/gh-repo-stats-plus/blob/main/docs/batch-processing.md
+
+name: Batch Organization Stats
+
+on:
+  workflow_dispatch:
+    inputs:
+      organization:
+        description: "Organization name"
+        required: true
+      batch-size:
+        description: "Repos per batch"
+        required: true
+        default: "50"
+      run-migration-audit:
+        description: "Run migration audit for the organization (runs once, not per-batch)"
+        required: false
+        default: "false"
+
+permissions:
+  contents: read
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.calc.outputs.matrix }}
+    steps:
+      - name: Calculate batch matrix
+        id: calc
+        run: |
+          REPO_COUNT=$(gh api "orgs/${ORG}" --jq '(.public_repos // 0) + (.total_private_repos // 0)')
+          BATCH_SIZE=${BATCH_SIZE_INPUT}
+          TOTAL_BATCHES=$(( (REPO_COUNT + BATCH_SIZE - 1) / BATCH_SIZE ))
+          echo "Org has ${REPO_COUNT} repos → ${TOTAL_BATCHES} batches of ${BATCH_SIZE}"
+          INDICES=$(jq -nc "[range(${TOTAL_BATCHES})]")
+          echo "matrix={\"batch-index\":${INDICES}}" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          ORG: ${{ inputs.organization }}
+          BATCH_SIZE_INPUT: ${{ inputs.batch-size }}
+
+  collect:
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Gather Organization Stats (batch ${{ matrix.batch-index }})
+        uses: mona-actions/gh-repo-stats-plus@v1
+        with:
+          type: organization
+          github-token: ${{ github.token }}
+          access-token: ${{ secrets.ACCESS_TOKEN }}
+          organization: ${{ inputs.organization }}
+          batch-size: ${{ inputs.batch-size }}
+          batch-index: ${{ matrix.batch-index }}
+          batch-delay: "5"
+
+  combine:
+    needs: collect
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download batch artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 #v4
+        with:
+          pattern: repo-stats-organization-*
+          path: output
+          merge-multiple: true
+
+      - name: Combine Results
+        id: combine
+        uses: mona-actions/gh-repo-stats-plus@v1
+        with:
+          type: combine
+          github-token: ${{ github.token }}
+          organization: ${{ inputs.organization }}
+
+      - name: Print artifact ID
+        run: |
+          echo "Combined artifact ID: ${{ steps.combine.outputs.artifact-id }}"
+
+  # Optional: Run migration audit once for the entire org (not per-batch)
+  migration-audit:
+    needs: collect
+    if: ${{ inputs.run-migration-audit == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Migration Audit
+        uses: mona-actions/gh-repo-stats-plus@v1
+        with:
+          type: migration-audit
+          github-token: ${{ github.token }}
+          access-token: ${{ secrets.ACCESS_TOKEN }}
+          organization: ${{ inputs.organization }}

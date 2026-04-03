@@ -1,0 +1,30 @@
+name: Organization Stats
+
+on:
+  schedule:
+    - cron: "0 0 * * 1" # weekly on Monday
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gather-stats:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Gather Organization Stats
+        id: stats
+        uses: mona-actions/gh-repo-stats-plus@v1
+        with:
+          type: organization
+          github-token: ${{ github.token }}
+          access-token: ${{ secrets.ACCESS_TOKEN }}
+          organization: my-org
+
+      - name: Print Results
+        run: |
+          echo "Output directory: ${{ steps.stats.outputs.output-dir }}"
+          echo "Artifact ID: ${{ steps.stats.outputs.artifact-id }}"

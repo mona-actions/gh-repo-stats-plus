@@ -1,0 +1,13 @@
+---
+extends: relaxed
+
+rules:
+  trailing-spaces: enable
+
+# Disable line-length for action.yml where long description
+# strings are standard for GitHub Actions metadata
+overrides:
+  - files:
+      - "../action.yml"
+    rules:
+      line-length: disable

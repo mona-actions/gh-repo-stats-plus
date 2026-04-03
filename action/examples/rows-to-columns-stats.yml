@@ -1,0 +1,43 @@
+# Example: Rows to Columns Stats
+#
+# Gathers organization stats with migration audit, then uses rows-to-columns
+# to pivot the audit data into new columns in the stats CSV.
+#
+# This is the typical workflow for combining repo statistics with
+# gh-migration-audit results into a single report.
+#
+# See: https://github.com/mona-actions/gh-repo-stats-plus/blob/main/docs/commands/rows-to-columns.md
+
+name: Rows to Columns Stats
+
+on:
+  schedule:
+    - cron: "0 0 * * 1" # weekly on Monday
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gather-stats:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Gather Organization Stats with Rows-to-Columns
+        id: stats
+        uses: mona-actions/gh-repo-stats-plus@v1
+        with:
+          type: organization
+          github-token: ${{ github.token }}
+          access-token: ${{ secrets.ACCESS_TOKEN }}
+          organization: my-org
+          run-migration-audit: "true"
+          run-rows-to-columns: "true"
+          rows-to-columns-additional-csv-file: "output/my-org-audit.csv"
+
+      - name: Print Results
+        run: |
+          echo "Output directory: ${{ steps.stats.outputs.output-dir }}"
+          echo "Artifact ID: ${{ steps.stats.outputs.artifact-id }}"

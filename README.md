@@ -61,6 +61,10 @@ This TypeScript rewrite offers several advantages:
 
 14. **Rows-to-Columns Pivot**: Convert rows from an additional CSV (e.g., migration audit data) into new columns in a base CSV by matching rows and pivoting values. Based on [jcantosz/generate-repo-report/rows-to-columns](https://github.com/jcantosz/generate-repo-report/tree/main/rows-to-columns). See the [Rows-to-Columns Command Reference](docs/commands/rows-to-columns.md).
 
+15. **Package Stats**: Retrieve package statistics (Maven, npm, Docker, NuGet, RubyGems, PyPI) for organizations, including version counts, file counts, download counts, and total storage sizes. Based on [scottluskcis/gh-data-fetch](https://github.com/scottluskcis/gh-data-fetch). See the [Package Stats Command Reference](docs/commands/package-stats.md).
+
+16. **Codespace Stats**: Retrieve codespace usage statistics for organizations, including machine details (CPU, memory, storage), ownership information, and lifecycle timestamps. Based on [scottluskcis/gh-data-fetch](https://github.com/scottluskcis/gh-data-fetch). See the [Codespace Stats Command Reference](docs/commands/codespace-stats.md).
+
 ## Technical Implementation
 
 The extension is built using modern TypeScript patterns with:
@@ -73,6 +77,24 @@ The extension is built using modern TypeScript patterns with:
 - **Type Safety** throughout the codebase
 - **On-demand Building** for clean installation without pre-built artifacts
 
+## GitHub Action
+
+This project also ships as a **GitHub Action** so you can gather repository statistics directly from your workflows:
+
+```yaml
+- name: Gather Repository Stats
+  uses: mona-actions/gh-repo-stats-plus@v1
+  with:
+    github-token: ${{ github.token }}
+    access-token: ${{ secrets.ACCESS_TOKEN }}
+    organization: my-org
+    repository: my-repo
+```
+
+The action supports all stats types (repository, organization, project-stats, app-install-stats, migration-audit, combine), batch processing with matrix strategy, resume on failure, post-processing, rows-to-columns pivoting, and GitHub Enterprise environments.
+
+See the [GitHub Action documentation](action/README.md) for full inputs/outputs reference, authentication options, and [example workflows](action/examples/).
+
 ## Documentation
 
 | Guide                                               | Description                                   |
@@ -80,11 +102,14 @@ The extension is built using modern TypeScript patterns with:
 | [Installation](docs/installation.md)                | Prerequisites and installation methods        |
 | [Usage Guide](docs/usage.md)                        | Authentication and usage examples             |
 | [Commands](docs/commands.md)                        | Complete command reference                    |
+| [GitHub Action](docs/github-action.md)              | Using as a GitHub Action in workflows         |
 | [LFS Sizing](docs/lfs-sizing.md)                    | Git LFS storage analysis per repo             |
 | [Development](docs/development.md)                  | Setup and development workflow                |
 | [Batch Processing](docs/batch-processing.md)        | Parallel batch processing with GitHub Actions |
 | [Post-Processing](docs/commands/post-process.md)    | CSV transformation with configurable rules    |
 | [Rows-to-Columns](docs/commands/rows-to-columns.md) | Pivot additional CSV rows into columns        |
+| [Package Stats](docs/commands/package-stats.md)     | Retrieve package statistics for organizations |
+| [Codespace Stats](docs/commands/codespace-stats.md) | Retrieve codespace usage for organizations    |
 
 ## Common Usage Examples
 

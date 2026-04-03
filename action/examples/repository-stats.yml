@@ -1,0 +1,37 @@
+name: Repository Stats
+
+on:
+  schedule:
+    - cron: "0 0 * * 1" # weekly on Monday
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gather-stats:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Gather Repository Stats
+        id: stats
+        uses: mona-actions/gh-repo-stats-plus@v1
+        with:
+          github-token: ${{ github.token }}
+          access-token: ${{ secrets.ACCESS_TOKEN }}
+          organization: my-org
+          repository: my-repo
+          run-migration-audit: "true"
+
+      - name: Print Results
+        run: |
+          echo "Stats file: ${{ steps.stats.outputs.stats-file }}"
+          echo "Audit file: ${{ steps.stats.outputs.audit-file }}"
+          echo "Artifact ID: ${{ steps.stats.outputs.artifact-id }}"
+
+          if [ -f "${{ steps.stats.outputs.stats-file }}" ]; then
+            echo "--- Stats ---"
+            cat "${{ steps.stats.outputs.stats-file }}"
+          fi

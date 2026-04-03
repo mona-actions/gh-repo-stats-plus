@@ -1,0 +1,951 @@
+name: "Gather Repository Stats"
+description: "Gather GitHub repository statistics and optionally run migration audit"
+author: "scottluskcis"
+
+branding:
+  icon: "bar-chart-2"
+  color: "blue"
+
+inputs:
+  type:
+    description: "Type of stats gathering: 'repository', 'organization', 'project-stats', 'app-install-stats', 'package-stats', 'codespace-stats', 'migration-audit', or 'combine'"
+    required: false
+    default: "repository"
+  github-token:
+    description: "GitHub token for authentication (e.g., github.token)"
+    required: true
+  ghec-token:
+    description: "GitHub Enterprise Cloud token for authentication (optional, used if not in github.com to download dependencies from GHEC)"
+    required: false
+    default: ""
+  access-token:
+    description: "Personal access token with repo access for gathering stats"
+    default: ""
+    required: false
+  github-app-id:
+    description: "GitHub App ID for authentication (optional, requires private key)"
+    default: ""
+    required: false
+  github-app-private-key:
+    description: "GitHub App private key for authentication (optional, requires app ID)"
+    default: ""
+    required: false
+  organization:
+    description: "Organization or owner name"
+    required: true
+  repository:
+    description: "Repository name if type is 'repository'"
+    default: ""
+    required: false
+  output-dir:
+    description: "Directory where output files will be stored"
+    required: false
+    default: "output"
+  run-migration-audit:
+    description: "Whether to run migration audit (true/false)"
+    required: false
+    default: "false"
+  node-version:
+    description: "Node.js version to use"
+    required: false
+    default: "25"
+  base-url:
+    description: "GitHub API base URL"
+    required: false
+    default: "https://api.github.com"
+  skip-tls-verification:
+    description: "Skip TLS certificate verification for the target GitHub instance (use for GHES with self-signed certs or IP-based access)"
+    required: false
+    default: "false"
+  retention-days:
+    description: "Number of days to retain artifacts"
+    required: false
+    default: "7"
+  batch-size:
+    description: "Number of repositories per batch (enables batch processing for large organizations)"
+    required: false
+    default: ""
+  batch-index:
+    description: "Zero-based batch index (used with batch-size for parallel matrix jobs)"
+    required: false
+    default: ""
+  batch-delay:
+    description: "Delay in seconds multiplied by batch index to stagger API requests and avoid rate limits"
+    required: false
+    default: ""
+  resume-from-last-save:
+    description: "Resume from the last saved state. Automatically enabled when re-running failed jobs (run_attempt > 1). Downloads state artifact from a previous attempt and passes --resume-from-last-save to the CLI."
+    required: false
+    default: "false"
+  resume-run-id:
+    description: "Workflow run ID to download state artifact from (for cross-run resume). When omitted, defaults to the current run ID (covers re-run of failed jobs)."
+    required: false
+    default: ""
+  run-post-process:
+    description: "Whether to run post-process on output CSV to transform data using configurable rules (true/false). Requires post-process-rules-file."
+    required: false
+    default: "false"
+  post-process-rules-file:
+    description: "Path to the JSON rules configuration file for post-process (required when run-post-process is true)"
+    required: false
+    default: ""
+  post-process-input:
+    description: "Path to the input CSV file for post-process. If not specified, auto-detects combined-stats.csv or the most recent CSV in the output directory."
+    required: false
+    default: ""
+  post-process-output-file-name:
+    description: "Name for the post-process output CSV file (default: auto-generated with timestamp)"
+    required: false
+    default: ""
+  run-rows-to-columns:
+    description: "Whether to run rows-to-columns to pivot additional CSV rows into new columns in the base CSV (true/false). Requires rows-to-columns-additional-csv-file."
+    required: false
+    default: "false"
+  rows-to-columns-base-csv-file:
+    description: "Path to the base CSV file for rows-to-columns. If not specified, auto-detects combined-stats.csv or the most recent CSV in the output directory."
+    required: false
+    default: ""
+  rows-to-columns-additional-csv-file:
+    description: "Path to the additional CSV file for rows-to-columns (e.g., migration audit CSV). Required when run-rows-to-columns is true."
+    required: false
+    default: ""
+  rows-to-columns-header-column-keys:
+    description: "Column in the additional CSV to use as new column headers"
+    required: false
+    default: "type"
+  rows-to-columns-header-column-values:
+    description: "Column in the additional CSV to use as cell values"
+    required: false
+    default: "message"
+  rows-to-columns-base-csv-columns:
+    description: "Comma-separated column names in the base CSV used for matching rows"
+    required: false
+    default: "Org_Name,Repo_Name"
+  rows-to-columns-additional-csv-columns:
+    description: "Comma-separated column names in the additional CSV used for matching rows"
+    required: false
+    default: "owner,name"
+  rows-to-columns-output-file-name:
+    description: "Name for the rows-to-columns output CSV file (default: auto-generated with timestamp)"
+    required: false
+    default: ""
+  package-type:
+    description: "Package type for package-stats (maven, npm, docker, nuget, rubygems, pypi)"
+    required: false
+    default: "maven"
+
+outputs:
+  output-dir:
+    description: "Directory where output files are stored"
+    value: ${{ steps.setup-paths.outputs.output_dir }}
+  organization:
+    description: "Organization name"
+    value: ${{ inputs.organization }}
+  repository:
+    description: "Repository name"
+    value: ${{ inputs.repository }}
+  stats-file:
+    description: "Path to the stats markdown file"
+    value: ${{ steps.setup-paths.outputs.output_dir }}/stats.md
+  audit-file:
+    description: "Path to the audit markdown file"
+    value: ${{ steps.setup-paths.outputs.output_dir }}/audit.md
+  migration-audit:
+    description: "Whether migration audit was run (true/false)"
+    value: ${{ (steps.migration-audit-org.outcome != '' && steps.migration-audit-org.outcome != 'skipped') || (steps.migration-audit-repo.outcome != '' && steps.migration-audit-repo.outcome != 'skipped') }}
+  artifact-id:
+    description: "ID of the uploaded artifact containing the stats"
+    value: ${{ steps.upload-artifact.outputs.artifact-id }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Verify Repository Checkout
+      shell: bash
+      run: |
+        if [ ! -d "$GITHUB_WORKSPACE" ] || [ -z "$(ls -A "$GITHUB_WORKSPACE" 2>/dev/null)" ]; then
+          echo "::error::Repository must be checked out before running this action. Add 'uses: actions/checkout@v4' before this step."
+          exit 1
+        fi
+        echo "✓ Repository checkout verified"
+
+    - name: Validate Inputs
+      shell: bash
+      env:
+        INPUT_TYPE: ${{ inputs.type }}
+      run: |
+        case "${INPUT_TYPE}" in
+          repository|organization|project-stats|app-install-stats|package-stats|codespace-stats|migration-audit|combine)
+            echo "✓ Valid type: ${INPUT_TYPE}"
+            ;;
+          *)
+            echo "::error::Invalid type '${INPUT_TYPE}'. Must be one of: repository, organization, project-stats, app-install-stats, package-stats, codespace-stats, migration-audit, combine."
+            exit 1
+            ;;
+        esac
+
+    - name: Resolve GH_HOST
+      id: resolve-host
+      shell: bash
+      run: |
+        BASE_URL="${{ inputs.base-url }}"
+        # Strip protocol
+        HOST="${BASE_URL#https://}"
+        HOST="${HOST#http://}"
+        # Remove any trailing path
+        HOST="${HOST%%/*}"
+        # For public GitHub, api.github.com -> github.com
+        if [[ "$HOST" == api.* ]]; then
+          HOST="${HOST#api.}"
+        fi
+        echo "GH_HOST=${HOST}" >> $GITHUB_ENV
+        echo "gh_host=${HOST}" >> $GITHUB_OUTPUT
+        echo "✓ Resolved GH_HOST: ${HOST}"
+
+    - name: Configure TLS for GHES
+      if: ${{ inputs.skip-tls-verification == 'true' }}
+      shell: bash
+      run: |
+        HOST="${{ steps.resolve-host.outputs.gh_host }}"
+
+        # Guard: refuse to disable TLS for public github.com
+        if [[ "$HOST" == "github.com" ]]; then
+          echo "::error::Refusing to disable TLS verification for public github.com. Remove 'skip-tls-verification' or use a GHES base-url."
+          exit 1
+        fi
+
+        echo "Configuring TLS bypass for non-github.com host: ${HOST}"
+
+        # Disable SSL verification for Node.js (Octokit/actions)
+        echo "NODE_TLS_REJECT_UNAUTHORIZED=0" >> $GITHUB_ENV
+
+        # Suppress Node.js TLS warnings
+        echo "NODE_NO_WARNINGS=1" >> $GITHUB_ENV
+
+        # Disable SSL verification for Git operations scoped to the GHES host
+        git config --global "http.https://${HOST}/.sslVerify" false
+
+        # Disable SSL verification for gh CLI (Go-based, not affected by NODE_TLS)
+        # skip_tls_verification requires gh >= 2.54.0
+        GH_VERSION=$(gh --version | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+        echo "  gh CLI version: ${GH_VERSION}"
+        GH_MAJOR=$(echo "$GH_VERSION" | cut -d. -f1)
+        GH_MINOR=$(echo "$GH_VERSION" | cut -d. -f2)
+        if [[ "$GH_MAJOR" -gt 2 ]] || { [[ "$GH_MAJOR" -eq 2 ]] && [[ "$GH_MINOR" -ge 54 ]]; }; then
+          gh config set -h "${HOST}" skip_tls_verification true
+          echo "✓ TLS bypass configured via gh config for ${HOST}"
+        else
+          echo "⚠️  gh CLI ${GH_VERSION} does not support skip_tls_verification (requires >= 2.54.0)"
+          echo "  Attempting to upgrade gh CLI..."
+          if command -v apt-get &> /dev/null; then
+            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg 2>/dev/null
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+            sudo apt-get update -qq && sudo apt-get install -qq -y gh > /dev/null 2>&1
+          elif command -v brew &> /dev/null; then
+            brew upgrade gh 2>/dev/null || brew install gh 2>/dev/null
+          fi
+          NEW_VERSION=$(gh --version | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          echo "  gh CLI version after upgrade: ${NEW_VERSION}"
+          NEW_MAJOR=$(echo "$NEW_VERSION" | cut -d. -f1)
+          NEW_MINOR=$(echo "$NEW_VERSION" | cut -d. -f2)
+          if [[ "$NEW_MAJOR" -gt 2 ]] || { [[ "$NEW_MAJOR" -eq 2 ]] && [[ "$NEW_MINOR" -ge 54 ]]; }; then
+            gh config set -h "${HOST}" skip_tls_verification true
+          else
+            echo "::warning::gh CLI ${NEW_VERSION} still does not support skip_tls_verification. gh API calls to GHES may fail with TLS errors. Node.js, Git, and curl TLS bypass are still active."
+          fi
+        fi
+
+        echo "✓ TLS bypass configured for ${HOST}"
+
+    - name: Setup Paths
+      id: setup-paths
+      shell: bash
+      run: |
+        OUTPUT_DIR_INPUT="${{ inputs.output-dir }}"
+        # If the input is already an absolute path, use it as-is
+        if [[ "$OUTPUT_DIR_INPUT" = /* ]]; then
+          OUTPUT_DIR="$OUTPUT_DIR_INPUT"
+        else
+          OUTPUT_DIR="${GITHUB_WORKSPACE}/${OUTPUT_DIR_INPUT}"
+        fi
+        mkdir -p "$OUTPUT_DIR"
+        echo "output_dir=${OUTPUT_DIR}" >> $GITHUB_OUTPUT
+
+        REPOSITORY="${{ inputs.repository }}"
+        if [[ -n "$REPOSITORY" ]]; then
+          FILE="${GITHUB_WORKSPACE}/repo-info.txt"
+          echo "${{ inputs.organization }}/${REPOSITORY}" > "$FILE"
+          echo "file=${FILE}" >> $GITHUB_OUTPUT
+        else
+          echo "file=" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Create GitHub App token
+      id: app-install
+      if: ${{ inputs.github-app-id != '' && inputs.github-app-private-key != '' }}
+      uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 #v3.0.0
+      with:
+        app-id: ${{ inputs.github-app-id }}
+        private-key: ${{ inputs.github-app-private-key }}
+        owner: ${{ inputs.organization }}
+        github-api-url: ${{ inputs.base-url }}
+        repositories: ${{ inputs.repository }}
+
+    - name: Validate Repository Exists
+      if: ${{ inputs.type == 'repository' }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ steps.app-install.outputs.token || inputs.access-token || inputs.github-token }}
+        GH_HOST: ${{ steps.resolve-host.outputs.gh_host }}
+        BASE_URL: ${{ inputs.base-url }}
+        TOKEN_SOURCE: ${{ steps.app-install.outputs.token != '' && 'GitHub App' || (inputs.access-token != '' && 'Access Token' || 'github-token (fallback)') }}
+        SKIP_TLS: ${{ inputs.skip-tls-verification }}
+      run: |
+        echo "Validating repository: ${{ inputs.organization }}/${{ inputs.repository }}"
+        echo "  GH_HOST: ${GH_HOST}"
+        echo "  Base URL: ${BASE_URL}"
+        echo "  Token length: ${#GH_TOKEN}"
+        echo "  Token source: ${TOKEN_SOURCE}"
+        echo "  Skip TLS: ${SKIP_TLS}"
+
+        CURL_OPTS=(-s --max-time 15)
+        if [[ "${SKIP_TLS}" == "true" ]]; then
+          CURL_OPTS+=(-k)
+        fi
+
+        HTTP_CODE=$(curl "${CURL_OPTS[@]}" \
+          -H "Authorization: token ${GH_TOKEN}" \
+          -H "Accept: application/vnd.github+json" \
+          -o /tmp/repo-validate.json \
+          -w "%{http_code}" \
+          "${BASE_URL}/repos/${{ inputs.organization }}/${{ inputs.repository }}") || true
+
+        if [[ "$HTTP_CODE" == "200" ]]; then
+          FULL_NAME=$(jq -r '.full_name' /tmp/repo-validate.json 2>/dev/null)
+          echo "✓ Repository exists and is accessible: ${FULL_NAME}"
+          exit 0
+        fi
+
+        echo "::error::Failed to validate repository: ${{ inputs.organization }}/${{ inputs.repository }}"
+        echo "  HTTP status: ${HTTP_CODE}"
+        echo "  Response:"
+        cat /tmp/repo-validate.json 2>/dev/null || echo "  (no response body)"
+        exit 1
+
+    - name: Validate App Install Stats Auth
+      if: ${{ inputs.type == 'app-install-stats' }}
+      shell: bash
+      env:
+        ACCESS_TOKEN: ${{ inputs.access-token }}
+        APP_ID: ${{ inputs.github-app-id }}
+        APP_KEY: ${{ inputs.github-app-private-key }}
+      run: |
+        if [[ -z "${ACCESS_TOKEN}" ]]; then
+          echo "::error::app-install-stats requires a Personal Access Token (access-token). GitHub App tokens cannot view other apps' installations."
+          exit 1
+        fi
+        if [[ -n "${APP_ID}" ]] || [[ -n "${APP_KEY}" ]]; then
+          echo "::warning::GitHub App credentials are ignored for app-install-stats. Only the access-token (PAT) will be used."
+        fi
+        echo "✓ App install stats authentication validated"
+
+    - name: Validate Organization Exists
+      if: ${{ inputs.type == 'organization' || inputs.type == 'project-stats' || inputs.type == 'app-install-stats' || inputs.type == 'package-stats' || inputs.type == 'codespace-stats' || inputs.type == 'migration-audit' }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ steps.app-install.outputs.token || inputs.access-token || inputs.github-token }}
+        GH_HOST: ${{ steps.resolve-host.outputs.gh_host }}
+        BASE_URL: ${{ inputs.base-url }}
+        TOKEN_SOURCE: ${{ steps.app-install.outputs.token != '' && 'GitHub App' || (inputs.access-token != '' && 'Access Token' || 'github-token (fallback)') }}
+        SKIP_TLS: ${{ inputs.skip-tls-verification }}
+      run: |
+        echo "Validating organization: ${{ inputs.organization }}"
+        echo "  GH_HOST: ${GH_HOST}"
+        echo "  Base URL: ${BASE_URL}"
+        echo "  Token length: ${#GH_TOKEN}"
+        echo "  Token source: ${TOKEN_SOURCE}"
+        echo "  Skip TLS: ${SKIP_TLS}"
+
+        CURL_OPTS=(-s --max-time 15)
+        if [[ "${SKIP_TLS}" == "true" ]]; then
+          CURL_OPTS+=(-k)
+        fi
+
+        HTTP_CODE=$(curl "${CURL_OPTS[@]}" \
+          -H "Authorization: token ${GH_TOKEN}" \
+          -H "Accept: application/vnd.github+json" \
+          -o /tmp/org-validate.json \
+          -w "%{http_code}" \
+          "${BASE_URL}/orgs/${{ inputs.organization }}") || true
+
+        if [[ "$HTTP_CODE" == "200" ]]; then
+          LOGIN=$(jq -r '.login' /tmp/org-validate.json 2>/dev/null)
+          echo "✓ Organization exists and is accessible: ${LOGIN}"
+          exit 0
+        fi
+
+        echo "::error::Failed to validate organization: ${{ inputs.organization }}"
+        echo "  HTTP status: ${HTTP_CODE}"
+        echo "  Response:"
+        cat /tmp/org-validate.json 2>/dev/null || echo "  (no response body)"
+        exit 1
+
+    - name: Setup Node.js
+      uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 #v6.2.0
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Install Dependencies
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.ghec-token || inputs.github-token }}
+        GH_HOST: github.com
+      run: |
+        echo "Installing GitHub CLI extension gh-repo-stats-plus"
+        gh extension install mona-actions/gh-repo-stats-plus
+        gh repo-stats-plus --version
+
+        echo "Installing GitHub CLI extension gh-migration-audit"
+        gh extension install timrogers/gh-migration-audit
+        gh migration-audit --version
+
+        echo "✓ Dependencies installed successfully"
+
+    - name: Resolve Resume Mode
+      id: resolve-resume
+      shell: bash
+      env:
+        RESUME_INPUT: ${{ inputs.resume-from-last-save }}
+        RESUME_RUN_ID: ${{ inputs.resume-run-id }}
+        RUN_ATTEMPT: ${{ github.run_attempt }}
+        CURRENT_RUN_ID: ${{ github.run_id }}
+      run: |
+        RESUME="false"
+        if [[ "${RESUME_INPUT}" == "true" ]]; then
+          echo "Resume explicitly enabled via input"
+          RESUME="true"
+        elif [[ "${RUN_ATTEMPT}" -gt 1 ]]; then
+          echo "Resume auto-enabled: run_attempt=${RUN_ATTEMPT} (re-run detected)"
+          RESUME="true"
+        fi
+        echo "resume=${RESUME}" >> $GITHUB_OUTPUT
+
+        # Determine which run to download state from
+        if [[ -n "${RESUME_RUN_ID}" ]]; then
+          echo "source_run_id=${RESUME_RUN_ID}" >> $GITHUB_OUTPUT
+          echo "Using explicit resume-run-id: ${RESUME_RUN_ID}"
+        else
+          echo "source_run_id=${CURRENT_RUN_ID}" >> $GITHUB_OUTPUT
+          echo "Using current run ID: ${CURRENT_RUN_ID}"
+        fi
+
+    - name: Restore State from Previous Attempt
+      id: restore-state
+      if: ${{ steps.resolve-resume.outputs.resume == 'true' && (inputs.type == 'repository' || inputs.type == 'organization' || inputs.type == 'project-stats') }}
+      continue-on-error: true
+      uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e #v4.2.2
+      with:
+        name: repo-stats-state-${{ inputs.type }}-${{ inputs.organization }}${{ inputs.type == 'repository' && format('-{0}', inputs.repository) || '' }}${{ inputs.batch-index != '' && format('-batch-{0}', inputs.batch-index) || '' }}
+        path: ${{ steps.setup-paths.outputs.output_dir }}/
+        github-token: ${{ inputs.github-token }}
+        run-id: ${{ steps.resolve-resume.outputs.source_run_id }}
+
+    - name: Report Resume Status
+      if: ${{ steps.resolve-resume.outputs.resume == 'true' && (inputs.type == 'repository' || inputs.type == 'organization' || inputs.type == 'project-stats') }}
+      shell: bash
+      env:
+        RESTORE_OUTCOME: ${{ steps.restore-state.outcome }}
+        OUTPUT_DIR: ${{ steps.setup-paths.outputs.output_dir }}
+      run: |
+        if [[ "${RESTORE_OUTCOME}" == "success" ]]; then
+          echo "✓ State restored from previous attempt"
+          echo "  State files found:"
+          ls -la "${OUTPUT_DIR}"/last_known_state*.json 2>/dev/null || echo "  (no state files)"
+          ls -la "${OUTPUT_DIR}"/*.csv 2>/dev/null || echo "  (no CSV files)"
+        else
+          echo "⚠️ No state artifact found from previous attempt — starting fresh"
+        fi
+
+    - name: Gather Repo Stats
+      id: gather-repo-stats
+      if: ${{ inputs.type == 'repository' || inputs.type == 'organization' }}
+      shell: bash
+      env:
+        BATCH_SIZE: ${{ inputs.batch-size }}
+        BATCH_INDEX: ${{ inputs.batch-index }}
+        BATCH_DELAY: ${{ inputs.batch-delay }}
+        RESUME: ${{ steps.resolve-resume.outputs.resume }}
+      run: |
+        BATCH_ARGS=()
+        if [[ -n "${BATCH_SIZE}" ]]; then
+          [[ "${BATCH_SIZE}" =~ ^[0-9]+$ ]] && [[ "${BATCH_SIZE}" -ge 1 ]] || { echo "::error::batch-size must be a positive integer"; exit 1; }
+          BATCH_ARGS+=(--batch-size "${BATCH_SIZE}")
+        else
+          unset BATCH_SIZE
+        fi
+        if [[ -n "${BATCH_INDEX}" ]]; then
+          [[ "${BATCH_INDEX}" =~ ^[0-9]+$ ]] || { echo "::error::batch-index must be a non-negative integer"; exit 1; }
+          BATCH_ARGS+=(--batch-index "${BATCH_INDEX}")
+        else
+          unset BATCH_INDEX
+        fi
+        if [[ -n "${BATCH_DELAY}" ]]; then
+          [[ "${BATCH_DELAY}" =~ ^[0-9]+$ ]] || { echo "::error::batch-delay must be a non-negative integer"; exit 1; }
+          BATCH_ARGS+=(--batch-delay "${BATCH_DELAY}")
+        else
+          unset BATCH_DELAY
+        fi
+
+        REPO_LIST_ARGS=()
+        REPO_LIST_FILE="${{ steps.setup-paths.outputs.file }}"
+        if [[ -n "${REPO_LIST_FILE}" ]] && [[ -z "${BATCH_SIZE}" ]]; then
+          REPO_LIST_ARGS+=(--repo-list "${REPO_LIST_FILE}")
+        elif [[ -n "${REPO_LIST_FILE}" ]] && [[ -n "${BATCH_SIZE}" ]]; then
+          echo "::error::Batch mode (--batch-size) cannot be combined with a repository list (from the 'repository' input). Remove one of them."
+          exit 1
+        fi
+
+        RESUME_ARGS=()
+        if [[ "${RESUME}" == "true" ]]; then
+          RESUME_ARGS+=(--resume-from-last-save)
+        fi
+
+        gh repo-stats-plus repo-stats \
+          --org-name "${{ inputs.organization }}" \
+          --access-token "${{ inputs.access-token }}" \
+          --app-id "${{ inputs.github-app-id }}" \
+          --private-key "${{ inputs.github-app-private-key }}" \
+          --app-installation-id "${{ steps.app-install.outputs.installation-id }}" \
+          --base-url "${{ inputs.base-url }}" \
+          --output-dir "${{ steps.setup-paths.outputs.output_dir }}" \
+          "${REPO_LIST_ARGS[@]}" \
+          "${BATCH_ARGS[@]}" \
+          "${RESUME_ARGS[@]}"
+
+        echo "✓ Repository statistics gathered successfully"
+
+    - name: Upload State on Failure (Repo Stats)
+      if: ${{ (failure() || cancelled()) && steps.gather-repo-stats.outcome != 'success' && steps.gather-repo-stats.outcome != 'skipped' }}
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f #v6.0.0
+      with:
+        name: repo-stats-state-${{ inputs.type }}-${{ inputs.organization }}${{ inputs.type == 'repository' && format('-{0}', inputs.repository) || '' }}${{ inputs.batch-index != '' && format('-batch-{0}', inputs.batch-index) || '' }}
+        path: ${{ steps.setup-paths.outputs.output_dir }}/
+        retention-days: 3
+        if-no-files-found: ignore
+        overwrite: true
+
+    - name: Gather Project Stats
+      id: gather-project-stats
+      if: ${{ inputs.type == 'project-stats' }}
+      shell: bash
+      env:
+        BATCH_SIZE: ${{ inputs.batch-size }}
+        BATCH_INDEX: ${{ inputs.batch-index }}
+        BATCH_DELAY: ${{ inputs.batch-delay }}
+        RESUME: ${{ steps.resolve-resume.outputs.resume }}
+      run: |
+        BATCH_ARGS=()
+        if [[ -n "${BATCH_SIZE}" ]]; then
+          [[ "${BATCH_SIZE}" =~ ^[0-9]+$ ]] && [[ "${BATCH_SIZE}" -ge 1 ]] || { echo "::error::batch-size must be a positive integer"; exit 1; }
+          BATCH_ARGS+=(--batch-size "${BATCH_SIZE}")
+        else
+          unset BATCH_SIZE
+        fi
+        if [[ -n "${BATCH_INDEX}" ]]; then
+          [[ "${BATCH_INDEX}" =~ ^[0-9]+$ ]] || { echo "::error::batch-index must be a non-negative integer"; exit 1; }
+          BATCH_ARGS+=(--batch-index "${BATCH_INDEX}")
+        else
+          unset BATCH_INDEX
+        fi
+        if [[ -n "${BATCH_DELAY}" ]]; then
+          [[ "${BATCH_DELAY}" =~ ^[0-9]+$ ]] || { echo "::error::batch-delay must be a non-negative integer"; exit 1; }
+          BATCH_ARGS+=(--batch-delay "${BATCH_DELAY}")
+        else
+          unset BATCH_DELAY
+        fi
+
+        REPO_LIST_ARGS=()
+        REPO_LIST_FILE="${{ steps.setup-paths.outputs.file }}"
+        if [[ -n "${REPO_LIST_FILE}" ]] && [[ -z "${BATCH_SIZE}" ]]; then
+          REPO_LIST_ARGS+=(--repo-list "${REPO_LIST_FILE}")
+        elif [[ -n "${REPO_LIST_FILE}" ]] && [[ -n "${BATCH_SIZE}" ]]; then
+          echo "::error::Batch mode (--batch-size) cannot be combined with a repository list (from the 'repository' input). Remove one of them."
+          exit 1
+        fi
+
+        RESUME_ARGS=()
+        if [[ "${RESUME}" == "true" ]]; then
+          RESUME_ARGS+=(--resume-from-last-save)
+        fi
+
+        gh repo-stats-plus project-stats \
+          --org-name "${{ inputs.organization }}" \
+          --access-token "${{ inputs.access-token }}" \
+          --app-id "${{ inputs.github-app-id }}" \
+          --private-key "${{ inputs.github-app-private-key }}" \
+          --app-installation-id "${{ steps.app-install.outputs.installation-id }}" \
+          --base-url "${{ inputs.base-url }}" \
+          --output-dir "${{ steps.setup-paths.outputs.output_dir }}" \
+          "${REPO_LIST_ARGS[@]}" \
+          "${BATCH_ARGS[@]}" \
+          "${RESUME_ARGS[@]}"
+
+        echo "✓ Project statistics gathered successfully"
+
+    - name: Upload State on Failure (Project Stats)
+      if: ${{ (failure() || cancelled()) && steps.gather-project-stats.outcome != 'success' && steps.gather-project-stats.outcome != 'skipped' }}
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f #v6.0.0
+      with:
+        name: repo-stats-state-${{ inputs.type }}-${{ inputs.organization }}${{ inputs.type == 'repository' && format('-{0}', inputs.repository) || '' }}${{ inputs.batch-index != '' && format('-batch-{0}', inputs.batch-index) || '' }}
+        path: ${{ steps.setup-paths.outputs.output_dir }}/
+        retention-days: 3
+        if-no-files-found: ignore
+        overwrite: true
+
+    - name: Gather App Install Stats
+      if: ${{ inputs.type == 'app-install-stats' }}
+      shell: bash
+      run: |
+        gh repo-stats-plus app-install-stats \
+          --org-name "${{ inputs.organization }}" \
+          --access-token "${{ inputs.access-token }}" \
+          --base-url "${{ inputs.base-url }}" \
+          --output-dir "${{ steps.setup-paths.outputs.output_dir }}"
+
+        echo "✓ App install statistics gathered successfully"
+
+    - name: Gather Package Stats
+      if: ${{ inputs.type == 'package-stats' }}
+      shell: bash
+      run: |
+        gh repo-stats-plus package-stats \
+          --org-name "${{ inputs.organization }}" \
+          --access-token "${{ inputs.access-token }}" \
+          --app-id "${{ inputs.github-app-id }}" \
+          --private-key "${{ inputs.github-app-private-key }}" \
+          --app-installation-id "${{ steps.app-install.outputs.installation-id }}" \
+          --base-url "${{ inputs.base-url }}" \
+          --output-dir "${{ steps.setup-paths.outputs.output_dir }}" \
+          --package-type "${{ inputs.package-type }}"
+
+        echo "✓ Package statistics gathered successfully"
+
+    - name: Gather Codespace Stats
+      if: ${{ inputs.type == 'codespace-stats' }}
+      shell: bash
+      run: |
+        gh repo-stats-plus codespace-stats \
+          --org-name "${{ inputs.organization }}" \
+          --access-token "${{ inputs.access-token }}" \
+          --app-id "${{ inputs.github-app-id }}" \
+          --private-key "${{ inputs.github-app-private-key }}" \
+          --app-installation-id "${{ steps.app-install.outputs.installation-id }}" \
+          --base-url "${{ inputs.base-url }}" \
+          --output-dir "${{ steps.setup-paths.outputs.output_dir }}"
+
+        echo "✓ Codespace statistics gathered successfully"
+
+    - name: Run Migration Audit for Repository
+      id: migration-audit-repo
+      if: ${{ inputs.run-migration-audit == 'true' && inputs.type == 'repository' }}
+      continue-on-error: true
+      shell: bash
+      run: |
+        gh migration-audit audit-repo \
+          --access-token "${{ inputs.access-token }}" \
+          --app-id "${{ inputs.github-app-id }}" \
+          --private-key "${{ inputs.github-app-private-key }}" \
+          --app-installation-id "${{ steps.app-install.outputs.installation-id }}" \
+          --owner ${{ inputs.organization }} \
+          --repo ${{ inputs.repository }} \
+          --output-path ${{ steps.setup-paths.outputs.output_dir }}/${{ inputs.repository }}-audit.csv \
+          --base-url ${{ inputs.base-url }} \
+          --disable-telemetry
+
+        echo "✓ Migration audit for repository completed successfully"
+
+    - name: Warn on Migration Audit Failure (Repository)
+      if: ${{ steps.migration-audit-repo.outcome == 'failure' }}
+      shell: bash
+      run: |
+        echo "::warning::Migration audit failed but repo stats completed successfully. Check logs above for audit errors."
+
+    - name: Warn Migration Audit Skipped (Batching)
+      if: ${{ (inputs.run-migration-audit == 'true' && inputs.type == 'organization' && inputs.batch-index != '') || (inputs.type == 'migration-audit' && inputs.batch-index != '') }}
+      shell: bash
+      run: |
+        echo "::warning::Migration audit (audit-all) is skipped during batch processing to avoid running a full-org audit in every batch job. Run migration audit in a separate non-batched job instead."
+
+    - name: Run Migration Audit for Organization
+      id: migration-audit-org
+      if: ${{ (inputs.run-migration-audit == 'true' && inputs.type == 'organization' && inputs.batch-index == '') || (inputs.type == 'migration-audit' && inputs.batch-index == '') }}
+      continue-on-error: true
+      shell: bash
+      run: |
+        gh migration-audit audit-all \
+          --access-token "${{ inputs.access-token }}" \
+          --app-id "${{ inputs.github-app-id }}" \
+          --private-key "${{ inputs.github-app-private-key }}" \
+          --app-installation-id "${{ steps.app-install.outputs.installation-id }}" \
+          --owner ${{ inputs.organization }} \
+          --output-path ${{ steps.setup-paths.outputs.output_dir }}/${{ inputs.organization }}-audit.csv \
+          --base-url ${{ inputs.base-url }} \
+          --disable-telemetry
+
+        echo "✓ Migration audit for organization completed successfully"
+
+    - name: Warn on Migration Audit Failure (Organization)
+      if: ${{ steps.migration-audit-org.outcome == 'failure' }}
+      shell: bash
+      run: |
+        echo "::warning::Migration audit failed but repo stats completed successfully. Check logs above for audit errors."
+
+    - name: Convert CSV to Markdown
+      if: ${{ success() && inputs.type == 'repository' }}
+      shell: bash
+      run: |
+        CSV_FILE=$(ls ${{ steps.setup-paths.outputs.output_dir }}/${{ inputs.organization }}-*_repos-*.csv | head -n 1)
+
+        # Create vertical markdown table
+        MARKDOWN="## 📊 Repository Statistics\n\n"
+        MARKDOWN+="| Metric | Value |\n"
+        MARKDOWN+="|--------|-------|\n"
+
+        # Read headers and values, create vertical table
+        HEADERS=$(head -n 1 "$CSV_FILE")
+        VALUES=$(tail -n 1 "$CSV_FILE")
+
+        IFS=',' read -ra HEADER_ARRAY <<< "$HEADERS"
+        IFS=',' read -ra VALUE_ARRAY <<< "$VALUES"
+
+        for i in "${!HEADER_ARRAY[@]}"; do
+          MARKDOWN+="| ${HEADER_ARRAY[$i]} | ${VALUE_ARRAY[$i]} |\n"
+        done
+
+        # Save to file for next step
+        echo -e "$MARKDOWN" > ${{ steps.setup-paths.outputs.output_dir }}/stats.md
+
+        echo "✓ CSV converted to markdown successfully"
+
+    - name: Convert Migration Audit to Markdown
+      if: inputs.run-migration-audit == 'true' && steps.migration-audit-repo.outcome == 'success' && inputs.type == 'repository'
+      shell: bash
+      run: |
+        AUDIT_FILE="${{ steps.setup-paths.outputs.output_dir }}/${{ inputs.repository }}-audit.csv"
+
+        MARKDOWN="\n\n## 🔍 Migration Audit Results\n\n"
+
+        # Read CSV and create horizontal table
+        while IFS=',' read -r col1 col2; do
+          if [ "$col1" != "" ]; then
+            # First row is headers
+            if [ ! -f /tmp/headers_written ]; then
+              MARKDOWN+="| $col1 | $col2 |\n"
+              MARKDOWN+="|-------|-------|\n"
+              touch /tmp/headers_written
+            else
+              MARKDOWN+="| $col1 | $col2 |\n"
+            fi
+          fi
+        done < "$AUDIT_FILE"
+
+        # Save to file
+        echo -e "$MARKDOWN" > ${{ steps.setup-paths.outputs.output_dir }}/audit.md
+
+        echo "✓ Migration audit CSV converted to markdown successfully"
+
+    - name: Combine Stats
+      if: ${{ inputs.type == 'combine' }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        OUTPUT_DIR: ${{ steps.setup-paths.outputs.output_dir }}
+      run: |
+        gh repo-stats-plus combine-stats \
+          --files "${OUTPUT_DIR}"/*.csv \
+          --output-dir "${OUTPUT_DIR}" \
+          --output-file-name combined-stats.csv
+
+        echo "✓ Batch results combined successfully"
+
+    - name: Validate Post Process Inputs
+      if: ${{ inputs.run-post-process == 'true' }}
+      shell: bash
+      env:
+        RULES_FILE: ${{ inputs.post-process-rules-file }}
+      run: |
+        if [[ -z "${RULES_FILE}" ]]; then
+          echo "::error::post-process-rules-file is required when run-post-process is true"
+          exit 1
+        fi
+        if [[ ! -f "${RULES_FILE}" ]]; then
+          echo "::error::post-process-rules-file not found: ${RULES_FILE}"
+          exit 1
+        fi
+        echo "✓ Post process inputs validated"
+
+    - name: Run Post Process
+      if: ${{ inputs.run-post-process == 'true' }}
+      shell: bash
+      env:
+        OUTPUT_DIR: ${{ steps.setup-paths.outputs.output_dir }}
+        INPUT_FILE: ${{ inputs.post-process-input }}
+        RULES_FILE: ${{ inputs.post-process-rules-file }}
+        OUTPUT_FILE_NAME: ${{ inputs.post-process-output-file-name }}
+      run: |
+        POST_PROCESS_ARGS=()
+
+        # Determine input file
+        if [[ -n "${INPUT_FILE}" ]]; then
+          POST_PROCESS_ARGS+=(--input "${INPUT_FILE}")
+        else
+          # Auto-detect: prefer combined-stats.csv, then most recent CSV
+          if [[ -f "${OUTPUT_DIR}/combined-stats.csv" ]]; then
+            POST_PROCESS_ARGS+=(--input "${OUTPUT_DIR}/combined-stats.csv")
+            echo "Auto-detected input: ${OUTPUT_DIR}/combined-stats.csv"
+          else
+            LATEST_CSV=$(ls -t "${OUTPUT_DIR}"/*.csv 2>/dev/null | head -n 1 || true)
+            if [[ -n "${LATEST_CSV}" ]]; then
+              POST_PROCESS_ARGS+=(--input "${LATEST_CSV}")
+              echo "Auto-detected input: ${LATEST_CSV}"
+            else
+              echo "::error::No CSV file found in output directory for post-process. Specify post-process-input explicitly."
+              exit 1
+            fi
+          fi
+        fi
+
+        POST_PROCESS_ARGS+=(--rules-file "${RULES_FILE}")
+        POST_PROCESS_ARGS+=(--output-dir "${OUTPUT_DIR}")
+
+        if [[ -n "${OUTPUT_FILE_NAME}" ]]; then
+          POST_PROCESS_ARGS+=(--output-file-name "${OUTPUT_FILE_NAME}")
+        fi
+
+        gh repo-stats-plus post-process "${POST_PROCESS_ARGS[@]}"
+
+        echo "✓ Post-process completed successfully"
+
+    - name: Validate Rows to Columns Inputs
+      if: ${{ inputs.run-rows-to-columns == 'true' }}
+      shell: bash
+      env:
+        ADDITIONAL_CSV: ${{ inputs.rows-to-columns-additional-csv-file }}
+      run: |
+        if [[ -z "${ADDITIONAL_CSV}" ]]; then
+          echo "::error::rows-to-columns-additional-csv-file is required when run-rows-to-columns is true"
+          exit 1
+        fi
+        if [[ ! -f "${ADDITIONAL_CSV}" ]]; then
+          echo "::error::rows-to-columns-additional-csv-file not found: ${ADDITIONAL_CSV}"
+          exit 1
+        fi
+        echo "✓ Rows to columns inputs validated"
+
+    - name: Run Rows to Columns
+      if: ${{ inputs.run-rows-to-columns == 'true' }}
+      shell: bash
+      env:
+        OUTPUT_DIR: ${{ steps.setup-paths.outputs.output_dir }}
+        BASE_CSV_FILE: ${{ inputs.rows-to-columns-base-csv-file }}
+        ADDITIONAL_CSV_FILE: ${{ inputs.rows-to-columns-additional-csv-file }}
+        HEADER_COLUMN_KEYS: ${{ inputs.rows-to-columns-header-column-keys }}
+        HEADER_COLUMN_VALUES: ${{ inputs.rows-to-columns-header-column-values }}
+        BASE_CSV_COLUMNS: ${{ inputs.rows-to-columns-base-csv-columns }}
+        ADDITIONAL_CSV_COLUMNS: ${{ inputs.rows-to-columns-additional-csv-columns }}
+        OUTPUT_FILE_NAME: ${{ inputs.rows-to-columns-output-file-name }}
+        RUN_POST_PROCESS: ${{ inputs.run-post-process }}
+      run: |
+        RTC_ARGS=()
+
+        # Determine base CSV file
+        if [[ -n "${BASE_CSV_FILE}" ]]; then
+          RTC_ARGS+=(--base-csv-file "${BASE_CSV_FILE}")
+        else
+          # When post-process ran before us, prefer the most recent CSV
+          # (which is the post-process output) over combined-stats.csv
+          if [[ "${RUN_POST_PROCESS}" == "true" ]]; then
+            LATEST_CSV=$(ls -t "${OUTPUT_DIR}"/*.csv 2>/dev/null | head -n 1 || true)
+            if [[ -n "${LATEST_CSV}" ]]; then
+              RTC_ARGS+=(--base-csv-file "${LATEST_CSV}")
+              echo "Auto-detected base CSV (post-process output): ${LATEST_CSV}"
+            else
+              echo "::error::No CSV file found in output directory for rows-to-columns. Specify rows-to-columns-base-csv-file explicitly."
+              exit 1
+            fi
+          elif [[ -f "${OUTPUT_DIR}/combined-stats.csv" ]]; then
+            RTC_ARGS+=(--base-csv-file "${OUTPUT_DIR}/combined-stats.csv")
+            echo "Auto-detected base CSV: ${OUTPUT_DIR}/combined-stats.csv"
+          else
+            LATEST_CSV=$(ls -t "${OUTPUT_DIR}"/*.csv 2>/dev/null | head -n 1 || true)
+            if [[ -n "${LATEST_CSV}" ]]; then
+              RTC_ARGS+=(--base-csv-file "${LATEST_CSV}")
+              echo "Auto-detected base CSV: ${LATEST_CSV}"
+            else
+              echo "::error::No CSV file found in output directory for rows-to-columns. Specify rows-to-columns-base-csv-file explicitly."
+              exit 1
+            fi
+          fi
+        fi
+
+        RTC_ARGS+=(--additional-csv-file "${ADDITIONAL_CSV_FILE}")
+        RTC_ARGS+=(--header-column-keys "${HEADER_COLUMN_KEYS}")
+        RTC_ARGS+=(--header-column-values "${HEADER_COLUMN_VALUES}")
+        RTC_ARGS+=(--base-csv-columns "${BASE_CSV_COLUMNS}")
+        RTC_ARGS+=(--additional-csv-columns "${ADDITIONAL_CSV_COLUMNS}")
+        RTC_ARGS+=(--output-dir "${OUTPUT_DIR}")
+
+        if [[ -n "${OUTPUT_FILE_NAME}" ]]; then
+          RTC_ARGS+=(--output-file-name "${OUTPUT_FILE_NAME}")
+        fi
+
+        gh repo-stats-plus rows-to-columns "${RTC_ARGS[@]}"
+
+        echo "✓ Rows-to-columns completed successfully"
+
+    - name: Upload Stats Artifact
+      id: upload-artifact
+      if: success()
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f #v6.0.0
+      with:
+        name: repo-stats-${{ inputs.type }}-${{ inputs.organization }}${{ inputs.type == 'repository' && format('-{0}', inputs.repository) || '' }}${{ inputs.batch-index != '' && format('-batch-{0}', inputs.batch-index) || '' }}
+        path: ${{ steps.setup-paths.outputs.output_dir }}/
+        retention-days: ${{ inputs.retention-days }}
+        overwrite: true
+
+    - name: Create Stats Placeholder
+      if: ${{ success() && (inputs.type == 'organization' || inputs.type == 'project-stats' || inputs.type == 'app-install-stats' || inputs.type == 'package-stats' || inputs.type == 'codespace-stats' || inputs.type == 'migration-audit' || inputs.type == 'combine') }}
+      shell: bash
+      run: |
+        case "${{ inputs.type }}" in
+          combine)
+            MARKDOWN="## 📊 Statistics\n\nBatch results have been combined.\n\n"
+            ;;
+          project-stats)
+            MARKDOWN="## 📊 Project Statistics\n\nProject statistics have been collected for the organization.\n\n"
+            ;;
+          app-install-stats)
+            MARKDOWN="## 📊 App Install Statistics\n\nApp installation statistics have been collected for the organization.\n\n"
+            ;;
+          package-stats)
+            MARKDOWN="## 📊 Package Statistics\n\nPackage statistics have been collected for the organization.\n\n"
+            ;;
+          codespace-stats)
+            MARKDOWN="## 📊 Codespace Statistics\n\nCodespace usage statistics have been collected for the organization.\n\n"
+            ;;
+          migration-audit)
+            MARKDOWN="## 🔍 Migration Audit\n\nMigration audit has been completed for the organization.\n\n"
+            ;;
+          *)
+            MARKDOWN="## 📊 Repository Statistics\n\nStatistics have been collected for the organization.\n\n"
+            ;;
+        esac
+
+        MARKDOWN+="Please download the artifacts to view the detailed statistics.\n\n"
+
+        MARKDOWN+="[View Workflow Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\n\n"
+        MARKDOWN+="[Download Artifact](${{ steps.upload-artifact.outputs.artifact-url }})\n"
+
+        echo -e "$MARKDOWN" > ${{ steps.setup-paths.outputs.output_dir }}/stats.md
+
+        echo "✓ Stats placeholder created successfully"

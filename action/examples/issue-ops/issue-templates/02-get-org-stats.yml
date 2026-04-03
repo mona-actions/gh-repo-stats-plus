@@ -1,0 +1,38 @@
+name: Get Organization Stats
+description: Gathers statistics for an organization (repo stats, project stats, app installs, or migration audit).
+title: "Gather Org Stats: [Organization Name]"
+labels: ["stats", "organization"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please provide the following information to gather organization-level statistics.
+
+        **Operations:**
+        - **Repo Stats** — Collects repository statistics for all repos in the organization. Supports batch processing.
+        - **Project Stats** — Collects ProjectsV2 statistics for all repos in the organization. Supports batch processing.
+        - **App Install Stats** — Lists GitHub App installations for the organization. Requires a PAT with `read:org` scope (GitHub App tokens cannot be used).
+        - **Migration Audit** — Runs `audit-all` across every repository in the organization. May take a while for large organizations.
+
+  - type: dropdown
+    id: operation
+    attributes:
+      label: Operation
+      description: Select the type of statistics to collect.
+      options:
+        - repo-stats
+        - project-stats
+        - app-install-stats
+        - migration-audit
+      default: 0
+    validations:
+      required: true
+
+  - type: input
+    id: name
+    attributes:
+      label: Name
+      description: Enter the name of the organization.
+      placeholder: organization
+    validations:
+      required: true

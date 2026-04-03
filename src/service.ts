@@ -4,9 +4,15 @@ import {
   AppInstallation,
   AppInstallationData,
   AuthResponse,
+  Codespace,
   IssuesResponse,
   IssueStats,
+  Logger,
   OrgRepoNamesResponse,
+  PackageDetail,
+  PackagesResponse,
+  PackageVersionFilesResponse,
+  PackageVersionsResponse,
   ProjectInfo,
   ProjectStatsResult,
   ProjectV2Node,
@@ -25,6 +31,9 @@ import {
   REPO_ISSUES_QUERY,
   REPO_PULL_REQUESTS_QUERY,
   REPO_PROJECT_COUNTS_QUERY,
+  ORG_PACKAGE_DETAILS_QUERY,
+  PACKAGE_VERSIONS_QUERY,
+  PACKAGE_VERSION_FILES_QUERY,
 } from './queries.js';
 
 type Repository = components['schemas']['repository'];
@@ -471,5 +480,246 @@ export class OctokitClient {
       installationRepos,
       repoApps,
     };
+  }
+
+  // --- Package Stats methods (GraphQL) ---
+
+  /**
+   * Fetches package details for an organization using GraphQL.
+   * Yields packages one at a time via an async generator for
+   * streaming / incremental processing.
+   *
+   * Based on the approach from https://github.com/scottluskcis/gh-data-fetch
+   */
+  async *getOrgPackageDetails(
+    org: string,
+    packageType: string,
+    pageSize: number,
+    logger: Logger,
+  ): AsyncGenerator<PackageDetail, void, unknown> {
+    let totalFetched = 0;
+    let pageCount = 0;
+    let hasNextPage = true;
+    let currentCursor: string | null = null;
+
+    while (hasNextPage) {
+      pageCount++;
+      logger.info(
+        `Fetching package page ${pageCount} with cursor: ${currentCursor || 'initial'}`,
+      );
+
+      const response: PackagesResponse =
+        await this.octokit.graphql<PackagesResponse>(
+          ORG_PACKAGE_DETAILS_QUERY,
+          {
+            organization: org,
+            packageType: packageType.toUpperCase(),
+            pageSize,
+            endCursor: currentCursor,
+          },
+        );
+
+      const packages: PackageDetail[] = response.organization.packages.nodes;
+      const pageInfo: { hasNextPage: boolean; endCursor: string | null } =
+        response.organization.packages.pageInfo;
+
+      totalFetched += packages.length;
+      logger.info(
+        `Page ${pageCount}: Retrieved ${packages.length} packages (${totalFetched} total so far)`,
+      );
+
+      for (const pkg of packages) {
+        yield pkg;
+      }
+
+      hasNextPage = pageInfo.hasNextPage;
+      currentCursor = pageInfo.endCursor;
+
+      if (!hasNextPage) {
+        logger.info(
+          `Reached final page. Total packages fetched: ${totalFetched}`,
+        );
+      }
+    }
+  }
+
+  /**
+   * Fetches detailed version information for a specific package.
+   * Computes total file count and total size across all versions,
+   * handling deep pagination for files within each version.
+   */
+  async getPackageVersionDetails(
+    org: string,
+    packageName: string,
+    logger: Logger,
+    pageSize = 100,
+  ): Promise<{ totalFiles: number; totalSize: number; totalVersions: number }> {
+    let totalFiles = 0;
+    let totalSize = 0;
+    let totalVersions = 0;
+    let hasNextPage = true;
+    let currentCursor: string | null = null;
+    let pageCount = 0;
+
+    while (hasNextPage) {
+      pageCount++;
+      logger.debug(
+        `Fetching version page ${pageCount} for package ${packageName} with cursor: ${currentCursor || 'initial'}`,
+      );
+
+      const response: PackageVersionsResponse =
+        await this.octokit.graphql<PackageVersionsResponse>(
+          PACKAGE_VERSIONS_QUERY,
+          {
+            organization: org,
+            packageName,
+            pageSize,
+            endCursor: currentCursor,
+          },
+        );
+
+      const packageNode = response.organization.packages.nodes[0];
+      if (!packageNode) {
+        break;
+      }
+
+      const versions = packageNode.versions.nodes;
+      totalVersions += versions.length;
+      const pageInfo: { hasNextPage: boolean; endCursor: string | null } =
+        packageNode.versions.pageInfo;
+
+      for (const version of versions) {
+        const versionId = version.id;
+        totalFiles += version.files.totalCount;
+
+        // Add sizes from first page of files
+        for (const file of version.files.nodes) {
+          totalSize += file.size;
+        }
+
+        // Fetch additional file pages if needed
+        if (version.files.totalCount > version.files.nodes.length) {
+          logger.debug(
+            `Package ${packageName} has ${version.files.totalCount} files, fetching all pages`,
+          );
+
+          let fileHasNextPage = version.files.pageInfo.hasNextPage;
+          let fileCurrentCursor = version.files.pageInfo.endCursor;
+          let filePageCount = 1;
+
+          while (fileHasNextPage) {
+            filePageCount++;
+            logger.debug(
+              `Fetching file page ${filePageCount} for version ${versionId} with cursor: ${fileCurrentCursor}`,
+            );
+
+            const fileResponse =
+              await this.octokit.graphql<PackageVersionFilesResponse>(
+                PACKAGE_VERSION_FILES_QUERY,
+                {
+                  versionId,
+                  pageSize: 100,
+                  endCursor: fileCurrentCursor,
+                },
+              );
+
+            const fileNodes = fileResponse.node.files.nodes;
+            for (const file of fileNodes) {
+              totalSize += file.size;
+            }
+
+            fileHasNextPage = fileResponse.node.files.pageInfo.hasNextPage;
+            fileCurrentCursor = fileResponse.node.files.pageInfo.endCursor;
+
+            logger.debug(
+              `Retrieved ${fileNodes.length} more files for version ${versionId}`,
+            );
+          }
+        }
+      }
+
+      hasNextPage = pageInfo.hasNextPage;
+      currentCursor = pageInfo.endCursor;
+
+      if (!hasNextPage) {
+        logger.debug(
+          `Reached final version page for package ${packageName}. Total versions: ${totalVersions}, Total files: ${totalFiles}, Total size: ${totalSize}`,
+        );
+      }
+    }
+
+    return { totalFiles, totalSize, totalVersions };
+  }
+
+  // --- Codespace Stats methods (REST API) ---
+
+  /**
+   * Fetches codespaces for an organization using the REST API.
+   * Yields individual Codespace objects via an async generator
+   * for streaming / incremental processing.
+   *
+   * Uses REST API: GET /orgs/{org}/codespaces
+   *
+   * Based on the approach from https://github.com/scottluskcis/gh-data-fetch
+   */
+  async *getOrgCodespaces(
+    org: string,
+    pageSize: number,
+    logger: Logger,
+  ): AsyncGenerator<Codespace, void, unknown> {
+    let totalFetched = 0;
+    let pageCount = 0;
+
+    const iterator = this.octokit.paginate.iterator(
+      'GET /orgs/{org}/codespaces',
+      {
+        org,
+        per_page: pageSize,
+      },
+    );
+
+    for await (const { data: codespaces } of iterator) {
+      pageCount++;
+      logger.info(`Fetching codespaces page ${pageCount}`);
+      logger.info(`Retrieved ${codespaces.length} codespaces from API`);
+
+      for (const codespace of codespaces) {
+        const converted: Codespace = {
+          name: codespace.name,
+          state: codespace.state,
+          machine: codespace.machine
+            ? {
+                name: codespace.machine.name,
+                displayName: codespace.machine.display_name,
+                cpuSize: codespace.machine.cpus,
+                memorySize:
+                  codespace.machine.memory_in_bytes / (1024 * 1024 * 1024),
+                storage:
+                  codespace.machine.storage_in_bytes / (1024 * 1024 * 1024),
+              }
+            : null,
+          billableOwner: codespace.billable_owner
+            ? { login: codespace.billable_owner.login }
+            : null,
+          owner: codespace.owner ? { login: codespace.owner.login } : null,
+          repository: codespace.repository
+            ? { name: codespace.repository.name }
+            : null,
+          lastUsedAt: codespace.last_used_at,
+          createdAt: codespace.created_at,
+        };
+
+        totalFetched++;
+        yield converted;
+      }
+
+      logger.info(
+        `Page ${pageCount}: ${totalFetched} codespaces fetched so far`,
+      );
+    }
+
+    logger.info(
+      `Reached final page. Total codespaces fetched: ${totalFetched}`,
+    );
   }
 }
