@@ -66,13 +66,16 @@ jobs:
           pip install pyyaml
           mkdir -p /tmp/scripts
           python3 -c "
-          import yaml, os
+          import yaml, os, re
           with open('action.yml') as f:
               data = yaml.safe_load(f)
           steps = data.get('runs', {}).get('steps', [])
           for i, step in enumerate(steps):
               run_block = step.get('run')
               if run_block:
+                  # Replace GitHub Actions expressions with placeholder values
+                  # so ShellCheck can analyze the actual bash logic
+                  run_block = re.sub(r'\$\{\{[^}]*\}\}', 'PLACEHOLDER', run_block)
                   name = step.get('name', f'step-{i}').lower().replace(' ', '-')
                   path = f'/tmp/scripts/{i:02d}-{name}.sh'
                   with open(path, 'w') as out:
@@ -85,7 +88,9 @@ jobs:
         run: |
           if ls /tmp/scripts/*.sh 1>/dev/null 2>&1; then
             echo "Running ShellCheck on extracted scripts..."
-            shellcheck --severity=warning /tmp/scripts/*.sh
+            # SC2194: "This word is constant" — expected when GitHub Actions
+            # expressions (${{ ... }}) are replaced with placeholders
+            shellcheck --severity=warning --exclude=SC2194 /tmp/scripts/*.sh
           else
             echo "No shell scripts found to lint"
           fi
