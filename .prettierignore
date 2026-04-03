@@ -5,4 +5,5 @@ coverage
 *.d.ts
 package-lock.json
 yarn.lock
-```
+action.yml
+action/

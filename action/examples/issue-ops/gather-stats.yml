@@ -1,0 +1,327 @@
+name: Gather Stats
+
+on:
+  issues:
+    types:
+      - opened
+      - edited
+      - reopened
+  issue_comment:
+    types:
+      - created
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  info:
+    runs-on: ubuntu-latest
+    if: github.event.action == 'opened'
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
+
+      - name: Info
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "👋 Welcome! To start the stats gathering process, comment with:
+
+          \`\`\`
+          /run-stats
+          \`\`\`"
+
+  parse-info:
+    runs-on: ubuntu-latest
+    if: |
+      contains(github.event.issue.labels.*.name, 'stats') && startsWith(github.event.comment.body, '/run-stats')
+
+    outputs:
+      organization: ${{ steps.repo-info.outputs.organization }}
+      repository: ${{ steps.repo-info.outputs.repository }}
+      type_to_check: ${{ steps.repo-info.outputs.type_to_check }}
+      run_migration_audit: ${{ steps.repo-info.outputs.run_migration_audit }}
+      use_batch: ${{ steps.repo-info.outputs.use_batch }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
+
+      - name: Parse Issue
+        id: parser
+        uses: issue-ops/parser@cb7e2e4e5da701aad0e23e718bc4c91d442ca8ba #v5
+        with:
+          body: ${{ github.event.issue.body }}
+
+      - name: Setup Repo Info
+        id: repo-info
+        run: |
+          # Determine type based on issue labels and operation field
+          LABELS='${{ toJSON(github.event.issue.labels.*.name) }}'
+          OPERATION=$(echo '${{ steps.parser.outputs.json }}' | jq -r '.operation // ""')
+
+          if echo "$LABELS" | jq -e 'index("repository")' > /dev/null 2>&1; then
+            TYPE_TO_CHECK="repository"
+          elif echo "$LABELS" | jq -e 'index("organization")' > /dev/null 2>&1; then
+            # Organization template uses an operation dropdown to select the specific type
+            case "$OPERATION" in
+              repo-stats|"")
+                TYPE_TO_CHECK="organization"
+                ;;
+              project-stats)
+                TYPE_TO_CHECK="project-stats"
+                ;;
+              app-install-stats)
+                TYPE_TO_CHECK="app-install-stats"
+                ;;
+              migration-audit)
+                TYPE_TO_CHECK="migration-audit"
+                ;;
+              *)
+                echo "::error::Unknown operation '${OPERATION}'. Expected 'repo-stats', 'project-stats', 'app-install-stats', or 'migration-audit'."
+                exit 1
+                ;;
+            esac
+          else
+            echo "::error::Unable to determine type from issue labels. Expected 'repository' or 'organization' label."
+            exit 1
+          fi
+
+          # Determine the operation-specific label to add
+          case "$TYPE_TO_CHECK" in
+            organization) OPERATION_LABEL="" ;;
+            *) OPERATION_LABEL="$TYPE_TO_CHECK" ;;
+          esac
+          echo "operation_label=${OPERATION_LABEL}" >> $GITHUB_OUTPUT
+
+          FULL_NAME=$(echo '${{ steps.parser.outputs.json }}' | jq -r '.name')
+
+          if [[ "$TYPE_TO_CHECK" == "repository" ]]; then
+
+            # Validate format contains exactly one '/'
+            if [[ ! "$FULL_NAME" =~ ^[^/]+/[^/]+$ ]]; then
+              echo "::error::Invalid repository format: '$FULL_NAME'. Expected format: 'organization/repository'"
+              exit 1
+            fi
+
+            # Split on '/'
+            ORGANIZATION=$(echo "$FULL_NAME" | cut -d'/' -f1)
+            REPOSITORY=$(echo "$FULL_NAME" | cut -d'/' -f2)
+
+            # Validate both parts are non-empty
+            if [[ -z "$ORGANIZATION" ]] || [[ -z "$REPOSITORY" ]]; then
+              echo "::error::Organization and repository names cannot be empty"
+              exit 1
+            fi
+
+          else
+
+            ORGANIZATION="$FULL_NAME"
+            REPOSITORY=""
+
+          fi
+
+          echo "organization=${ORGANIZATION}" >> $GITHUB_OUTPUT
+          echo "repository=${REPOSITORY}" >> $GITHUB_OUTPUT
+          echo "type_to_check=${TYPE_TO_CHECK}" >> $GITHUB_OUTPUT
+
+          # Set migration audit flag based on type
+          if [[ "$TYPE_TO_CHECK" == "migration-audit" ]]; then
+            echo "run_migration_audit=true" >> $GITHUB_OUTPUT
+          elif [[ "$TYPE_TO_CHECK" == "repository" ]]; then
+            ADDITIONAL_OPTIONS=$(echo '${{ steps.parser.outputs.json }}' | jq -r '.additional_options // ""')
+            if [[ "$ADDITIONAL_OPTIONS" == *"[x] Migration Audit"* ]]; then
+              echo "run_migration_audit=true" >> $GITHUB_OUTPUT
+            else
+              echo "run_migration_audit=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "run_migration_audit=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Batch processing applies to organization and project-stats types
+          if [[ "$TYPE_TO_CHECK" == "organization" ]] || [[ "$TYPE_TO_CHECK" == "project-stats" ]]; then
+            echo "use_batch=true" >> $GITHUB_OUTPUT
+          else
+            echo "use_batch=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Add Operation Label
+        if: steps.repo-info.outputs.operation_label != ''
+        uses: issue-ops/labeler@9210b145e254445abdbfd33099941e7637d56d4e #v4
+        with:
+          action: add
+          issue_number: ${{ github.event.issue.number }}
+          labels: |
+            ${{ steps.repo-info.outputs.operation_label }}
+
+      - name: Start Process
+        if: ${{ success() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "🚀 Starting stats gathering process. Check the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details."
+
+  # Standard (non-batched) stats gathering
+  gather-stats:
+    needs: parse-info
+    runs-on: ubuntu-latest
+    if: needs.parse-info.outputs.use_batch != 'true'
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
+
+      - name: Run Stats Gathering
+        id: run-stats
+        uses: mona-actions/gh-repo-stats-plus@v1
+        with:
+          github-token: ${{ github.token }}
+          access-token: ${{ secrets.ACCESS_TOKEN }}
+          github-app-id: ${{ secrets.GITHUB_APP_ID }}
+          github-app-private-key: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
+          organization: ${{ needs.parse-info.outputs.organization }}
+          repository: ${{ needs.parse-info.outputs.repository }}
+          type: ${{ needs.parse-info.outputs.type_to_check }}
+          run-migration-audit: ${{ needs.parse-info.outputs.run_migration_audit }}
+
+      - name: Post Results Comment
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Start with repo stats
+          COMMENT=$(cat ${{ steps.run-stats.outputs.output-dir }}/stats.md)
+
+          # Add migration audit if it exists
+          if [ -f "${{ steps.run-stats.outputs.output-dir }}/audit.md" ]; then
+            COMMENT+="\n$(cat ${{ steps.run-stats.outputs.output-dir }}/audit.md)"
+          fi
+
+          # Post comment
+          echo -e "$COMMENT" | gh issue comment ${{ github.event.issue.number }} --body-file -
+
+  # Batched stats gathering: calculate matrix
+  batch-setup:
+    needs: parse-info
+    runs-on: ubuntu-latest
+    if: needs.parse-info.outputs.use_batch == 'true'
+    outputs:
+      matrix: ${{ steps.calc.outputs.matrix }}
+      batch_size: ${{ steps.calc.outputs.batch_size }}
+
+    steps:
+      - name: Calculate batch matrix
+        id: calc
+        env:
+          GH_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          ORG: ${{ needs.parse-info.outputs.organization }}
+        run: |
+          REPO_COUNT=$(gh api "orgs/${ORG}" --jq '(.public_repos // 0) + (.total_private_repos // 0)')
+          BATCH_SIZE=50
+
+          if [[ -z "${REPO_COUNT}" || "${REPO_COUNT}" == "null" || "${REPO_COUNT}" -eq 0 ]]; then
+            echo "::error::Organization '${ORG}' has 0 repositories or could not be read. Nothing to batch."
+            exit 1
+          fi
+
+          TOTAL_BATCHES=$(( (REPO_COUNT + BATCH_SIZE - 1) / BATCH_SIZE ))
+
+          # GitHub Actions matrix limit is 256 jobs; increase batch size if needed
+          if [[ "${TOTAL_BATCHES}" -gt 256 ]]; then
+            BATCH_SIZE=$(( (REPO_COUNT + 255) / 256 ))
+            TOTAL_BATCHES=$(( (REPO_COUNT + BATCH_SIZE - 1) / BATCH_SIZE ))
+          fi
+
+          echo "Org has ${REPO_COUNT} repos → ${TOTAL_BATCHES} batches of ${BATCH_SIZE}"
+          INDICES=$(jq -nc "[range(${TOTAL_BATCHES})]")
+          echo "matrix={\"batch-index\":${INDICES}}" >> "$GITHUB_OUTPUT"
+          echo "batch_size=${BATCH_SIZE}" >> "$GITHUB_OUTPUT"
+
+  # Batched stats gathering: collect each batch in parallel
+  batch-collect:
+    needs: [parse-info, batch-setup]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.batch-setup.outputs.matrix) }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
+
+      - name: Gather Stats (batch ${{ matrix.batch-index }})
+        uses: mona-actions/gh-repo-stats-plus@v1
+        with:
+          type: ${{ needs.parse-info.outputs.type_to_check }}
+          github-token: ${{ github.token }}
+          access-token: ${{ secrets.ACCESS_TOKEN }}
+          github-app-id: ${{ secrets.GITHUB_APP_ID }}
+          github-app-private-key: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
+          organization: ${{ needs.parse-info.outputs.organization }}
+          batch-size: ${{ needs.batch-setup.outputs.batch_size }}
+          batch-index: ${{ matrix.batch-index }}
+          batch-delay: "5"
+
+  # Batched stats gathering: combine results
+  batch-combine:
+    needs: [parse-info, batch-collect]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
+
+      - name: Download batch artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 #v4
+        with:
+          pattern: repo-stats-${{ needs.parse-info.outputs.type_to_check }}-*
+          path: output
+          merge-multiple: true
+
+      - name: Combine Results
+        id: combine
+        uses: mona-actions/gh-repo-stats-plus@v1
+        with:
+          type: combine
+          github-token: ${{ github.token }}
+          organization: ${{ needs.parse-info.outputs.organization }}
+
+      - name: Post Results Comment
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ "${{ needs.parse-info.outputs.type_to_check }}" == "project-stats" ]]; then
+            TITLE="Project Statistics (Batched)"
+          else
+            TITLE="Organization Statistics (Batched)"
+          fi
+          COMMENT="## 📊 ${TITLE}\n\n"
+          COMMENT+="Statistics have been collected in batches and combined.\n\n"
+          COMMENT+="[View Workflow Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\n\n"
+          COMMENT+="[Download Artifact](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/${{ steps.combine.outputs.artifact-id }})\n"
+          echo -e "$COMMENT" | gh issue comment ${{ github.event.issue.number }} --body-file -
+
+  # Report final status for both paths
+  report:
+    needs: [parse-info, gather-stats, batch-setup, batch-collect, batch-combine]
+    runs-on: ubuntu-latest
+    if: always() && needs.parse-info.result == 'success'
+
+    steps:
+      - name: Report Success
+        if: ${{ needs.gather-stats.result == 'success' || needs.batch-combine.result == 'success' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "✅ Process completed successfully! See the statistics above."
+
+      - name: Report Failure
+        if: ${{ needs.gather-stats.result == 'failure' || needs.batch-setup.result == 'failure' || needs.batch-collect.result == 'failure' || needs.batch-combine.result == 'failure' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "❌ Stats gathering failed. Please check the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details."

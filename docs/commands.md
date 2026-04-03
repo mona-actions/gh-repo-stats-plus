@@ -58,6 +58,10 @@ gh repo-stats-plus rows-to-columns \
 
 All commands generate output in the `output/` directory by default and write log files to `logs/`. Commands that support state management create organization-specific state files (e.g., `last_known_state_<org>.json`) for resume capability.
 
+## GitHub Action
+
+All of these commands can also be run via the [GitHub Action](github-action.md) in your workflows using `uses: mona-actions/gh-repo-stats-plus@v1`. See the [action examples](../action/examples/) for complete workflow files.
+
 ---
 
 ## Common Workflows

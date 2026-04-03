@@ -121,3 +121,16 @@ If you experience network-related installation failures:
 - Check your internet connection
 - If behind a corporate firewall, ensure GitHub CLI can access GitHub.com
 - Try using a different network or VPN if corporate restrictions apply
+
+## Alternative: GitHub Action
+
+If you prefer to run stats collection in GitHub Actions workflows instead of installing the CLI extension locally, see the [GitHub Action documentation](github-action.md). The action handles Node.js setup and extension installation automatically.
+
+```yaml
+- name: Gather Repository Stats
+  uses: mona-actions/gh-repo-stats-plus@v1
+  with:
+    github-token: ${{ github.token }}
+    access-token: ${{ secrets.ACCESS_TOKEN }}
+    organization: my-org
+```

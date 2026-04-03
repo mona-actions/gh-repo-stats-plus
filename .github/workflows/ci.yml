@@ -51,3 +51,53 @@ jobs:
       - name: Test Coverage
         id: npm-test-coverage
         run: npm run test:coverage
+
+  action-shellcheck:
+    runs-on: ubuntu-latest
+    name: Action ShellCheck
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract shell scripts from action.yml
+        id: extract
+        run: |
+          mkdir -p /tmp/scripts
+          python3 -c "
+          import yaml, os
+          with open('action.yml') as f:
+              data = yaml.safe_load(f)
+          steps = data.get('runs', {}).get('steps', [])
+          for i, step in enumerate(steps):
+              run_block = step.get('run')
+              if run_block:
+                  name = step.get('name', f'step-{i}').lower().replace(' ', '-')
+                  path = f'/tmp/scripts/{i:02d}-{name}.sh'
+                  with open(path, 'w') as out:
+                      out.write('#!/usr/bin/env bash\n')
+                      out.write(run_block)
+                  print(f'Extracted: {path}')
+          "
+
+      - name: Run ShellCheck
+        run: |
+          if ls /tmp/scripts/*.sh 1>/dev/null 2>&1; then
+            echo "Running ShellCheck on extracted scripts..."
+            shellcheck --severity=warning /tmp/scripts/*.sh || true
+          else
+            echo "No shell scripts found to lint"
+          fi
+
+  action-yamllint:
+    runs-on: ubuntu-latest
+    name: Action YAML Lint
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Lint YAML files
+        run: |
+          pip install yamllint
+          yamllint -c action/.yamllint.yml action.yml action/examples/*.yml

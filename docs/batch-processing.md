@@ -237,3 +237,22 @@ The same pattern works for `project-stats` — just swap the command:
 - **GitHub Actions matrix limit** is 256 jobs. At 50 repos/batch that covers up to 12,800 repos.
 - **Resume on failure**: Add `--resume-from-last-save` and cache/persist the state files between retries so a re-run picks up where it left off.
 - **`merge-multiple: true`** on `download-artifact` flattens all batch artifacts into a single directory, which is exactly what `combine-stats --files` expects.
+
+## Using the GitHub Action
+
+If you prefer a higher-level interface that handles extension installation, artifact uploading, and resume logic automatically, use the [GitHub Action](github-action.md) instead of installing the CLI extension manually in your workflow steps:
+
+```yaml
+- name: Gather Organization Stats (batch ${{ matrix.batch-index }})
+  uses: mona-actions/gh-repo-stats-plus@v1
+  with:
+    type: organization
+    github-token: ${{ github.token }}
+    access-token: ${{ secrets.ACCESS_TOKEN }}
+    organization: my-org
+    batch-size: '50'
+    batch-index: ${{ matrix.batch-index }}
+    batch-delay: '5'
+```
+
+See [action/examples/batch-organization-stats.yml](../action/examples/batch-organization-stats.yml) for a complete batch workflow using the action.
