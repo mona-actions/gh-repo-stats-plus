@@ -8,7 +8,7 @@ branding:
 
 inputs:
   type:
-    description: "Type of stats gathering: 'repository', 'organization', 'project-stats', 'app-install-stats', 'migration-audit', or 'combine'"
+    description: "Type of stats gathering: 'repository', 'organization', 'project-stats', 'app-install-stats', 'package-stats', 'codespace-stats', 'migration-audit', or 'combine'"
     required: false
     default: "repository"
   github-token:
@@ -129,6 +129,10 @@ inputs:
     description: "Name for the rows-to-columns output CSV file (default: auto-generated with timestamp)"
     required: false
     default: ""
+  package-type:
+    description: "Package type for package-stats (maven, npm, docker, nuget, rubygems, pypi)"
+    required: false
+    default: "maven"
 
 outputs:
   output-dir:
@@ -171,11 +175,11 @@ runs:
         INPUT_TYPE: ${{ inputs.type }}
       run: |
         case "${INPUT_TYPE}" in
-          repository|organization|project-stats|app-install-stats|migration-audit|combine)
+          repository|organization|project-stats|app-install-stats|package-stats|codespace-stats|migration-audit|combine)
             echo "✓ Valid type: ${INPUT_TYPE}"
             ;;
           *)
-            echo "::error::Invalid type '${INPUT_TYPE}'. Must be one of: repository, organization, project-stats, app-install-stats, migration-audit, combine."
+            echo "::error::Invalid type '${INPUT_TYPE}'. Must be one of: repository, organization, project-stats, app-install-stats, package-stats, codespace-stats, migration-audit, combine."
             exit 1
             ;;
         esac
@@ -346,7 +350,7 @@ runs:
         echo "✓ App install stats authentication validated"
 
     - name: Validate Organization Exists
-      if: ${{ inputs.type == 'organization' || inputs.type == 'project-stats' || inputs.type == 'app-install-stats' || inputs.type == 'migration-audit' }}
+      if: ${{ inputs.type == 'organization' || inputs.type == 'project-stats' || inputs.type == 'app-install-stats' || inputs.type == 'package-stats' || inputs.type == 'codespace-stats' || inputs.type == 'migration-audit' }}
       shell: bash
       env:
         GH_TOKEN: ${{ steps.app-install.outputs.token || inputs.access-token || inputs.github-token }}
@@ -609,6 +613,37 @@ runs:
           --output-dir "${{ steps.setup-paths.outputs.output_dir }}"
 
         echo "✓ App install statistics gathered successfully"
+
+    - name: Gather Package Stats
+      if: ${{ inputs.type == 'package-stats' }}
+      shell: bash
+      run: |
+        gh repo-stats-plus package-stats \
+          --org-name "${{ inputs.organization }}" \
+          --access-token "${{ inputs.access-token }}" \
+          --app-id "${{ inputs.github-app-id }}" \
+          --private-key "${{ inputs.github-app-private-key }}" \
+          --app-installation-id "${{ steps.app-install.outputs.installation-id }}" \
+          --base-url "${{ inputs.base-url }}" \
+          --output-dir "${{ steps.setup-paths.outputs.output_dir }}" \
+          --package-type "${{ inputs.package-type }}"
+
+        echo "✓ Package statistics gathered successfully"
+
+    - name: Gather Codespace Stats
+      if: ${{ inputs.type == 'codespace-stats' }}
+      shell: bash
+      run: |
+        gh repo-stats-plus codespace-stats \
+          --org-name "${{ inputs.organization }}" \
+          --access-token "${{ inputs.access-token }}" \
+          --app-id "${{ inputs.github-app-id }}" \
+          --private-key "${{ inputs.github-app-private-key }}" \
+          --app-installation-id "${{ steps.app-install.outputs.installation-id }}" \
+          --base-url "${{ inputs.base-url }}" \
+          --output-dir "${{ steps.setup-paths.outputs.output_dir }}"
+
+        echo "✓ Codespace statistics gathered successfully"
 
     - name: Run Migration Audit for Repository
       id: migration-audit-repo
@@ -879,7 +914,7 @@ runs:
         overwrite: true
 
     - name: Create Stats Placeholder
-      if: ${{ success() && (inputs.type == 'organization' || inputs.type == 'project-stats' || inputs.type == 'app-install-stats' || inputs.type == 'migration-audit' || inputs.type == 'combine') }}
+      if: ${{ success() && (inputs.type == 'organization' || inputs.type == 'project-stats' || inputs.type == 'app-install-stats' || inputs.type == 'package-stats' || inputs.type == 'codespace-stats' || inputs.type == 'migration-audit' || inputs.type == 'combine') }}
       shell: bash
       run: |
         case "${{ inputs.type }}" in
@@ -891,6 +926,12 @@ runs:
             ;;
           app-install-stats)
             MARKDOWN="## 📊 App Install Statistics\n\nApp installation statistics have been collected for the organization.\n\n"
+            ;;
+          package-stats)
+            MARKDOWN="## 📊 Package Statistics\n\nPackage statistics have been collected for the organization.\n\n"
+            ;;
+          codespace-stats)
+            MARKDOWN="## 📊 Codespace Statistics\n\nCodespace usage statistics have been collected for the organization.\n\n"
             ;;
           migration-audit)
             MARKDOWN="## 🔍 Migration Audit\n\nMigration audit has been completed for the organization.\n\n"

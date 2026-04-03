@@ -38,6 +38,8 @@ For the complete reference including all inputs, outputs, authentication options
 | `organization`      | Stats for all repos in an organization        |
 | `project-stats`     | ProjectsV2 statistics                         |
 | `app-install-stats` | GitHub App installation statistics (PAT only) |
+| `package-stats`     | Package statistics (Maven, npm, Docker, etc.) |
+| `codespace-stats`   | Codespace usage statistics                    |
 | `migration-audit`   | Migration audit for an organization           |
 | `combine`           | Merge CSV files from multiple batch runs      |
 

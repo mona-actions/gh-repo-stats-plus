@@ -23,7 +23,7 @@ In both cases, the `github-token` input (typically `${{ secrets.GITHUB_TOKEN }}`
 
 | Input | Description | Required | Default |
 | --- | --- | --- | --- |
-| `type` | Type of stats gathering: `repository`, `organization`, `project-stats`, `app-install-stats`, `migration-audit`, or `combine` | No | `repository` |
+| `type` | Type of stats gathering: `repository`, `organization`, `project-stats`, `app-install-stats`, `package-stats`, `codespace-stats`, `migration-audit`, or `combine` | No | `repository` |
 | `github-token` | GitHub token for authentication (e.g., `github.token`) | Yes | |
 | `ghec-token` | GitHub Enterprise Cloud token (used to download dependencies from GHEC if not on github.com) | No | `""` |
 | `access-token` | Personal access token with repo access for gathering stats | No | `""` |
@@ -54,6 +54,7 @@ In both cases, the `github-token` input (typically `${{ secrets.GITHUB_TOKEN }}`
 | `rows-to-columns-base-csv-columns` | Comma-separated column names in the base CSV used for matching rows. | No | `Org_Name,Repo_Name` |
 | `rows-to-columns-additional-csv-columns` | Comma-separated column names in the additional CSV used for matching rows. | No | `owner,name` |
 | `rows-to-columns-output-file-name` | Name for the rows-to-columns output CSV file (default: auto-generated with timestamp). | No | `""` |
+| `package-type` | Package type for package-stats (`maven`, `npm`, `docker`, `nuget`, `rubygems`, `pypi`). | No | `maven` |
 
 ## Outputs
 
@@ -238,6 +239,35 @@ Collect GitHub App installation statistics for an organization.
   uses: mona-actions/gh-repo-stats-plus@v1
   with:
     type: app-install-stats
+    github-token: ${{ github.token }}
+    access-token: ${{ secrets.ACCESS_TOKEN }}
+    organization: my-org
+```
+
+### Package Stats
+
+Collect package statistics (Maven, npm, Docker, NuGet, RubyGems, PyPI) for an organization.
+
+```yaml
+- name: Gather Package Stats
+  uses: mona-actions/gh-repo-stats-plus@v1
+  with:
+    type: package-stats
+    github-token: ${{ github.token }}
+    access-token: ${{ secrets.ACCESS_TOKEN }}
+    organization: my-org
+    package-type: npm
+```
+
+### Codespace Stats
+
+Collect codespace usage statistics for an organization.
+
+```yaml
+- name: Gather Codespace Stats
+  uses: mona-actions/gh-repo-stats-plus@v1
+  with:
+    type: codespace-stats
     github-token: ${{ github.token }}
     access-token: ${{ secrets.ACCESS_TOKEN }}
     organization: my-org
