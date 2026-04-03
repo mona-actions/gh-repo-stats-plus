@@ -1,0 +1,41 @@
+# Example: Post-Process Stats
+#
+# Gathers organization stats and then runs post-process to transform
+# the CSV data using configurable rules for pattern matching and cleanup.
+#
+# The post-process command requires a JSON rules file that defines how
+# to transform column values. See the gh-repo-stats-plus docs for rules format:
+# https://github.com/mona-actions/gh-repo-stats-plus/blob/main/docs/commands/post-process.md
+
+name: Post-Process Stats
+
+on:
+  schedule:
+    - cron: "0 0 * * 1" # weekly on Monday
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gather-stats:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Gather Organization Stats with Post-Process
+        id: stats
+        uses: mona-actions/gh-repo-stats-plus@v1
+        with:
+          type: organization
+          github-token: ${{ github.token }}
+          access-token: ${{ secrets.ACCESS_TOKEN }}
+          organization: my-org
+          run-post-process: "true"
+          post-process-rules-file: "post-process.rules.json"
+
+      - name: Print Results
+        run: |
+          echo "Output directory: ${{ steps.stats.outputs.output-dir }}"
+          echo "Artifact ID: ${{ steps.stats.outputs.artifact-id }}"

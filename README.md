@@ -77,6 +77,24 @@ The extension is built using modern TypeScript patterns with:
 - **Type Safety** throughout the codebase
 - **On-demand Building** for clean installation without pre-built artifacts
 
+## GitHub Action
+
+This project also ships as a **GitHub Action** so you can gather repository statistics directly from your workflows:
+
+```yaml
+- name: Gather Repository Stats
+  uses: mona-actions/gh-repo-stats-plus@v1
+  with:
+    github-token: ${{ github.token }}
+    access-token: ${{ secrets.ACCESS_TOKEN }}
+    organization: my-org
+    repository: my-repo
+```
+
+The action supports all stats types (repository, organization, project-stats, app-install-stats, migration-audit, combine), batch processing with matrix strategy, resume on failure, post-processing, rows-to-columns pivoting, and GitHub Enterprise environments.
+
+See the [GitHub Action documentation](action/README.md) for full inputs/outputs reference, authentication options, and [example workflows](action/examples/).
+
 ## Documentation
 
 | Guide                                               | Description                                   |
@@ -84,6 +102,7 @@ The extension is built using modern TypeScript patterns with:
 | [Installation](docs/installation.md)                | Prerequisites and installation methods        |
 | [Usage Guide](docs/usage.md)                        | Authentication and usage examples             |
 | [Commands](docs/commands.md)                        | Complete command reference                    |
+| [GitHub Action](docs/github-action.md)              | Using as a GitHub Action in workflows         |
 | [LFS Sizing](docs/lfs-sizing.md)                    | Git LFS storage analysis per repo             |
 | [Development](docs/development.md)                  | Setup and development workflow                |
 | [Batch Processing](docs/batch-processing.md)        | Parallel batch processing with GitHub Actions |
