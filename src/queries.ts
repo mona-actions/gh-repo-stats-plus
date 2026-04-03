@@ -335,7 +335,7 @@ export const ORG_PACKAGE_DETAILS_QUERY = `
             downloadsTotalCount
           }
           latestVersion {
-            files(first: 100, orderBy: {field: UPDATED_AT, direction: DESC}) {
+            files(last: 100, orderBy: {field: CREATED_AT, direction: ASC}) {
               nodes {
                 name
                 size
