@@ -47,7 +47,7 @@
     "@types/node": "^25.5.0",
     "@types/shell-quote": "^1.7.5",
     "@typescript-eslint/eslint-plugin": "^8.57.1",
-    "@typescript-eslint/parser": "^8.57.1",
+    "@typescript-eslint/parser": "^8.58.0",
     "@vitest/coverage-v8": "^4.1.0",
     "eslint": "^10.0.3",
     "eslint-config-prettier": "^10.1.8",
