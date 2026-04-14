@@ -22,6 +22,10 @@ describe('OctokitClient', () => {
       rest: {
         repos: {
           listForOrg: vi.fn(),
+          get: vi.fn(),
+        },
+        orgs: {
+          get: vi.fn(),
         },
       },
       auth: vi.fn(),
@@ -79,6 +83,95 @@ describe('OctokitClient', () => {
 
       // Act & Assert
       await expect(client.generateAppToken()).rejects.toThrow(errorMessage);
+    });
+  });
+
+  describe('validateRepository', () => {
+    it('should return fullName when repository exists', async () => {
+      mockOctokit.rest.repos.get.mockResolvedValue({
+        data: { full_name: 'test-org/test-repo' },
+      });
+
+      const result = await client.validateRepository('test-org', 'test-repo');
+
+      expect(result).toEqual({ fullName: 'test-org/test-repo' });
+      expect(mockOctokit.rest.repos.get).toHaveBeenCalledWith({
+        owner: 'test-org',
+        repo: 'test-repo',
+        headers: { 'X-GitHub-Api-Version': '2022-11-28' },
+      });
+    });
+
+    it('should throw with clear message on 404', async () => {
+      mockOctokit.rest.repos.get.mockRejectedValue({ status: 404 });
+
+      await expect(
+        client.validateRepository('test-org', 'nonexistent'),
+      ).rejects.toThrow(/Repository not found: test-org\/nonexistent/);
+    });
+
+    it('should throw with cause on 404', async () => {
+      const original = { status: 404 };
+      mockOctokit.rest.repos.get.mockRejectedValue(original);
+
+      try {
+        await client.validateRepository('test-org', 'nonexistent');
+      } catch (error: unknown) {
+        expect((error as Error).cause).toBe(original);
+      }
+    });
+
+    it('should throw on non-404 API errors', async () => {
+      mockOctokit.rest.repos.get.mockRejectedValue(new Error('Network error'));
+
+      await expect(
+        client.validateRepository('test-org', 'test-repo'),
+      ).rejects.toThrow(/Failed to validate repository test-org\/test-repo/);
+    });
+  });
+
+  describe('validateOrganization', () => {
+    it('should return login when organization exists', async () => {
+      mockOctokit.rest.orgs.get.mockResolvedValue({
+        data: { login: 'test-org' },
+      });
+
+      const result = await client.validateOrganization('test-org');
+
+      expect(result).toEqual({ login: 'test-org' });
+      expect(mockOctokit.rest.orgs.get).toHaveBeenCalledWith({
+        org: 'test-org',
+        headers: { 'X-GitHub-Api-Version': '2022-11-28' },
+      });
+    });
+
+    it('should throw with clear message on 404', async () => {
+      mockOctokit.rest.orgs.get.mockRejectedValue({ status: 404 });
+
+      await expect(
+        client.validateOrganization('nonexistent-org'),
+      ).rejects.toThrow(/Organization not found: nonexistent-org/);
+    });
+
+    it('should throw with cause on 404', async () => {
+      const original = { status: 404 };
+      mockOctokit.rest.orgs.get.mockRejectedValue(original);
+
+      try {
+        await client.validateOrganization('nonexistent-org');
+      } catch (error: unknown) {
+        expect((error as Error).cause).toBe(original);
+      }
+    });
+
+    it('should throw on non-404 API errors', async () => {
+      mockOctokit.rest.orgs.get.mockRejectedValue(
+        new Error('Connection refused'),
+      );
+
+      await expect(client.validateOrganization('test-org')).rejects.toThrow(
+        /Failed to validate organization test-org/,
+      );
     });
   });
 
