@@ -189,12 +189,9 @@ runs:
       shell: bash
       run: |
         BASE_URL="${{ inputs.base-url }}"
-        # Strip protocol
         HOST="${BASE_URL#https://}"
         HOST="${HOST#http://}"
-        # Remove any trailing path
         HOST="${HOST%%/*}"
-        # For public GitHub, api.github.com -> github.com
         if [[ "$HOST" == api.* ]]; then
           HOST="${HOST#api.}"
         fi
@@ -202,60 +199,25 @@ runs:
         echo "gh_host=${HOST}" >> $GITHUB_OUTPUT
         echo "✓ Resolved GH_HOST: ${HOST}"
 
-    - name: Configure TLS for GHES
+    - name: Configure gh CLI TLS for GHES
       if: ${{ inputs.skip-tls-verification == 'true' }}
       shell: bash
       run: |
         HOST="${{ steps.resolve-host.outputs.gh_host }}"
 
-        # Guard: refuse to disable TLS for public github.com
         if [[ "$HOST" == "github.com" ]]; then
           echo "::error::Refusing to disable TLS verification for public github.com. Remove 'skip-tls-verification' or use a GHES base-url."
           exit 1
         fi
 
-        echo "Configuring TLS bypass for non-github.com host: ${HOST}"
+        echo "Configuring TLS bypass for gh CLI (GHES host: ${HOST})"
 
-        # Disable SSL verification for Node.js (Octokit/actions)
-        echo "NODE_TLS_REJECT_UNAUTHORIZED=0" >> $GITHUB_ENV
+        # Node.js and Git TLS bypass is handled by the preflight command.
+        # This step only configures the gh CLI (Go-based, not affected by Node.js env vars).
+        gh config set -h "${HOST}" skip_tls_verification true 2>/dev/null || \
+          echo "::warning::gh CLI does not support skip_tls_verification. gh API calls to GHES may fail with TLS errors."
 
-        # Suppress Node.js TLS warnings
-        echo "NODE_NO_WARNINGS=1" >> $GITHUB_ENV
-
-        # Disable SSL verification for Git operations scoped to the GHES host
-        git config --global "http.https://${HOST}/.sslVerify" false
-
-        # Disable SSL verification for gh CLI (Go-based, not affected by NODE_TLS)
-        # skip_tls_verification requires gh >= 2.54.0
-        GH_VERSION=$(gh --version | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-        echo "  gh CLI version: ${GH_VERSION}"
-        GH_MAJOR=$(echo "$GH_VERSION" | cut -d. -f1)
-        GH_MINOR=$(echo "$GH_VERSION" | cut -d. -f2)
-        if [[ "$GH_MAJOR" -gt 2 ]] || { [[ "$GH_MAJOR" -eq 2 ]] && [[ "$GH_MINOR" -ge 54 ]]; }; then
-          gh config set -h "${HOST}" skip_tls_verification true
-          echo "✓ TLS bypass configured via gh config for ${HOST}"
-        else
-          echo "⚠️  gh CLI ${GH_VERSION} does not support skip_tls_verification (requires >= 2.54.0)"
-          echo "  Attempting to upgrade gh CLI..."
-          if command -v apt-get &> /dev/null; then
-            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg 2>/dev/null
-            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-            sudo apt-get update -qq && sudo apt-get install -qq -y gh > /dev/null 2>&1
-          elif command -v brew &> /dev/null; then
-            brew upgrade gh 2>/dev/null || brew install gh 2>/dev/null
-          fi
-          NEW_VERSION=$(gh --version | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-          echo "  gh CLI version after upgrade: ${NEW_VERSION}"
-          NEW_MAJOR=$(echo "$NEW_VERSION" | cut -d. -f1)
-          NEW_MINOR=$(echo "$NEW_VERSION" | cut -d. -f2)
-          if [[ "$NEW_MAJOR" -gt 2 ]] || { [[ "$NEW_MAJOR" -eq 2 ]] && [[ "$NEW_MINOR" -ge 54 ]]; }; then
-            gh config set -h "${HOST}" skip_tls_verification true
-          else
-            echo "::warning::gh CLI ${NEW_VERSION} still does not support skip_tls_verification. gh API calls to GHES may fail with TLS errors. Node.js, Git, and curl TLS bypass are still active."
-          fi
-        fi
-
-        echo "✓ TLS bypass configured for ${HOST}"
+        echo "✓ gh CLI TLS bypass configured for ${HOST}"
 
     - name: Setup Paths
       id: setup-paths
@@ -291,105 +253,6 @@ runs:
         github-api-url: ${{ inputs.base-url }}
         repositories: ${{ inputs.repository }}
 
-    - name: Validate Repository Exists
-      if: ${{ inputs.type == 'repository' }}
-      shell: bash
-      env:
-        GH_TOKEN: ${{ steps.app-install.outputs.token || inputs.access-token || inputs.github-token }}
-        GH_HOST: ${{ steps.resolve-host.outputs.gh_host }}
-        BASE_URL: ${{ inputs.base-url }}
-        TOKEN_SOURCE: ${{ steps.app-install.outputs.token != '' && 'GitHub App' || (inputs.access-token != '' && 'Access Token' || 'github-token (fallback)') }}
-        SKIP_TLS: ${{ inputs.skip-tls-verification }}
-      run: |
-        echo "Validating repository: ${{ inputs.organization }}/${{ inputs.repository }}"
-        echo "  GH_HOST: ${GH_HOST}"
-        echo "  Base URL: ${BASE_URL}"
-        echo "  Token length: ${#GH_TOKEN}"
-        echo "  Token source: ${TOKEN_SOURCE}"
-        echo "  Skip TLS: ${SKIP_TLS}"
-
-        CURL_OPTS=(-s --max-time 15)
-        if [[ "${SKIP_TLS}" == "true" ]]; then
-          CURL_OPTS+=(-k)
-        fi
-
-        HTTP_CODE=$(curl "${CURL_OPTS[@]}" \
-          -H "Authorization: token ${GH_TOKEN}" \
-          -H "Accept: application/vnd.github+json" \
-          -o /tmp/repo-validate.json \
-          -w "%{http_code}" \
-          "${BASE_URL}/repos/${{ inputs.organization }}/${{ inputs.repository }}") || true
-
-        if [[ "$HTTP_CODE" == "200" ]]; then
-          FULL_NAME=$(jq -r '.full_name' /tmp/repo-validate.json 2>/dev/null)
-          echo "✓ Repository exists and is accessible: ${FULL_NAME}"
-          exit 0
-        fi
-
-        echo "::error::Failed to validate repository: ${{ inputs.organization }}/${{ inputs.repository }}"
-        echo "  HTTP status: ${HTTP_CODE}"
-        echo "  Response:"
-        cat /tmp/repo-validate.json 2>/dev/null || echo "  (no response body)"
-        exit 1
-
-    - name: Validate App Install Stats Auth
-      if: ${{ inputs.type == 'app-install-stats' }}
-      shell: bash
-      env:
-        ACCESS_TOKEN: ${{ inputs.access-token }}
-        APP_ID: ${{ inputs.github-app-id }}
-        APP_KEY: ${{ inputs.github-app-private-key }}
-      run: |
-        if [[ -z "${ACCESS_TOKEN}" ]]; then
-          echo "::error::app-install-stats requires a Personal Access Token (access-token). GitHub App tokens cannot view other apps' installations."
-          exit 1
-        fi
-        if [[ -n "${APP_ID}" ]] || [[ -n "${APP_KEY}" ]]; then
-          echo "::warning::GitHub App credentials are ignored for app-install-stats. Only the access-token (PAT) will be used."
-        fi
-        echo "✓ App install stats authentication validated"
-
-    - name: Validate Organization Exists
-      if: ${{ inputs.type == 'organization' || inputs.type == 'project-stats' || inputs.type == 'app-install-stats' || inputs.type == 'package-stats' || inputs.type == 'codespace-stats' || inputs.type == 'migration-audit' }}
-      shell: bash
-      env:
-        GH_TOKEN: ${{ steps.app-install.outputs.token || inputs.access-token || inputs.github-token }}
-        GH_HOST: ${{ steps.resolve-host.outputs.gh_host }}
-        BASE_URL: ${{ inputs.base-url }}
-        TOKEN_SOURCE: ${{ steps.app-install.outputs.token != '' && 'GitHub App' || (inputs.access-token != '' && 'Access Token' || 'github-token (fallback)') }}
-        SKIP_TLS: ${{ inputs.skip-tls-verification }}
-      run: |
-        echo "Validating organization: ${{ inputs.organization }}"
-        echo "  GH_HOST: ${GH_HOST}"
-        echo "  Base URL: ${BASE_URL}"
-        echo "  Token length: ${#GH_TOKEN}"
-        echo "  Token source: ${TOKEN_SOURCE}"
-        echo "  Skip TLS: ${SKIP_TLS}"
-
-        CURL_OPTS=(-s --max-time 15)
-        if [[ "${SKIP_TLS}" == "true" ]]; then
-          CURL_OPTS+=(-k)
-        fi
-
-        HTTP_CODE=$(curl "${CURL_OPTS[@]}" \
-          -H "Authorization: token ${GH_TOKEN}" \
-          -H "Accept: application/vnd.github+json" \
-          -o /tmp/org-validate.json \
-          -w "%{http_code}" \
-          "${BASE_URL}/orgs/${{ inputs.organization }}") || true
-
-        if [[ "$HTTP_CODE" == "200" ]]; then
-          LOGIN=$(jq -r '.login' /tmp/org-validate.json 2>/dev/null)
-          echo "✓ Organization exists and is accessible: ${LOGIN}"
-          exit 0
-        fi
-
-        echo "::error::Failed to validate organization: ${{ inputs.organization }}"
-        echo "  HTTP status: ${HTTP_CODE}"
-        echo "  Response:"
-        cat /tmp/org-validate.json 2>/dev/null || echo "  (no response body)"
-        exit 1
-
     - name: Setup Node.js
       uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 #v6.2.0
       with:
@@ -410,6 +273,47 @@ runs:
         gh migration-audit --version
 
         echo "✓ Dependencies installed successfully"
+
+    - name: Run Preflight Checks
+      if: ${{ inputs.type != 'combine' }}
+      shell: bash
+      env:
+        ACCESS_TOKEN: ${{ steps.app-install.outputs.token || inputs.access-token || inputs.github-token }}
+      run: |
+        PREFLIGHT_ARGS=(
+          --base-url "${{ inputs.base-url }}"
+          --type "${{ inputs.type }}"
+          --org-name "${{ inputs.organization }}"
+          --access-token "${ACCESS_TOKEN}"
+        )
+
+        if [[ "${{ inputs.skip-tls-verification }}" == "true" ]]; then
+          PREFLIGHT_ARGS+=(--skip-tls-verification)
+        fi
+
+        REPOSITORY="${{ inputs.repository }}"
+        if [[ -n "${REPOSITORY}" ]]; then
+          PREFLIGHT_ARGS+=(--repository "${REPOSITORY}")
+        fi
+
+        APP_ID="${{ inputs.github-app-id }}"
+        if [[ -n "${APP_ID}" ]]; then
+          PREFLIGHT_ARGS+=(--app-id "${APP_ID}")
+        fi
+
+        PRIVATE_KEY="${{ inputs.github-app-private-key }}"
+        if [[ -n "${PRIVATE_KEY}" ]]; then
+          PREFLIGHT_ARGS+=(--private-key "${PRIVATE_KEY}")
+        fi
+
+        INSTALL_ID="${{ steps.app-install.outputs.installation-id }}"
+        if [[ -n "${INSTALL_ID}" ]]; then
+          PREFLIGHT_ARGS+=(--app-installation-id "${INSTALL_ID}")
+        fi
+
+        gh repo-stats-plus preflight "${PREFLIGHT_ARGS[@]}"
+
+        echo "✓ Preflight checks completed"
 
     - name: Resolve Resume Mode
       id: resolve-resume
