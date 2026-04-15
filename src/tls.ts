@@ -29,10 +29,12 @@ export function configureSslBypass(baseUrl: string, logger: Logger): void {
   logger.info('Disabling SSL verification for GHES connection');
 
   // Disable SSL verification for Node.js (Octokit, fetch, etc.)
-  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+  // This is intentional: users explicitly opt in via --skip-tls-verification,
+  // and the github.com guard above prevents misuse against public GitHub.
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'; // lgtm[js/disabling-certificate-validation]
 
   // Disable SSL verification for Git operations
-  process.env.GIT_SSL_NO_VERIFY = '1';
+  process.env.GIT_SSL_NO_VERIFY = '1'; // lgtm[js/disabling-certificate-validation]
 
   // Suppress Node.js TLS deprecation warnings in downstream processes
   process.env.NODE_NO_WARNINGS = '1';
