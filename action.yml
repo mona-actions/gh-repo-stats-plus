@@ -210,14 +210,25 @@ runs:
           exit 1
         fi
 
-        echo "Configuring TLS bypass for gh CLI (GHES host: ${HOST})"
+        echo "Configuring TLS bypass for GHES host: ${HOST}"
 
-        # Node.js and Git TLS bypass is handled by the preflight command.
-        # This step only configures the gh CLI (Go-based, not affected by Node.js env vars).
-        gh config set -h "${HOST}" skip_tls_verification true 2>/dev/null || \
+        # Persist TLS bypass for all subsequent composite action steps.
+        # process.env changes in Node.js do not carry over between steps,
+        # so we must write to $GITHUB_ENV for downstream commands.
+        echo "NODE_TLS_REJECT_UNAUTHORIZED=0" >> "$GITHUB_ENV"
+        echo "NODE_NO_WARNINGS=1" >> "$GITHUB_ENV"
+
+        # Scope Git TLS bypass to the GHES host (not globally)
+        git config --global "http.https://${HOST}/.sslVerify" false
+
+        # Configure the gh CLI (Go-based, not affected by Node.js env vars)
+        if gh config set -h "${HOST}" skip_tls_verification true 2>/dev/null; then
+          echo "✓ gh CLI TLS bypass configured for ${HOST}"
+        else
           echo "::warning::gh CLI does not support skip_tls_verification. gh API calls to GHES may fail with TLS errors."
+        fi
 
-        echo "✓ gh CLI TLS bypass configured for ${HOST}"
+        echo "✓ TLS bypass configured for ${HOST}"
 
     - name: Setup Paths
       id: setup-paths
@@ -278,7 +289,7 @@ runs:
       if: ${{ inputs.type != 'combine' }}
       shell: bash
       env:
-        ACCESS_TOKEN: ${{ steps.app-install.outputs.token || inputs.access-token || inputs.github-token }}
+        ACCESS_TOKEN: ${{ inputs.type == 'app-install-stats' && inputs.access-token || steps.app-install.outputs.token || inputs.access-token || inputs.github-token }}
       run: |
         PREFLIGHT_ARGS=(
           --base-url "${{ inputs.base-url }}"

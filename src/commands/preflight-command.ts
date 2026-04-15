@@ -52,11 +52,19 @@ function validate(opts: PreflightOptions): void {
     );
   }
 
-  if (opts.type === 'repository' && !opts.repository) {
-    throw new Error(
-      "A repository name is required when type is 'repository'. " +
-        'Pass --repository <name>.',
-    );
+  if (opts.type === 'repository') {
+    if (!opts.repository) {
+      throw new Error(
+        "A repository name is required when type is 'repository'. " +
+          'Pass --repository <name>.',
+      );
+    }
+    if (!opts.orgName) {
+      throw new Error(
+        "An organization name is required when type is 'repository'. " +
+          'Pass --org-name <org>.',
+      );
+    }
   }
 
   if (ORG_TYPES.has(opts.type) && !opts.orgName) {
@@ -83,6 +91,8 @@ function validate(opts: PreflightOptions): void {
 }
 
 export async function runPreflight(opts: PreflightOptions): Promise<void> {
+  validate(opts);
+
   const logger = await createLogger(opts.verbose ?? false, 'preflight.log');
 
   // 1. Resolve hostname
@@ -202,9 +212,6 @@ export function createPreflightCommand(): commander.Command {
     )
     .action(async (options: PreflightOptions) => {
       console.log('Version:', VERSION);
-
-      console.log('Validating preflight options...');
-      validate(options);
 
       console.log('Running preflight checks...');
       await runPreflight(options);
