@@ -172,6 +172,19 @@ describe('preflight-command', () => {
         );
       });
 
+      it('should throw when org-name is missing for repository type', async () => {
+        await expect(
+          runPreflight({
+            baseUrl: 'https://api.github.com',
+            type: 'repository',
+            repository: 'test-repo',
+            accessToken: 'token-123',
+          }),
+        ).rejects.toThrow(
+          /An organization name is required when type is 'repository'/,
+        );
+      });
+
       it('should throw on repository not found (404)', async () => {
         mockClient.validateRepository.mockRejectedValue(
           new Error('Repository not found: test-org/nonexistent'),

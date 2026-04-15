@@ -20,9 +20,9 @@ describe('tls', () => {
       expect(process.env.NODE_TLS_REJECT_UNAUTHORIZED).toBe('0');
     });
 
-    it('should set GIT_SSL_NO_VERIFY to 1', () => {
+    it('should not set GIT_SSL_NO_VERIFY (handled by action.yml with host scoping)', () => {
       configureSslBypass('https://ghes.example.com/api/v3', mockLogger);
-      expect(process.env.GIT_SSL_NO_VERIFY).toBe('1');
+      expect(process.env.GIT_SSL_NO_VERIFY).toBeUndefined();
     });
 
     it('should set NODE_NO_WARNINGS to 1', () => {
@@ -66,7 +66,7 @@ describe('tls', () => {
         'Disabling SSL verification for GHES connection',
       );
       expect(mockLogger.info).toHaveBeenCalledWith(
-        'SSL bypass configured for Node.js and Git',
+        'SSL bypass configured for Node.js',
       );
     });
   });

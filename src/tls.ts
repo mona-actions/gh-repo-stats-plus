@@ -33,11 +33,8 @@ export function configureSslBypass(baseUrl: string, logger: Logger): void {
   // and the github.com guard above prevents misuse against public GitHub.
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'; // lgtm[js/disabling-certificate-validation]
 
-  // Disable SSL verification for Git operations
-  process.env.GIT_SSL_NO_VERIFY = '1'; // lgtm[js/disabling-certificate-validation]
-
   // Suppress Node.js TLS deprecation warnings in downstream processes
   process.env.NODE_NO_WARNINGS = '1';
 
-  logger.info('SSL bypass configured for Node.js and Git');
+  logger.info('SSL bypass configured for Node.js');
 }
