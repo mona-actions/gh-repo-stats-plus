@@ -72,6 +72,9 @@ export interface Arguments {
 
   // GitHub API version
   apiVersion?: string;
+
+  // TLS
+  skipTlsVerification?: boolean;
 }
 
 export type AuthResponse = {

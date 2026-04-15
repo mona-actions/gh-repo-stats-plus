@@ -62,6 +62,58 @@ export class OctokitClient {
     return appToken.token;
   }
 
+  async validateRepository(
+    owner: string,
+    repo: string,
+  ): Promise<{ fullName: string }> {
+    try {
+      const response = await this.octokit.rest.repos.get({
+        owner,
+        repo,
+        headers: this.octokit_headers,
+      });
+      return { fullName: response.data.full_name };
+    } catch (error: unknown) {
+      const status = (error as { status?: number }).status;
+      if (status === 404) {
+        throw new Error(
+          `Repository not found: ${owner}/${repo}. ` +
+            'Verify the repository exists and the token has access.',
+          { cause: error },
+        );
+      }
+      throw new Error(
+        `Failed to validate repository ${owner}/${repo}: ` +
+          `${error instanceof Error ? error.message : String(error)}`,
+        { cause: error },
+      );
+    }
+  }
+
+  async validateOrganization(org: string): Promise<{ login: string }> {
+    try {
+      const response = await this.octokit.rest.orgs.get({
+        org,
+        headers: this.octokit_headers,
+      });
+      return { login: response.data.login };
+    } catch (error: unknown) {
+      const status = (error as { status?: number }).status;
+      if (status === 404) {
+        throw new Error(
+          `Organization not found: ${org}. ` +
+            'Verify the organization exists and the token has access.',
+          { cause: error },
+        );
+      }
+      throw new Error(
+        `Failed to validate organization ${org}: ` +
+          `${error instanceof Error ? error.message : String(error)}`,
+        { cause: error },
+      );
+    }
+  }
+
   async *listReposForOrg(
     org: string,
     per_page: number,
