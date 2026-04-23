@@ -12,7 +12,7 @@ npm test
 
 ## Prerequisites
 
-- Node.js 20 or later
+- Node.js 22.19.0 or later
 - GitHub CLI
 - VS Code (recommended)
 
