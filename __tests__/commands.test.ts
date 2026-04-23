@@ -355,4 +355,24 @@ describe('Commands', () => {
       expect(option?.envVar).toBe('GITHUB_API_VERSION');
     });
   });
+
+  describe('TLS options', () => {
+    it('should have --ca-cert option on repo-stats command', () => {
+      const option = repoStatsCommand.options.find(
+        (opt) => opt.long === '--ca-cert',
+      );
+      expect(option).toBeDefined();
+      expect(option?.description).toContain('CA certificate');
+      expect(option?.envVar).toBe('NODE_EXTRA_CA_CERTS');
+    });
+
+    it('should have --ca-cert option on missing-repos command', () => {
+      const option = missingReposCommand.options.find(
+        (opt) => opt.long === '--ca-cert',
+      );
+      expect(option).toBeDefined();
+      expect(option?.description).toContain('CA certificate');
+      expect(option?.envVar).toBe('NODE_EXTRA_CA_CERTS');
+    });
+  });
 });

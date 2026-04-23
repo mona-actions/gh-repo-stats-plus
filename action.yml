@@ -53,10 +53,10 @@ inputs:
     description: "GitHub API base URL"
     required: false
     default: "https://api.github.com"
-  skip-tls-verification:
-    description: "Skip TLS certificate verification for the target GitHub instance (use for GHES with self-signed certs or IP-based access)"
+  ca-cert-path:
+    description: "Path to CA certificate bundle (PEM) for TLS verification against GHES instances with internal or self-signed certificates"
     required: false
-    default: "false"
+    default: ""
   retention-days:
     description: "Number of days to retain artifacts"
     required: false
@@ -202,60 +202,23 @@ runs:
         echo "gh_host=${HOST}" >> $GITHUB_OUTPUT
         echo "✓ Resolved GH_HOST: ${HOST}"
 
-    - name: Configure TLS for GHES
-      if: ${{ inputs.skip-tls-verification == 'true' }}
+    - name: Configure CA Certificate for GHES
+      if: ${{ inputs.ca-cert-path != '' }}
       shell: bash
       run: |
-        HOST="${{ steps.resolve-host.outputs.gh_host }}"
+        CA_CERT_PATH="${{ inputs.ca-cert-path }}"
 
-        # Guard: refuse to disable TLS for public github.com
-        if [[ "$HOST" == "github.com" ]]; then
-          echo "::error::Refusing to disable TLS verification for public github.com. Remove 'skip-tls-verification' or use a GHES base-url."
+        if [[ ! -f "$CA_CERT_PATH" ]]; then
+          echo "::error::CA certificate file not found: ${CA_CERT_PATH}"
           exit 1
         fi
 
-        echo "Configuring TLS bypass for non-github.com host: ${HOST}"
+        echo "Configuring CA certificate for TLS verification: ${CA_CERT_PATH}"
 
-        # Disable SSL verification for Node.js (Octokit/actions)
-        echo "NODE_TLS_REJECT_UNAUTHORIZED=0" >> $GITHUB_ENV
+        # Make the CA cert available to Node.js via NODE_EXTRA_CA_CERTS
+        echo "NODE_EXTRA_CA_CERTS=${CA_CERT_PATH}" >> $GITHUB_ENV
 
-        # Suppress Node.js TLS warnings
-        echo "NODE_NO_WARNINGS=1" >> $GITHUB_ENV
-
-        # Disable SSL verification for Git operations scoped to the GHES host
-        git config --global "http.https://${HOST}/.sslVerify" false
-
-        # Disable SSL verification for gh CLI (Go-based, not affected by NODE_TLS)
-        # skip_tls_verification requires gh >= 2.54.0
-        GH_VERSION=$(gh --version | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-        echo "  gh CLI version: ${GH_VERSION}"
-        GH_MAJOR=$(echo "$GH_VERSION" | cut -d. -f1)
-        GH_MINOR=$(echo "$GH_VERSION" | cut -d. -f2)
-        if [[ "$GH_MAJOR" -gt 2 ]] || { [[ "$GH_MAJOR" -eq 2 ]] && [[ "$GH_MINOR" -ge 54 ]]; }; then
-          gh config set -h "${HOST}" skip_tls_verification true
-          echo "✓ TLS bypass configured via gh config for ${HOST}"
-        else
-          echo "⚠️  gh CLI ${GH_VERSION} does not support skip_tls_verification (requires >= 2.54.0)"
-          echo "  Attempting to upgrade gh CLI..."
-          if command -v apt-get &> /dev/null; then
-            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg 2>/dev/null
-            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-            sudo apt-get update -qq && sudo apt-get install -qq -y gh > /dev/null 2>&1
-          elif command -v brew &> /dev/null; then
-            brew upgrade gh 2>/dev/null || brew install gh 2>/dev/null
-          fi
-          NEW_VERSION=$(gh --version | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-          echo "  gh CLI version after upgrade: ${NEW_VERSION}"
-          NEW_MAJOR=$(echo "$NEW_VERSION" | cut -d. -f1)
-          NEW_MINOR=$(echo "$NEW_VERSION" | cut -d. -f2)
-          if [[ "$NEW_MAJOR" -gt 2 ]] || { [[ "$NEW_MAJOR" -eq 2 ]] && [[ "$NEW_MINOR" -ge 54 ]]; }; then
-            gh config set -h "${HOST}" skip_tls_verification true
-          else
-            echo "::warning::gh CLI ${NEW_VERSION} still does not support skip_tls_verification. gh API calls to GHES may fail with TLS errors. Node.js, Git, and curl TLS bypass are still active."
-          fi
-        fi
-
-        echo "✓ TLS bypass configured for ${HOST}"
+        echo "✓ CA certificate configured for TLS verification"
 
     - name: Setup Paths
       id: setup-paths
@@ -299,18 +262,17 @@ runs:
         GH_HOST: ${{ steps.resolve-host.outputs.gh_host }}
         BASE_URL: ${{ inputs.base-url }}
         TOKEN_SOURCE: ${{ steps.app-install.outputs.token != '' && 'GitHub App' || (inputs.access-token != '' && 'Access Token' || 'github-token (fallback)') }}
-        SKIP_TLS: ${{ inputs.skip-tls-verification }}
+        CA_CERT_PATH: ${{ inputs.ca-cert-path }}
       run: |
         echo "Validating repository: ${{ inputs.organization }}/${{ inputs.repository }}"
         echo "  GH_HOST: ${GH_HOST}"
         echo "  Base URL: ${BASE_URL}"
         echo "  Token length: ${#GH_TOKEN}"
         echo "  Token source: ${TOKEN_SOURCE}"
-        echo "  Skip TLS: ${SKIP_TLS}"
 
         CURL_OPTS=(-s --max-time 15)
-        if [[ "${SKIP_TLS}" == "true" ]]; then
-          CURL_OPTS+=(-k)
+        if [[ -n "${CA_CERT_PATH}" ]]; then
+          CURL_OPTS+=(--cacert "${CA_CERT_PATH}")
         fi
 
         HTTP_CODE=$(curl "${CURL_OPTS[@]}" \
@@ -357,18 +319,17 @@ runs:
         GH_HOST: ${{ steps.resolve-host.outputs.gh_host }}
         BASE_URL: ${{ inputs.base-url }}
         TOKEN_SOURCE: ${{ steps.app-install.outputs.token != '' && 'GitHub App' || (inputs.access-token != '' && 'Access Token' || 'github-token (fallback)') }}
-        SKIP_TLS: ${{ inputs.skip-tls-verification }}
+        CA_CERT_PATH: ${{ inputs.ca-cert-path }}
       run: |
         echo "Validating organization: ${{ inputs.organization }}"
         echo "  GH_HOST: ${GH_HOST}"
         echo "  Base URL: ${BASE_URL}"
         echo "  Token length: ${#GH_TOKEN}"
         echo "  Token source: ${TOKEN_SOURCE}"
-        echo "  Skip TLS: ${SKIP_TLS}"
 
         CURL_OPTS=(-s --max-time 15)
-        if [[ "${SKIP_TLS}" == "true" ]]; then
-          CURL_OPTS+=(-k)
+        if [[ -n "${CA_CERT_PATH}" ]]; then
+          CURL_OPTS+=(--cacert "${CA_CERT_PATH}")
         fi
 
         HTTP_CODE=$(curl "${CURL_OPTS[@]}" \

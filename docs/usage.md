@@ -154,6 +154,26 @@ gh repo-stats-plus repo-stats \
 
 ## Working with Large Organizations
 
+### GitHub Enterprise Server (GHES)
+
+When connecting to a GHES instance with an internal or self-signed CA certificate, provide the CA certificate bundle so TLS verification works correctly:
+
+```bash
+gh repo-stats-plus repo-stats \
+  --org-name my-org \
+  --base-url https://ghes.example.com/api/v3 \
+  --ca-cert /path/to/ca-bundle.pem
+```
+
+Alternatively, set the `NODE_EXTRA_CA_CERTS` environment variable:
+
+```bash
+export NODE_EXTRA_CA_CERTS=/path/to/ca-bundle.pem
+gh repo-stats-plus repo-stats \
+  --org-name my-org \
+  --base-url https://ghes.example.com/api/v3
+```
+
 For organizations with many repositories, consider these best practices:
 
 ### Use Resume Capability

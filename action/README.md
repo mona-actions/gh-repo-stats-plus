@@ -35,7 +35,7 @@ In both cases, the `github-token` input (typically `${{ secrets.GITHUB_TOKEN }}`
 | `run-migration-audit` | Whether to run migration audit (`true`/`false`) | No | `false` |
 | `node-version` | Node.js version to use | No | `25` |
 | `base-url` | GitHub API base URL | No | `https://api.github.com` |
-| `skip-tls-verification` | Skip TLS certificate verification for the target GitHub instance (use for GHES with self-signed certs or IP-based access) | No | `false` |
+| `ca-cert-path` | Path to CA certificate bundle (PEM) for TLS verification against GHES instances with internal or self-signed certificates | No | `""` |
 | `retention-days` | Number of days to retain uploaded artifacts | No | `7` |
 | `batch-size` | Number of repositories per batch (enables batch processing for large organizations). Cannot be combined with `repository` — batch mode generates its own repo list. | No | `""` |
 | `batch-index` | Zero-based batch index (used with `batch-size` for parallel matrix jobs) | No | `""` |

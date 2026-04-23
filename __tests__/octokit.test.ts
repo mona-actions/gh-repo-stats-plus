@@ -6,6 +6,7 @@ import type { AuthConfig } from '../src/auth.js';
 // Mock external dependencies
 vi.mock('undici', () => ({
   fetch: vi.fn(),
+  Agent: vi.fn(),
   ProxyAgent: vi.fn(),
 }));
 
@@ -129,6 +130,45 @@ describe('octokit', () => {
 
       // Assert
       expect(result).toBeDefined();
+    });
+
+    it('should configure CA certificate when caCert is provided', () => {
+      // Arrange
+      const caCert =
+        '-----BEGIN CERTIFICATE-----\ntest\n-----END CERTIFICATE-----';
+      const baseUrl = 'https://ghes.example.com/api/v3';
+
+      // Act & Assert - Should not throw
+      expect(() => {
+        createOctokit(
+          mockAuthConfig,
+          baseUrl,
+          undefined,
+          mockLogger,
+          undefined,
+          caCert,
+        );
+      }).not.toThrow();
+    });
+
+    it('should configure CA certificate with proxy when both are provided', () => {
+      // Arrange
+      const caCert =
+        '-----BEGIN CERTIFICATE-----\ntest\n-----END CERTIFICATE-----';
+      const proxyUrl = 'http://proxy.example.com:8080';
+      const baseUrl = 'https://ghes.example.com/api/v3';
+
+      // Act & Assert - Should not throw
+      expect(() => {
+        createOctokit(
+          mockAuthConfig,
+          baseUrl,
+          proxyUrl,
+          mockLogger,
+          undefined,
+          caCert,
+        );
+      }).not.toThrow();
     });
 
     describe('hook handlers', () => {

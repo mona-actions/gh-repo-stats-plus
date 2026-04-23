@@ -21,6 +21,7 @@ import {
   needsInstallationLookup,
   getAuthPrivateKey,
 } from './auth.js';
+import { loadCaCertificate } from './tls.js';
 import { StateManager } from './state.js';
 import { SessionManager } from './session.js';
 import { RetryConfig } from './retry.js';
@@ -48,6 +49,17 @@ export async function initCommand(
   logInitialization.start(logger);
 
   logInitialization.auth(logger);
+
+  const caCert = loadCaCertificate(opts.caCert, logger);
+
+  // Wrap createOctokit to bind the loaded CA cert for all callers
+  const createOctokitWithCa: typeof createOctokit = (
+    authConfig,
+    baseUrl,
+    proxyUrl,
+    logger,
+    fetch?,
+  ) => createOctokit(authConfig, baseUrl, proxyUrl, logger, fetch, caCert);
 
   const shouldLookupInstallation = needsInstallationLookup(opts);
 
@@ -81,7 +93,7 @@ export async function initCommand(
         org: orgsToProcess[0],
         baseUrl: opts.baseUrl,
         proxyUrl: opts.proxyUrl,
-        createOctokitFn: createOctokit,
+        createOctokitFn: createOctokitWithCa,
         logger,
       });
       logger.info(
@@ -106,7 +118,7 @@ export async function initCommand(
           org: orgName,
           baseUrl: opts.baseUrl,
           proxyUrl: opts.proxyUrl,
-          createOctokitFn: createOctokit,
+          createOctokitFn: createOctokitWithCa,
           logger,
         });
         logger.info(
@@ -117,7 +129,7 @@ export async function initCommand(
           appInstallationId: String(installationId),
         };
         const orgAuthConfig = createAuthConfig({ ...orgOpts, logger });
-        const orgOctokit = createOctokit(
+        const orgOctokit = createOctokitWithCa(
           orgAuthConfig,
           opts.baseUrl,
           opts.proxyUrl,
@@ -143,7 +155,7 @@ export async function initCommand(
       : createAuthConfig({ ...resolvedOpts, logger });
 
   logInitialization.octokit(logger);
-  const octokit = createOctokit(
+  const octokit = createOctokitWithCa(
     authConfig,
     opts.baseUrl,
     opts.proxyUrl,
