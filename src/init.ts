@@ -15,7 +15,11 @@ import {
   CommandResult,
 } from './types.js';
 import { createLogger, logInitialization } from './logger.js';
-import { createAuthConfig, needsInstallationLookup } from './auth.js';
+import {
+  createAuthConfig,
+  createAppLevelAuthConfig,
+  needsInstallationLookup,
+} from './auth.js';
 import { StateManager } from './state.js';
 import { SessionManager } from './session.js';
 import { RetryConfig } from './retry.js';
@@ -72,7 +76,9 @@ export async function initCommand(
     | undefined;
 
   if (shouldLookupInstallation) {
-    const isSingleOrg = orgsToProcess.length === 1 && !!opts.orgName;
+    // Treat as single-org if there is exactly one org to process, regardless
+    // of whether it came from --org-name or a one-item --org-list.
+    const isSingleOrg = orgsToProcess.length === 1;
 
     if (isSingleOrg) {
       logger.info(
@@ -81,14 +87,14 @@ export async function initCommand(
       const resolvedInstallationId = await lookupInstallationId({
         appId: opts.appId || process.env.GITHUB_APP_ID || '',
         privateKey: await resolvePrivateKey(opts),
-        org: opts.orgName!,
+        org: orgsToProcess[0],
         baseUrl: opts.baseUrl,
         proxyUrl: opts.proxyUrl,
         createOctokitFn: createOctokit,
         logger,
       });
       logger.info(
-        `Resolved installation ID ${resolvedInstallationId} for organization ${opts.orgName}`,
+        `Resolved installation ID ${resolvedInstallationId} for organization ${orgsToProcess[0]}`,
       );
       resolvedOpts = {
         ...opts,
@@ -131,7 +137,16 @@ export async function initCommand(
     }
   }
 
-  const authConfig = createAuthConfig({ ...resolvedOpts, logger });
+  // For the multi-org lookup path the shared client uses app-level JWT auth
+  // (no installation ID needed). Per-org clients created by createClientForOrg
+  // handle installation-scoped auth for actual data fetching.
+  const authConfig =
+    shouldLookupInstallation && createClientForOrg
+      ? createAppLevelAuthConfig(
+          opts.appId || process.env.GITHUB_APP_ID || '',
+          await resolvePrivateKey(opts),
+        )
+      : createAuthConfig({ ...resolvedOpts, logger });
 
   logInitialization.octokit(logger);
   const octokit = createOctokit(

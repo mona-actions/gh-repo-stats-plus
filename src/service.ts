@@ -725,41 +725,27 @@ export class OctokitClient {
 }
 
 /**
- * Finds the installation ID of a GitHub App for a specific organization.
+ * Finds the installation ID of a GitHub App for a specific organization
+ * using a direct API lookup (single request, no pagination).
  *
- * @param octokit - Authenticated Octokit client (must be authenticated as the GitHub App)
+ * @param octokit - Authenticated Octokit client (must be authenticated as the GitHub App via JWT)
  * @param org - The organization name
- * @param appId - The GitHub App ID to find the installation for
  * @returns The installation ID as an integer
- * @throws If the installation is not found or API request fails
+ * @throws If the installation is not found or the API request fails
  */
 export const getAppInstallationId = async (
   octokit: Octokit,
   org: string,
-  appId: number,
 ): Promise<number> => {
   try {
-    for await (const response of octokit.paginate.iterator(
-      octokit.rest.apps.listInstallations,
-    )) {
-      for (const installation of response.data) {
-        if (
-          installation.app_id === appId &&
-          installation.account?.login?.toLowerCase() === org.toLowerCase()
-        ) {
-          return installation.id;
-        }
-      }
-    }
-
-    throw new Error(
-      `Installation not found for app ID ${appId} in organization ${org}`,
-    );
+    const { data } = await octokit.rest.apps.getOrgInstallation({ org });
+    return data.id;
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to get app installation ID: ${message}`, {
-      cause: error,
-    });
+    throw new Error(
+      `Failed to get app installation ID for organization "${org}": ${message}`,
+      { cause: error },
+    );
   }
 };
 
@@ -810,5 +796,5 @@ export const lookupInstallationId = async (options: {
     logger,
   );
 
-  return getAppInstallationId(tempClient, org, parseInt(appId));
+  return getAppInstallationId(tempClient, org);
 };
