@@ -38,6 +38,10 @@ vi.mock('../src/logger.js', () => ({
 // Mock auth
 vi.mock('../src/auth.js', () => ({
   createAuthConfig: vi.fn().mockReturnValue({ token: 'mock-token' }),
+  needsInstallationLookup: vi.fn().mockReturnValue(false),
+  createAppLevelAuthConfig: vi
+    .fn()
+    .mockReturnValue({ authStrategy: vi.fn(), auth: { type: 'app' } }),
 }));
 
 // Mock octokit
@@ -88,6 +92,7 @@ vi.mock('../src/service.js', () => ({
   }),
   DEFAULT_API_VERSION: '2022-11-28',
   VALID_API_VERSIONS: ['2022-11-28', '2026-03-10'],
+  lookupInstallationId: vi.fn().mockResolvedValue(12345),
 }));
 
 // Mock utils
