@@ -27,7 +27,8 @@ export const loadCaCertificate = (
 
   try {
     const cert = readFileSync(resolvedPath, 'utf-8');
-    logger.info(`Loaded CA certificate from ${source}: ${resolvedPath}`);
+    logger.info(`Loaded CA certificate from ${source}`);
+    logger.debug(`CA certificate path: ${resolvedPath}`);
     return cert;
   } catch (err) {
     const message =
