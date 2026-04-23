@@ -1,5 +1,6 @@
 import { OctokitClient } from './service.js';
 import { createOctokit } from './octokit.js';
+import { loadCaCertificate } from './tls.js';
 import {
   Arguments,
   IssuesConnection,
@@ -1162,11 +1163,15 @@ export async function checkForMissingRepos({
   const logger = await createLogger(opts.verbose, logFileName);
 
   const authConfig = createAuthConfig({ ...opts, logger: logger });
+  const caCert = loadCaCertificate(opts.caCertPath, logger);
   const octokit = createOctokit(
     authConfig,
     opts.baseUrl,
     opts.proxyUrl,
     logger,
+    {
+      caCert,
+    },
   );
   const client = new OctokitClient(octokit);
 

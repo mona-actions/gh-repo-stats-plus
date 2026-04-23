@@ -58,6 +58,9 @@ export interface Arguments {
   batchIndex?: number;
   batchDelay?: number;
 
+  // TLS
+  caCertPath?: string;
+
   // multi-org options
   delayBetweenOrgs?: number;
   continueOnError?: boolean;
