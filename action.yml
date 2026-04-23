@@ -53,8 +53,12 @@ inputs:
     description: "GitHub API base URL"
     required: false
     default: "https://api.github.com"
+  ca-cert:
+    description: "CA certificate bundle content (PEM) for TLS verification against GHES instances. Use this when the certificate is stored as a GitHub secret (e.g., ${{ secrets.GHES_CA_CERT }}). The action writes it to a temporary file automatically."
+    required: false
+    default: ""
   ca-cert-path:
-    description: "Path to CA certificate bundle (PEM) for TLS verification against GHES instances with internal or self-signed certificates"
+    description: "Path to a CA certificate bundle file (PEM) on the runner for TLS verification against GHES instances. Use ca-cert instead when the certificate is stored as a secret."
     required: false
     default: ""
   retention-days:
@@ -203,17 +207,30 @@ runs:
         echo "✓ Resolved GH_HOST: ${HOST}"
 
     - name: Configure CA Certificate for GHES
-      if: ${{ inputs.ca-cert-path != '' }}
+      if: ${{ inputs.ca-cert != '' || inputs.ca-cert-path != '' }}
       shell: bash
+      env:
+        CA_CERT_CONTENT: ${{ inputs.ca-cert }}
+        CA_CERT_FILE: ${{ inputs.ca-cert-path }}
       run: |
-        CA_CERT_PATH="${{ inputs.ca-cert-path }}"
-
-        if [[ ! -f "$CA_CERT_PATH" ]]; then
-          echo "::error::CA certificate file not found: ${CA_CERT_PATH}"
+        if [[ -n "${CA_CERT_CONTENT}" ]] && [[ -n "${CA_CERT_FILE}" ]]; then
+          echo "::error::Specify either 'ca-cert' (secret content) or 'ca-cert-path' (file path), not both."
           exit 1
         fi
 
-        echo "Configuring CA certificate for TLS verification: ${CA_CERT_PATH}"
+        if [[ -n "${CA_CERT_CONTENT}" ]]; then
+          # Write secret content to a temporary file
+          CA_CERT_PATH=$(mktemp "${RUNNER_TEMP:-/tmp}/ca-cert-XXXXXX.pem")
+          echo "${CA_CERT_CONTENT}" > "${CA_CERT_PATH}"
+          echo "✓ Wrote CA certificate from secret to temporary file"
+        else
+          CA_CERT_PATH="${CA_CERT_FILE}"
+          if [[ ! -f "${CA_CERT_PATH}" ]]; then
+            echo "::error::CA certificate file not found at ca-cert-path"
+            exit 1
+          fi
+          echo "✓ Using CA certificate from file path"
+        fi
 
         # Make the CA cert available to Node.js via NODE_EXTRA_CA_CERTS
         echo "NODE_EXTRA_CA_CERTS=${CA_CERT_PATH}" >> $GITHUB_ENV
@@ -262,7 +279,6 @@ runs:
         GH_HOST: ${{ steps.resolve-host.outputs.gh_host }}
         BASE_URL: ${{ inputs.base-url }}
         TOKEN_SOURCE: ${{ steps.app-install.outputs.token != '' && 'GitHub App' || (inputs.access-token != '' && 'Access Token' || 'github-token (fallback)') }}
-        CA_CERT_PATH: ${{ inputs.ca-cert-path }}
       run: |
         echo "Validating repository: ${{ inputs.organization }}/${{ inputs.repository }}"
         echo "  GH_HOST: ${GH_HOST}"
@@ -271,8 +287,8 @@ runs:
         echo "  Token source: ${TOKEN_SOURCE}"
 
         CURL_OPTS=(-s --max-time 15)
-        if [[ -n "${CA_CERT_PATH}" ]]; then
-          CURL_OPTS+=(--cacert "${CA_CERT_PATH}")
+        if [[ -n "${NODE_EXTRA_CA_CERTS}" ]]; then
+          CURL_OPTS+=(--cacert "${NODE_EXTRA_CA_CERTS}")
         fi
 
         HTTP_CODE=$(curl "${CURL_OPTS[@]}" \
@@ -319,7 +335,6 @@ runs:
         GH_HOST: ${{ steps.resolve-host.outputs.gh_host }}
         BASE_URL: ${{ inputs.base-url }}
         TOKEN_SOURCE: ${{ steps.app-install.outputs.token != '' && 'GitHub App' || (inputs.access-token != '' && 'Access Token' || 'github-token (fallback)') }}
-        CA_CERT_PATH: ${{ inputs.ca-cert-path }}
       run: |
         echo "Validating organization: ${{ inputs.organization }}"
         echo "  GH_HOST: ${GH_HOST}"
@@ -328,8 +343,8 @@ runs:
         echo "  Token source: ${TOKEN_SOURCE}"
 
         CURL_OPTS=(-s --max-time 15)
-        if [[ -n "${CA_CERT_PATH}" ]]; then
-          CURL_OPTS+=(--cacert "${CA_CERT_PATH}")
+        if [[ -n "${NODE_EXTRA_CA_CERTS}" ]]; then
+          CURL_OPTS+=(--cacert "${NODE_EXTRA_CA_CERTS}")
         fi
 
         HTTP_CODE=$(curl "${CURL_OPTS[@]}" \

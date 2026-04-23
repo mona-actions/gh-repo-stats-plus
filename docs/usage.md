@@ -174,6 +174,18 @@ gh repo-stats-plus repo-stats \
   --base-url https://ghes.example.com/api/v3
 ```
 
+When using the GitHub Action, the recommended approach is to store the PEM content as a GitHub secret and pass it via the `ca-cert` input:
+
+```yaml
+- uses: mona-actions/gh-repo-stats-plus@v1
+  with:
+    github-token: ${{ github.token }}
+    access-token: ${{ secrets.GHES_TOKEN }}
+    organization: my-org
+    base-url: https://ghes.example.com/api/v3
+    ca-cert: ${{ secrets.GHES_CA_CERT }}
+```
+
 For organizations with many repositories, consider these best practices:
 
 ### Use Resume Capability
