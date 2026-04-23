@@ -74,8 +74,18 @@ export async function initCommand(
   let createClientForOrg:
     | ((orgName: string) => Promise<OctokitClient>)
     | undefined;
+  // Resolved once so we never re-read the key file per org or per auth call
+  let resolvedKey: string | undefined;
 
   if (shouldLookupInstallation) {
+    resolvedKey = await resolvePrivateKey(opts);
+    // Opts with the resolved key so downstream auth helpers don't re-read the file
+    const optsWithKey = {
+      ...opts,
+      privateKey: resolvedKey,
+      privateKeyFile: undefined,
+    };
+
     // Treat as single-org if there is exactly one org to process, regardless
     // of whether it came from --org-name or a one-item --org-list.
     const isSingleOrg = orgsToProcess.length === 1;
@@ -86,7 +96,7 @@ export async function initCommand(
       );
       const resolvedInstallationId = await lookupInstallationId({
         appId: opts.appId || process.env.GITHUB_APP_ID || '',
-        privateKey: await resolvePrivateKey(opts),
+        privateKey: resolvedKey,
         org: orgsToProcess[0],
         baseUrl: opts.baseUrl,
         proxyUrl: opts.proxyUrl,
@@ -97,7 +107,7 @@ export async function initCommand(
         `Resolved installation ID ${resolvedInstallationId} for organization ${orgsToProcess[0]}`,
       );
       resolvedOpts = {
-        ...opts,
+        ...optsWithKey,
         appInstallationId: String(resolvedInstallationId),
       };
     } else {
@@ -111,7 +121,7 @@ export async function initCommand(
         );
         const installationId = await lookupInstallationId({
           appId: opts.appId || process.env.GITHUB_APP_ID || '',
-          privateKey: await resolvePrivateKey(opts),
+          privateKey: resolvedKey!,
           org: orgName,
           baseUrl: opts.baseUrl,
           proxyUrl: opts.proxyUrl,
@@ -121,7 +131,10 @@ export async function initCommand(
         logger.info(
           `Resolved installation ID ${installationId} for organization ${orgName}`,
         );
-        const orgOpts = { ...opts, appInstallationId: String(installationId) };
+        const orgOpts = {
+          ...optsWithKey,
+          appInstallationId: String(installationId),
+        };
         const orgAuthConfig = createAuthConfig({ ...orgOpts, logger });
         const orgOctokit = createOctokit(
           orgAuthConfig,
@@ -144,7 +157,7 @@ export async function initCommand(
     shouldLookupInstallation && createClientForOrg
       ? createAppLevelAuthConfig(
           opts.appId || process.env.GITHUB_APP_ID || '',
-          await resolvePrivateKey(opts),
+          resolvedKey!,
         )
       : createAuthConfig({ ...resolvedOpts, logger });
 
