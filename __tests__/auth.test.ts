@@ -198,6 +198,32 @@ describe('auth', () => {
         );
       });
 
+      it('should reject app ID with trailing non-numeric characters like "123abc"', () => {
+        expect(() =>
+          createAuthConfig({
+            appId: '123abc',
+            privateKey: 'test-key',
+            appInstallationId: '67890',
+            logger: mockLogger,
+          }),
+        ).toThrow(
+          'You must specify a GitHub app ID using the --app-id argument or GITHUB_APP_ID environment variable.',
+        );
+      });
+
+      it('should reject installation ID with trailing non-numeric characters like "123abc"', () => {
+        expect(() =>
+          createAuthConfig({
+            appId: '12345',
+            privateKey: 'test-key',
+            appInstallationId: '123abc',
+            logger: mockLogger,
+          }),
+        ).toThrow(
+          'You must specify a GitHub app installation ID using the --app-installation-id argument or GITHUB_APP_INSTALLATION_ID environment variable.',
+        );
+      });
+
       it('should throw error for missing private key', () => {
         // Act & Assert
         expect(() =>

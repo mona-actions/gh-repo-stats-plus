@@ -15,12 +15,12 @@ export interface AuthConfig {
 
 const getAuthAppId = (appId?: string): number => {
   const authAppId = appId || process.env.GITHUB_APP_ID;
-  if (!authAppId || isNaN(parseInt(authAppId))) {
+  if (!authAppId || !/^\d+$/.test(authAppId)) {
     throw new Error(
       'You must specify a GitHub app ID using the --app-id argument or GITHUB_APP_ID environment variable.',
     );
   }
-  return parseInt(authAppId);
+  return parseInt(authAppId, 10);
 };
 
 const getAuthPrivateKey = (
@@ -48,12 +48,12 @@ const getAuthPrivateKey = (
 const getAuthInstallationId = (appInstallationId?: string): number => {
   const authInstallationId =
     appInstallationId || process.env.GITHUB_APP_INSTALLATION_ID;
-  if (!authInstallationId || isNaN(parseInt(authInstallationId))) {
+  if (!authInstallationId || !/^\d+$/.test(authInstallationId)) {
     throw new Error(
       'You must specify a GitHub app installation ID using the --app-installation-id argument or GITHUB_APP_INSTALLATION_ID environment variable.',
     );
   }
-  return parseInt(authInstallationId);
+  return parseInt(authInstallationId, 10);
 };
 
 const getTokenAuthConfig = (accessToken?: string): AuthConfig => {
