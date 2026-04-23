@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createAuthConfig } from '../src/auth.js';
+import {
+  createAuthConfig,
+  createAppLevelAuthConfig,
+  needsInstallationLookup,
+} from '../src/auth.js';
 import { createMockLogger } from './test-utils.js';
 import { readFileSync } from 'fs';
 
@@ -284,6 +288,91 @@ describe('auth', () => {
           installationId: 67890,
         });
       });
+    });
+  });
+
+  describe('createAppLevelAuthConfig', () => {
+    it('should create app-level auth config with valid inputs', () => {
+      const result = createAppLevelAuthConfig('12345', 'test-private-key');
+
+      expect(result.authStrategy).toBeDefined();
+      expect(result.auth).toEqual({
+        type: 'app',
+        appId: 12345,
+        privateKey: 'test-private-key',
+      });
+    });
+
+    it('should throw when appId is invalid', () => {
+      expect(() =>
+        createAppLevelAuthConfig('not-a-number', 'test-key'),
+      ).toThrow(
+        'You must specify a GitHub app ID using the --app-id argument or GITHUB_APP_ID environment variable.',
+      );
+    });
+
+    it('should fall back to GITHUB_APP_ID env var', () => {
+      process.env.GITHUB_APP_ID = '99999';
+      const result = createAppLevelAuthConfig('', 'test-key');
+
+      expect(result.auth).toEqual({
+        type: 'app',
+        appId: 99999,
+        privateKey: 'test-key',
+      });
+    });
+  });
+
+  describe('needsInstallationLookup', () => {
+    it('should return true when app credentials present but no installation ID', () => {
+      expect(
+        needsInstallationLookup({
+          appId: '12345',
+          privateKey: 'test-key',
+        }),
+      ).toBe(true);
+    });
+
+    it('should return false when installation ID is provided', () => {
+      expect(
+        needsInstallationLookup({
+          appId: '12345',
+          privateKey: 'test-key',
+          appInstallationId: '67890',
+        }),
+      ).toBe(false);
+    });
+
+    it('should return false when no app credentials', () => {
+      expect(needsInstallationLookup({})).toBe(false);
+    });
+
+    it('should return false when only appId is provided (no private key)', () => {
+      expect(needsInstallationLookup({ appId: '12345' })).toBe(false);
+    });
+
+    it('should return true when using privateKeyFile instead of privateKey', () => {
+      expect(
+        needsInstallationLookup({
+          appId: '12345',
+          privateKeyFile: '/path/to/key.pem',
+        }),
+      ).toBe(true);
+    });
+
+    it('should pick up app credentials from environment variables', () => {
+      process.env.GITHUB_APP_ID = '12345';
+      process.env.GITHUB_APP_PRIVATE_KEY = 'env-key';
+
+      expect(needsInstallationLookup({})).toBe(true);
+    });
+
+    it('should return false when GITHUB_APP_INSTALLATION_ID env var is set', () => {
+      process.env.GITHUB_APP_ID = '12345';
+      process.env.GITHUB_APP_PRIVATE_KEY = 'env-key';
+      process.env.GITHUB_APP_INSTALLATION_ID = '67890';
+
+      expect(needsInstallationLookup({})).toBe(false);
     });
   });
 });

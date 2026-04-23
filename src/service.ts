@@ -723,3 +723,92 @@ export class OctokitClient {
     );
   }
 }
+
+/**
+ * Finds the installation ID of a GitHub App for a specific organization.
+ *
+ * @param octokit - Authenticated Octokit client (must be authenticated as the GitHub App)
+ * @param org - The organization name
+ * @param appId - The GitHub App ID to find the installation for
+ * @returns The installation ID as an integer
+ * @throws If the installation is not found or API request fails
+ */
+export const getAppInstallationId = async (
+  octokit: Octokit,
+  org: string,
+  appId: number,
+): Promise<number> => {
+  try {
+    for await (const response of octokit.paginate.iterator(
+      octokit.rest.apps.listInstallations,
+    )) {
+      for (const installation of response.data) {
+        if (
+          installation.app_id === appId &&
+          installation.account?.login?.toLowerCase() === org.toLowerCase()
+        ) {
+          return installation.id;
+        }
+      }
+    }
+
+    throw new Error(
+      `Installation not found for app ID ${appId} in organization ${org}`,
+    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to get app installation ID: ${message}`, {
+      cause: error,
+    });
+  }
+};
+
+/**
+ * Gets the installation ID of a GitHub App for a specific organization.
+ * Creates a temporary app-level client to look up the installation ID.
+ *
+ * @param options - Configuration options
+ * @param options.appId - GitHub App ID (required)
+ * @param options.privateKey - GitHub App private key (required)
+ * @param options.org - Organization name (required to find installation ID)
+ * @param options.baseUrl - API URL for the GitHub instance (defaults to 'https://api.github.com')
+ * @param options.proxyUrl - Optional proxy URL
+ * @param options.createOctokitFn - Factory function to create an Octokit instance
+ * @returns The installation ID as an integer
+ * @throws If the installation is not found or API request fails
+ */
+export const lookupInstallationId = async (options: {
+  appId: string;
+  privateKey: string;
+  org: string;
+  baseUrl?: string;
+  proxyUrl?: string;
+  createOctokitFn: (
+    authConfig: import('./auth.js').AuthConfig,
+    baseUrl: string,
+    proxyUrl: string | undefined,
+    logger: Logger,
+  ) => Octokit;
+  logger: Logger;
+}): Promise<number> => {
+  const { appId, privateKey, org, baseUrl, proxyUrl, createOctokitFn, logger } =
+    options;
+
+  if (!appId) throw new Error('appId is required');
+  if (!privateKey) throw new Error('privateKey is required');
+  if (!org) throw new Error('org is required');
+  if (!/^\d+$/.test(appId))
+    throw new Error('appId must be a valid numeric string');
+
+  const { createAppLevelAuthConfig } = await import('./auth.js');
+  const authConfig = createAppLevelAuthConfig(appId, privateKey);
+
+  const tempClient = createOctokitFn(
+    authConfig,
+    baseUrl || 'https://api.github.com',
+    proxyUrl,
+    logger,
+  );
+
+  return getAppInstallationId(tempClient, org, parseInt(appId));
+};

@@ -697,6 +697,13 @@ export interface CommandContext {
   orgsToProcess: string[];
   sessionManager?: SessionManager;
   resumeFromOrgIndex: number;
+  /**
+   * Optional per-org client factory for multi-org GitHub App auth without a
+   * pre-supplied installation ID. When present, `executeForOrg` calls this
+   * instead of using the shared `client` so each org gets an Octokit instance
+   * authenticated for its own installation.
+   */
+  createClientForOrg?: (orgName: string) => Promise<OctokitClient>;
 }
 
 /**

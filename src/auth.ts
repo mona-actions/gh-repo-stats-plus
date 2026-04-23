@@ -6,6 +6,8 @@ import type {
 import { Logger } from './types.js';
 import { readFileSync } from 'fs';
 
+export type { AppAuthOptions, InstallationAuthOptions };
+
 export interface AuthConfig {
   authStrategy?: typeof createAppAuth | undefined;
   auth: string | AppAuthOptions | InstallationAuthOptions | undefined;
@@ -77,6 +79,50 @@ const getInstallationAuthConfig = (
     installationId: getAuthInstallationId(appInstallationId),
   };
   return { authStrategy: createAppAuth, auth };
+};
+
+/**
+ * Creates an app-level (JWT) auth config for authenticating as the GitHub App itself.
+ * This is used for app-level API calls such as listing installations.
+ *
+ * @param appId - The GitHub App ID (numeric string)
+ * @param privateKey - The GitHub App private key
+ * @returns AuthConfig for app-level authentication
+ */
+export const createAppLevelAuthConfig = (
+  appId: string,
+  privateKey: string,
+): AuthConfig => {
+  const auth: AppAuthOptions = {
+    type: 'app',
+    appId: getAuthAppId(appId),
+    privateKey,
+  };
+  return { authStrategy: createAppAuth, auth };
+};
+
+/**
+ * Returns true if GitHub App credentials are present (app-id + private key)
+ * but no installation ID has been provided. This indicates that the installation
+ * ID should be looked up automatically.
+ */
+export const needsInstallationLookup = (opts: {
+  appId?: string;
+  privateKey?: string;
+  privateKeyFile?: string;
+  appInstallationId?: string;
+}): boolean => {
+  const hasAppId = !!(opts.appId || process.env.GITHUB_APP_ID);
+  const hasPrivateKey = !!(
+    opts.privateKey ||
+    opts.privateKeyFile ||
+    process.env.GITHUB_APP_PRIVATE_KEY ||
+    process.env.GITHUB_APP_PRIVATE_KEY_FILE
+  );
+  const hasInstallationId = !!(
+    opts.appInstallationId || process.env.GITHUB_APP_INSTALLATION_ID
+  );
+  return hasAppId && hasPrivateKey && !hasInstallationId;
 };
 
 export const createAuthConfig = ({
