@@ -84,27 +84,26 @@ const getInstallationAuthConfig = (
 };
 
 /**
- * Creates an app-level (JWT) auth config for authenticating as the GitHub App itself.
- * When used with @octokit/auth-app and type: 'app', the library signs a JWT with the
- * private key and returns it directly -- this is distinct from type: 'installation',
- * which also creates a JWT internally but then exchanges it for an installation access
- * token. Use app-level auth only for app-scoped API calls such as looking up
- * installations; use installation auth for all org/repo data operations.
+ * Creates an auth config for authenticating as the GitHub App itself (without an
+ * installation ID). This is used to call app-scoped GitHub API endpoints such as
+ * GET /orgs/{org}/installation to look up an installation ID.
+ *
+ * Note: @octokit/auth-app automatically selects JWT auth for any URL that matches
+ * its internal list of app-scoped routes (see requires-app-auth.js in the library).
+ * No explicit `type: 'app'` is needed -- the routing is URL-driven, not config-driven.
  *
  * @param appId - The GitHub App ID (numeric string)
  * @param privateKey - The GitHub App private key
- * @returns AuthConfig for app-level (JWT) authentication
+ * @returns AuthConfig for app-level authentication
  */
 export const createAppLevelAuthConfig = (
   appId: string,
   privateKey: string,
 ): AuthConfig => {
-  const auth = {
-    type: 'app' as const,
-    appId: getAuthAppId(appId),
-    privateKey,
+  return {
+    authStrategy: createAppAuth,
+    auth: { appId: getAuthAppId(appId), privateKey },
   };
-  return { authStrategy: createAppAuth, auth };
 };
 
 /**

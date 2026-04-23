@@ -323,7 +323,6 @@ describe('auth', () => {
 
       expect(result.authStrategy).toBeDefined();
       expect(result.auth).toEqual({
-        type: 'app',
         appId: 12345,
         privateKey: 'test-private-key',
       });
@@ -342,7 +341,6 @@ describe('auth', () => {
       const result = createAppLevelAuthConfig('', 'test-key');
 
       expect(result.auth).toEqual({
-        type: 'app',
         appId: 99999,
         privateKey: 'test-key',
       });
