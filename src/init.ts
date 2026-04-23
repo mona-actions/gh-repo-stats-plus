@@ -1,4 +1,8 @@
-import { OctokitClient, DEFAULT_API_VERSION } from './service.js';
+import {
+  OctokitClient,
+  DEFAULT_API_VERSION,
+  lookupInstallationId,
+} from './service.js';
 import { createOctokit } from './octokit.js';
 import {
   Arguments,
@@ -11,7 +15,12 @@ import {
   CommandResult,
 } from './types.js';
 import { createLogger, logInitialization } from './logger.js';
-import { createAuthConfig } from './auth.js';
+import {
+  createAuthConfig,
+  createAppLevelAuthConfig,
+  needsInstallationLookup,
+  getAuthPrivateKey,
+} from './auth.js';
 import { StateManager } from './state.js';
 import { SessionManager } from './session.js';
 import { RetryConfig } from './retry.js';
@@ -39,7 +48,99 @@ export async function initCommand(
   logInitialization.start(logger);
 
   logInitialization.auth(logger);
-  const authConfig = createAuthConfig({ ...opts, logger });
+
+  const shouldLookupInstallation = needsInstallationLookup(opts);
+
+  let resolvedOpts = opts;
+  let createClientForOrg:
+    | ((orgName: string) => Promise<OctokitClient>)
+    | undefined;
+  // Resolved once so we never re-read the key file per org or per auth call
+  let resolvedKey: string | undefined;
+
+  if (shouldLookupInstallation) {
+    resolvedKey = getAuthPrivateKey(opts.privateKey, opts.privateKeyFile);
+    // Opts with the resolved key so downstream auth helpers don't re-read the file
+    const optsWithKey = {
+      ...opts,
+      privateKey: resolvedKey,
+      privateKeyFile: undefined,
+    };
+
+    // Treat as single-org if there is exactly one org to process, regardless
+    // of whether it came from --org-name or a one-item --org-list.
+    const isSingleOrg = orgsToProcess.length === 1;
+
+    if (isSingleOrg) {
+      logger.info(
+        'GitHub App credentials detected without installation ID. Looking up installation ID for organization...',
+      );
+      const resolvedInstallationId = await lookupInstallationId({
+        appId: opts.appId || process.env.GITHUB_APP_ID || '',
+        privateKey: resolvedKey,
+        org: orgsToProcess[0],
+        baseUrl: opts.baseUrl,
+        proxyUrl: opts.proxyUrl,
+        createOctokitFn: createOctokit,
+        logger,
+      });
+      logger.info(
+        `Resolved installation ID ${resolvedInstallationId} for organization ${orgsToProcess[0]}`,
+      );
+      resolvedOpts = {
+        ...optsWithKey,
+        appInstallationId: String(resolvedInstallationId),
+      };
+    } else {
+      logger.info(
+        'GitHub App credentials detected without installation ID. Installation ID will be looked up per organization.',
+      );
+
+      createClientForOrg = async (orgName: string): Promise<OctokitClient> => {
+        logger.info(
+          `Looking up installation ID for organization ${orgName}...`,
+        );
+        const installationId = await lookupInstallationId({
+          appId: opts.appId || process.env.GITHUB_APP_ID || '',
+          privateKey: resolvedKey!,
+          org: orgName,
+          baseUrl: opts.baseUrl,
+          proxyUrl: opts.proxyUrl,
+          createOctokitFn: createOctokit,
+          logger,
+        });
+        logger.info(
+          `Resolved installation ID ${installationId} for organization ${orgName}`,
+        );
+        const orgOpts = {
+          ...optsWithKey,
+          appInstallationId: String(installationId),
+        };
+        const orgAuthConfig = createAuthConfig({ ...orgOpts, logger });
+        const orgOctokit = createOctokit(
+          orgAuthConfig,
+          opts.baseUrl,
+          opts.proxyUrl,
+          logger,
+        );
+        return new OctokitClient(
+          orgOctokit,
+          opts.apiVersion ?? DEFAULT_API_VERSION,
+        );
+      };
+    }
+  }
+
+  // For the multi-org lookup path the shared client uses app-level JWT auth
+  // (no installation ID needed). Per-org clients created by createClientForOrg
+  // handle installation-scoped auth for actual data fetching.
+  const authConfig =
+    shouldLookupInstallation && createClientForOrg
+      ? createAppLevelAuthConfig(
+          opts.appId || process.env.GITHUB_APP_ID || '',
+          resolvedKey!,
+        )
+      : createAuthConfig({ ...resolvedOpts, logger });
 
   logInitialization.octokit(logger);
   const octokit = createOctokit(
@@ -140,6 +241,7 @@ export async function initCommand(
     orgsToProcess,
     sessionManager,
     resumeFromOrgIndex,
+    createClientForOrg,
   };
 }
 
@@ -254,7 +356,7 @@ async function executeForOrg(
   context: CommandContext,
   config: CommandConfig,
 ): Promise<OrgProcessingResult> {
-  const { logger, opts, client, retryConfig } = context;
+  const { logger, opts, client, retryConfig, createClientForOrg } = context;
 
   logger.debug(`Starting processing for organization: ${orgName}`);
 
@@ -269,6 +371,11 @@ async function executeForOrg(
 
   try {
     result.startTime = new Date();
+
+    // Use a per-org client when the factory is provided (multi-org app auth without installation ID)
+    const orgClient = createClientForOrg
+      ? await createClientForOrg(orgName)
+      : client;
 
     const outputDir = opts.outputDir || 'output';
     const stateManager = new StateManager(
@@ -302,7 +409,7 @@ async function executeForOrg(
     const orgContext: OrgContext = {
       opts: { ...opts, orgName },
       logger,
-      client,
+      client: orgClient,
       fileName,
       processedState,
       retryConfig,

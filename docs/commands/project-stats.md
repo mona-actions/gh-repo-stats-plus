@@ -21,7 +21,7 @@ gh repo-stats-plus project-stats [options]
 - `--app-id <id>`: GitHub App ID
 - `--private-key <key>`: GitHub App private key
 - `--private-key-file <file>`: Path to GitHub App private key file
-- `--app-installation-id <id>`: GitHub App installation ID
+- `--app-installation-id <id>`: GitHub App installation ID (optional — automatically looked up if omitted)
 
 ### Configuration
 
@@ -86,6 +86,13 @@ gh repo-stats-plus project-stats --org-name my-org --access-token ghp_xxxxxxxxxx
 ### With GitHub App
 
 ```bash
+# Installation ID is auto-looked up when omitted
+gh repo-stats-plus project-stats \
+  --org-name my-org \
+  --app-id 12345 \
+  --private-key-file /path/to/key.pem
+
+# Or provide it explicitly to skip the lookup
 gh repo-stats-plus project-stats \
   --org-name my-org \
   --app-id 12345 \

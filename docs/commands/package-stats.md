@@ -25,7 +25,7 @@ gh repo-stats-plus package-stats [options]
 - `--app-id <id>`: GitHub App ID for authentication
 - `--private-key <key>`: GitHub App private key content
 - `--private-key-file <path>`: Path to GitHub App private key file
-- `--app-installation-id <id>`: GitHub App installation ID
+- `--app-installation-id <id>`: GitHub App installation ID (optional — automatically looked up if omitted)
 
 ### Configuration
 
@@ -105,6 +105,13 @@ gh repo-stats-plus package-stats \
 ### With GitHub App Authentication
 
 ```bash
+# Installation ID is auto-looked up when omitted
+gh repo-stats-plus package-stats \
+  --org-name my-org \
+  --app-id 12345 \
+  --private-key-file ./key.pem
+
+# Or provide it explicitly to skip the lookup
 gh repo-stats-plus package-stats \
   --org-name my-org \
   --app-id 12345 \

@@ -32,6 +32,10 @@ vi.mock('../src/auth.js', () => ({
     authStrategy: undefined,
     auth: 'test-token',
   }),
+  needsInstallationLookup: vi.fn().mockReturnValue(false),
+  createAppLevelAuthConfig: vi
+    .fn()
+    .mockReturnValue({ authStrategy: vi.fn(), auth: { type: 'app' } }),
 }));
 
 vi.mock('../src/octokit.js', () => ({
@@ -42,6 +46,7 @@ vi.mock('../src/service.js', () => ({
   OctokitClient: vi.fn(),
   DEFAULT_API_VERSION: '2022-11-28',
   VALID_API_VERSIONS: ['2022-11-28', '2026-03-10'],
+  lookupInstallationId: vi.fn().mockResolvedValue(12345),
 }));
 
 vi.mock('../src/state.js', () => ({

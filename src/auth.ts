@@ -6,22 +6,26 @@ import type {
 import { Logger } from './types.js';
 import { readFileSync } from 'fs';
 
+export type { AppAuthOptions, InstallationAuthOptions };
+
 export interface AuthConfig {
   authStrategy?: typeof createAppAuth | undefined;
-  auth: string | AppAuthOptions | InstallationAuthOptions | undefined;
+  // auth can be a token string, or a plain object of strategy + per-request options
+  // passed through to @octokit/auth-app — kept as Record to accommodate both shapes.
+  auth: string | Record<string, unknown> | undefined;
 }
 
 const getAuthAppId = (appId?: string): number => {
   const authAppId = appId || process.env.GITHUB_APP_ID;
-  if (!authAppId || isNaN(parseInt(authAppId))) {
+  if (!authAppId || !/^\d+$/.test(authAppId)) {
     throw new Error(
       'You must specify a GitHub app ID using the --app-id argument or GITHUB_APP_ID environment variable.',
     );
   }
-  return parseInt(authAppId);
+  return parseInt(authAppId, 10);
 };
 
-const getAuthPrivateKey = (
+export const getAuthPrivateKey = (
   privateKey?: string,
   privateKeyFile?: string,
 ): string => {
@@ -46,12 +50,12 @@ const getAuthPrivateKey = (
 const getAuthInstallationId = (appInstallationId?: string): number => {
   const authInstallationId =
     appInstallationId || process.env.GITHUB_APP_INSTALLATION_ID;
-  if (!authInstallationId || isNaN(parseInt(authInstallationId))) {
+  if (!authInstallationId || !/^\d+$/.test(authInstallationId)) {
     throw new Error(
       'You must specify a GitHub app installation ID using the --app-installation-id argument or GITHUB_APP_INSTALLATION_ID environment variable.',
     );
   }
-  return parseInt(authInstallationId);
+  return parseInt(authInstallationId, 10);
 };
 
 const getTokenAuthConfig = (accessToken?: string): AuthConfig => {
@@ -77,6 +81,53 @@ const getInstallationAuthConfig = (
     installationId: getAuthInstallationId(appInstallationId),
   };
   return { authStrategy: createAppAuth, auth };
+};
+
+/**
+ * Creates an auth config for authenticating as the GitHub App itself (without an
+ * installation ID). This is used to call app-scoped GitHub API endpoints such as
+ * GET /orgs/{org}/installation to look up an installation ID.
+ *
+ * Note: @octokit/auth-app automatically selects JWT auth for any URL that matches
+ * its internal list of app-scoped routes (see requires-app-auth.js in the library).
+ * No explicit `type: 'app'` is needed -- the routing is URL-driven, not config-driven.
+ *
+ * @param appId - The GitHub App ID (numeric string)
+ * @param privateKey - The GitHub App private key
+ * @returns AuthConfig for app-level authentication
+ */
+export const createAppLevelAuthConfig = (
+  appId: string,
+  privateKey: string,
+): AuthConfig => {
+  return {
+    authStrategy: createAppAuth,
+    auth: { appId: getAuthAppId(appId), privateKey },
+  };
+};
+
+/**
+ * Returns true if GitHub App credentials are present (app-id + private key)
+ * but no installation ID has been provided. This indicates that the installation
+ * ID should be looked up automatically.
+ */
+export const needsInstallationLookup = (opts: {
+  appId?: string;
+  privateKey?: string;
+  privateKeyFile?: string;
+  appInstallationId?: string;
+}): boolean => {
+  const hasAppId = !!(opts.appId || process.env.GITHUB_APP_ID);
+  const hasPrivateKey = !!(
+    opts.privateKey ||
+    opts.privateKeyFile ||
+    process.env.GITHUB_APP_PRIVATE_KEY ||
+    process.env.GITHUB_APP_PRIVATE_KEY_FILE
+  );
+  const hasInstallationId = !!(
+    opts.appInstallationId || process.env.GITHUB_APP_INSTALLATION_ID
+  );
+  return hasAppId && hasPrivateKey && !hasInstallationId;
 };
 
 export const createAuthConfig = ({

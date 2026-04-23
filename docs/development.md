@@ -75,7 +75,7 @@ Configure the following environment variables in your `.env` file:
 - `APP_ID`: GitHub App ID (alternative to PAT)
 - `PRIVATE_KEY`: GitHub App private key
 - `PRIVATE_KEY_FILE`: Path to GitHub App private key file
-- `APP_INSTALLATION_ID`: GitHub App installation ID
+- `APP_INSTALLATION_ID`: GitHub App installation ID (optional — automatically looked up if omitted)
 
 ### Performance and Pagination
 
