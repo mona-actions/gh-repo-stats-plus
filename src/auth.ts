@@ -23,7 +23,7 @@ const getAuthAppId = (appId?: string): number => {
   return parseInt(authAppId, 10);
 };
 
-const getAuthPrivateKey = (
+export const getAuthPrivateKey = (
   privateKey?: string,
   privateKeyFile?: string,
 ): string => {

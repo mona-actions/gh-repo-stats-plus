@@ -19,31 +19,12 @@ import {
   createAuthConfig,
   createAppLevelAuthConfig,
   needsInstallationLookup,
+  getAuthPrivateKey,
 } from './auth.js';
 import { StateManager } from './state.js';
 import { SessionManager } from './session.js';
 import { RetryConfig } from './retry.js';
 import { formatElapsedTime, resolveOutputPath } from './utils.js';
-import { readFileSync } from 'fs';
-
-/**
- * Resolves the GitHub App private key from opts or environment variables.
- * Reads from file if privateKeyFile is specified.
- */
-async function resolvePrivateKey(opts: Arguments): Promise<string> {
-  const privateKeyFile =
-    opts.privateKeyFile || process.env.GITHUB_APP_PRIVATE_KEY_FILE;
-  if (privateKeyFile) {
-    return readFileSync(privateKeyFile, 'utf-8');
-  }
-  const privateKey = opts.privateKey || process.env.GITHUB_APP_PRIVATE_KEY;
-  if (!privateKey) {
-    throw new Error(
-      'You must specify a GitHub app private key using the --private-key argument, --private-key-file argument, GITHUB_APP_PRIVATE_KEY_FILE environment variable, or GITHUB_APP_PRIVATE_KEY environment variable.',
-    );
-  }
-  return privateKey;
-}
 
 /**
  * Initializes the shared processing context for a command.
@@ -78,7 +59,7 @@ export async function initCommand(
   let resolvedKey: string | undefined;
 
   if (shouldLookupInstallation) {
-    resolvedKey = await resolvePrivateKey(opts);
+    resolvedKey = getAuthPrivateKey(opts.privateKey, opts.privateKeyFile);
     // Opts with the resolved key so downstream auth helpers don't re-read the file
     const optsWithKey = {
       ...opts,
