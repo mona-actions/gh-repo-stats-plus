@@ -28,13 +28,12 @@ export const loadCaCertificate = (
   try {
     const cert = readFileSync(resolvedPath, 'utf-8');
     logger.info(`Loaded CA certificate from ${source}`);
-    logger.debug(`CA certificate path: ${resolvedPath}`);
     return cert;
   } catch (err) {
     const message =
       err instanceof Error ? err.message : 'Unknown error reading file';
     throw new Error(
-      `Failed to read CA certificate from ${source} (${resolvedPath}): ${message}`,
+      `Failed to read CA certificate from ${source}: ${message}`,
       { cause: err },
     );
   }

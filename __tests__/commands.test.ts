@@ -1,11 +1,31 @@
 import { describe, it, expect, vi } from 'vitest';
 import repoStatsCommand from '../src/commands/repo-stats-command.js';
 import missingReposCommand from '../src/commands/missing-repos-command.js';
+import projectStatsCommand from '../src/commands/project-stats-command.js';
+import appInstallStatsCommand from '../src/commands/app-install-stats-command.js';
+import packageStatsCommand from '../src/commands/package-stats-command.js';
+import codespaceStatsCommand from '../src/commands/codespace-stats-command.js';
 
 // Mock the main module functions
 vi.mock('../src/main.js', () => ({
   run: vi.fn(),
   checkForMissingRepos: vi.fn(),
+}));
+
+vi.mock('../src/projects.js', () => ({
+  runProjectStats: vi.fn(),
+}));
+
+vi.mock('../src/app-installs.js', () => ({
+  runAppInstallStats: vi.fn(),
+}));
+
+vi.mock('../src/packages.js', () => ({
+  runPackageStats: vi.fn(),
+}));
+
+vi.mock('../src/codespaces.js', () => ({
+  runCodespaceStats: vi.fn(),
 }));
 
 describe('Commands', () => {
@@ -357,22 +377,22 @@ describe('Commands', () => {
   });
 
   describe('TLS options', () => {
-    it('should have --ca-cert option on repo-stats command', () => {
-      const option = repoStatsCommand.options.find(
-        (opt) => opt.long === '--ca-cert',
-      );
-      expect(option).toBeDefined();
-      expect(option?.description).toContain('CA certificate');
-      expect(option?.envVar).toBe('NODE_EXTRA_CA_CERTS');
-    });
+    const commandsToTest = [
+      { name: 'repo-stats', command: repoStatsCommand },
+      { name: 'missing-repos', command: missingReposCommand },
+      { name: 'project-stats', command: projectStatsCommand },
+      { name: 'app-install-stats', command: appInstallStatsCommand },
+      { name: 'package-stats', command: packageStatsCommand },
+      { name: 'codespace-stats', command: codespaceStatsCommand },
+    ];
 
-    it('should have --ca-cert option on missing-repos command', () => {
-      const option = missingReposCommand.options.find(
-        (opt) => opt.long === '--ca-cert',
-      );
-      expect(option).toBeDefined();
-      expect(option?.description).toContain('CA certificate');
-      expect(option?.envVar).toBe('NODE_EXTRA_CA_CERTS');
+    commandsToTest.forEach(({ name, command }) => {
+      it(`should have --ca-cert option on ${name} command`, () => {
+        const option = command.options.find((opt) => opt.long === '--ca-cert');
+        expect(option).toBeDefined();
+        expect(option?.description).toContain('CA certificate');
+        expect(option?.envVar).toBe('NODE_EXTRA_CA_CERTS');
+      });
     });
   });
 });

@@ -39,19 +39,24 @@ const buildDispatcher = (
   return undefined;
 };
 
+export interface CreateOctokitOptions {
+  fetch?: any;
+  caCert?: string;
+}
+
 export const createOctokit = (
   authConfig: AuthConfig,
   baseUrl: string,
   proxyUrl: string | undefined,
   logger: Logger,
-  fetch?: any,
-  caCert?: string,
+  options?: CreateOctokitOptions,
 ): Octokit => {
+  const { fetch, caCert } = options ?? {};
   const dispatcher = buildDispatcher(proxyUrl, caCert);
 
-  const customFetch = (url: undiciRequestInfo, options: undiciRequestInit) => {
+  const customFetch = (url: undiciRequestInfo, opts: undiciRequestInit) => {
     return undiciFetch(url, {
-      ...options,
+      ...opts,
       dispatcher,
     });
   };

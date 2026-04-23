@@ -1163,14 +1163,15 @@ export async function checkForMissingRepos({
   const logger = await createLogger(opts.verbose, logFileName);
 
   const authConfig = createAuthConfig({ ...opts, logger: logger });
-  const caCert = loadCaCertificate(opts.caCert, logger);
+  const caCert = loadCaCertificate(opts.caCertPath, logger);
   const octokit = createOctokit(
     authConfig,
     opts.baseUrl,
     opts.proxyUrl,
     logger,
-    undefined,
-    caCert,
+    {
+      caCert,
+    },
   );
   const client = new OctokitClient(octokit);
 

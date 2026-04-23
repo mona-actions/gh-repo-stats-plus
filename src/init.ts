@@ -50,7 +50,7 @@ export async function initCommand(
 
   logInitialization.auth(logger);
 
-  const caCert = loadCaCertificate(opts.caCert, logger);
+  const caCert = loadCaCertificate(opts.caCertPath, logger);
 
   // Wrap createOctokit to bind the loaded CA cert for all callers
   const createOctokitWithCa: typeof createOctokit = (
@@ -58,8 +58,12 @@ export async function initCommand(
     baseUrl,
     proxyUrl,
     logger,
-    fetch?,
-  ) => createOctokit(authConfig, baseUrl, proxyUrl, logger, fetch, caCert);
+    options?,
+  ) =>
+    createOctokit(authConfig, baseUrl, proxyUrl, logger, {
+      ...options,
+      caCert,
+    });
 
   const shouldLookupInstallation = needsInstallationLookup(opts);
 

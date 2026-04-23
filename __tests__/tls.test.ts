@@ -87,7 +87,7 @@ describe('tls', () => {
       });
 
       expect(() => loadCaCertificate('/missing/ca.pem', logger)).toThrow(
-        'Failed to read CA certificate from --ca-cert (/missing/ca.pem): ENOENT: no such file or directory',
+        'Failed to read CA certificate from --ca-cert: ENOENT: no such file or directory',
       );
     });
 
@@ -98,7 +98,7 @@ describe('tls', () => {
       });
 
       expect(() => loadCaCertificate(undefined, logger)).toThrow(
-        'Failed to read CA certificate from NODE_EXTRA_CA_CERTS (/missing/env-ca.pem): EACCES: permission denied',
+        'Failed to read CA certificate from NODE_EXTRA_CA_CERTS: EACCES: permission denied',
       );
     });
 
@@ -108,7 +108,7 @@ describe('tls', () => {
       });
 
       expect(() => loadCaCertificate('/bad/ca.pem', logger)).toThrow(
-        'Failed to read CA certificate from --ca-cert (/bad/ca.pem): Unknown error reading file',
+        'Failed to read CA certificate from --ca-cert: Unknown error reading file',
       );
     });
   });
