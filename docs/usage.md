@@ -44,9 +44,10 @@ gh repo-stats-plus repo-stats --org-name my-org --resume-from-last-save
 gh repo-stats-plus repo-stats \
   --org-name my-org \
   --app-id YOUR_APP_ID \
-  --private-key-file key.pem \
-  --app-installation-id INSTALLATION_ID
+  --private-key-file key.pem
 ```
+
+> **Note:** `--app-installation-id` is optional. When omitted, the CLI automatically looks up the installation ID via the GitHub API. You can still provide it explicitly to skip the lookup.
 
 ### Process Missing Repositories
 
@@ -132,7 +133,16 @@ When using GitHub CLI authentication, you can use your personal access token. Th
 
 ### GitHub App Authentication
 
-For GitHub App authentication, you can pass additional parameters:
+For GitHub App authentication, provide your App ID and private key:
+
+```bash
+gh repo-stats-plus repo-stats \
+  --org-name myorg \
+  --app-id 12345 \
+  --private-key-file /path/to/key.pem
+```
+
+The `--app-installation-id` flag is optional. When omitted, the CLI automatically looks up the installation ID for the target organization using the GitHub API. If you already know the installation ID, you can provide it explicitly to skip the lookup:
 
 ```bash
 gh repo-stats-plus repo-stats \
