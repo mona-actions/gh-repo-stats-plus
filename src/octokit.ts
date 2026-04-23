@@ -1,6 +1,7 @@
 import {
   fetch as undiciFetch,
   ProxyAgent,
+  Agent as UndiciAgent,
   RequestInfo as undiciRequestInfo,
   RequestInit as undiciRequestInit,
 } from 'undici';
@@ -23,11 +24,16 @@ export const createOctokit = (
   proxyUrl: string | undefined,
   logger: Logger,
   fetch?: any,
+  caCertDispatcher?: UndiciAgent,
 ): Octokit => {
   const customFetch = (url: undiciRequestInfo, options: undiciRequestInit) => {
+    // CA cert dispatcher takes precedence over proxy for GHES TLS verification.
+    // Proxy support alongside a CA cert is not currently handled.
+    const dispatcher =
+      caCertDispatcher ?? (proxyUrl ? new ProxyAgent(proxyUrl) : undefined);
     return undiciFetch(url, {
       ...options,
-      dispatcher: proxyUrl ? new ProxyAgent(proxyUrl) : undefined,
+      dispatcher,
     });
   };
 

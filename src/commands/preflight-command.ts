@@ -4,7 +4,7 @@ import { createLogger } from '../logger.js';
 import { createAuthConfig } from '../auth.js';
 import { createOctokit } from '../octokit.js';
 import { OctokitClient, DEFAULT_API_VERSION } from '../service.js';
-import { configureSslBypass } from '../tls.js';
+import { resolveTlsDispatcher } from '../tls.js';
 import { hostnameFromApiUrl, isGitHubDotCom } from '../url-utils.js';
 import VERSION from '../version.js';
 
@@ -35,6 +35,7 @@ const VALID_TYPES = [
 interface PreflightOptions {
   baseUrl: string;
   skipTlsVerification?: boolean;
+  caCertPath?: string;
   orgName?: string;
   repository?: string;
   type: string;
@@ -100,11 +101,16 @@ export async function runPreflight(opts: PreflightOptions): Promise<void> {
   const isPublicGitHub = isGitHubDotCom(opts.baseUrl);
   logger.info(`Resolved GH_HOST: ${ghHost}`);
 
-  // 2. Configure TLS bypass if requested
+  // 2. Resolve TLS: prefer CA cert over global SSL bypass.
+  //    resolveTlsDispatcher checks caCertPath arg first, then GHES_CA_CERT_PATH env var,
+  //    then falls back to configureSslBypass() when skipTlsVerification is true.
   const sslVerifyDisabled = opts.skipTlsVerification === true;
-  if (sslVerifyDisabled) {
-    configureSslBypass(opts.baseUrl, logger);
-  }
+  const caCertDispatcher = resolveTlsDispatcher(
+    opts.baseUrl,
+    sslVerifyDisabled,
+    logger,
+    opts.caCertPath,
+  );
 
   // 3. Determine if we need to validate with an API call
   const needsRepoValidation = opts.type === 'repository';
@@ -120,7 +126,14 @@ export async function runPreflight(opts: PreflightOptions): Promise<void> {
       logger,
     });
 
-    const octokit = createOctokit(authConfig, opts.baseUrl, undefined, logger);
+    const octokit = createOctokit(
+      authConfig,
+      opts.baseUrl,
+      undefined,
+      logger,
+      undefined,
+      caCertDispatcher,
+    );
     const client = new OctokitClient(octokit, DEFAULT_API_VERSION);
 
     // 4. Validate repository exists
@@ -143,7 +156,8 @@ export async function runPreflight(opts: PreflightOptions): Promise<void> {
 
   // 6. Output key=value pairs for action.yml consumption
   console.log(`gh_host=${ghHost}`);
-  console.log(`ssl_verify_disabled=${sslVerifyDisabled}`);
+  console.log(`ssl_verify_disabled=${sslVerifyDisabled && !caCertDispatcher}`);
+  console.log(`ca_cert_used=${caCertDispatcher !== undefined}`);
   console.log(`is_github_com=${isPublicGitHub}`);
 }
 
@@ -164,11 +178,20 @@ export function createPreflightCommand(): commander.Command {
     .addOption(
       new Option(
         '--skip-tls-verification [value]',
-        'Skip TLS certificate verification (for GHES with self-signed certs)',
+        'Skip TLS certificate verification (for GHES with self-signed certs). ' +
+          'Prefer --ca-cert-path for proper verification instead of disabling it globally.',
       )
         .env('SKIP_TLS_VERIFICATION')
         .default(false)
         .argParser(parseBooleanOption),
+    )
+    .addOption(
+      new Option(
+        '--ca-cert-path <path>',
+        'Path to a PEM CA certificate for TLS verification against GHES. ' +
+          'When set, uses proper TLS instead of disabling verification globally. ' +
+          'Also reads GHES_CA_CERT_PATH environment variable.',
+      ).env('GHES_CA_CERT_PATH'),
     )
     .addOption(
       new Option(

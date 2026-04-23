@@ -25,6 +25,11 @@ vi.mock('../src/service.js', () => {
   };
 });
 
+vi.mock('fs', () => ({
+  readFileSync: vi.fn(),
+}));
+import * as fs from 'fs';
+
 import { createLogger } from '../src/logger.js';
 import { createAuthConfig } from '../src/auth.js';
 import { createOctokit } from '../src/octokit.js';
@@ -318,6 +323,82 @@ describe('preflight-command', () => {
       });
     });
 
+    describe('CA certificate TLS', () => {
+      it('should use cert dispatcher when caCertPath is provided', async () => {
+        vi.mocked(fs.readFileSync).mockReturnValue(
+          '-----BEGIN CERTIFICATE-----\ncert-data\n-----END CERTIFICATE-----\n',
+        );
+        mockClient.validateOrganization.mockResolvedValue({
+          login: 'test-org',
+        });
+
+        await runPreflight({
+          baseUrl: 'https://ghes.example.com/api/v3',
+          type: 'organization',
+          orgName: 'test-org',
+          accessToken: 'token-123',
+          caCertPath: '/path/to/ca.pem',
+          skipTlsVerification: false,
+        });
+
+        // Cert is used; global TLS bypass must NOT be set
+        expect(process.env.NODE_TLS_REJECT_UNAUTHORIZED).toBeUndefined();
+        // Dispatcher was passed to createOctokit as the 6th arg
+        expect(createOctokit).toHaveBeenCalledWith(
+          expect.anything(),
+          'https://ghes.example.com/api/v3',
+          undefined,
+          expect.anything(),
+          undefined,
+          expect.objectContaining({}), // the undici Agent dispatcher
+        );
+        expect(consoleLogSpy).toHaveBeenCalledWith('ca_cert_used=true');
+        expect(consoleLogSpy).toHaveBeenCalledWith('ssl_verify_disabled=false');
+      });
+
+      it('should read GHES_CA_CERT_PATH env var automatically', async () => {
+        process.env['GHES_CA_CERT_PATH'] = '/env/ca.pem';
+        vi.mocked(fs.readFileSync).mockReturnValue('cert-data');
+        mockClient.validateOrganization.mockResolvedValue({
+          login: 'test-org',
+        });
+
+        await runPreflight({
+          baseUrl: 'https://ghes.example.com/api/v3',
+          type: 'organization',
+          orgName: 'test-org',
+          accessToken: 'token-123',
+          skipTlsVerification: false,
+        });
+
+        expect(fs.readFileSync).toHaveBeenCalledWith('/env/ca.pem', 'utf8');
+        expect(process.env.NODE_TLS_REJECT_UNAUTHORIZED).toBeUndefined();
+        expect(consoleLogSpy).toHaveBeenCalledWith('ca_cert_used=true');
+      });
+
+      it('should fall back to SSL bypass when cert file is missing and skipTlsVerification is true', async () => {
+        vi.mocked(fs.readFileSync).mockImplementation(() => {
+          throw new Error('ENOENT: no such file or directory');
+        });
+        mockClient.validateOrganization.mockResolvedValue({
+          login: 'test-org',
+        });
+
+        await runPreflight({
+          baseUrl: 'https://ghes.example.com/api/v3',
+          type: 'organization',
+          orgName: 'test-org',
+          accessToken: 'token-123',
+          caCertPath: '/missing/ca.pem',
+          skipTlsVerification: true,
+        });
+
+        expect(process.env.NODE_TLS_REJECT_UNAUTHORIZED).toBe('0');
+        expect(consoleLogSpy).toHaveBeenCalledWith('ca_cert_used=false');
+        expect(consoleLogSpy).toHaveBeenCalledWith('ssl_verify_disabled=true');
+      });
+    });
+
     describe('authenticated client creation', () => {
       it('should create Octokit with auth config and base URL', async () => {
         mockClient.validateOrganization.mockResolvedValue({
@@ -348,6 +429,8 @@ describe('preflight-command', () => {
           'https://ghes.example.com/api/v3',
           undefined,
           expect.anything(),
+          undefined,
+          undefined,
         );
       });
     });
@@ -374,6 +457,7 @@ describe('preflight-command', () => {
       expect(optionNames).toContain('--app-id');
       expect(optionNames).toContain('--private-key');
       expect(optionNames).toContain('--app-installation-id');
+      expect(optionNames).toContain('--ca-cert-path');
     });
   });
 });
