@@ -54,7 +54,7 @@ inputs:
     required: false
     default: "https://api.github.com"
   ca-cert:
-    description: "CA certificate bundle content (PEM) for TLS verification against GHES instances. Use this when the certificate is stored as a GitHub secret (e.g., ${{ secrets.GHES_CA_CERT }}). The action writes it to a temporary file automatically."
+    description: "CA certificate bundle content (PEM) for TLS verification against GHES instances. Pass the content of a GitHub secret (e.g., secrets.GHES_CA_CERT). The action writes it to a temporary file automatically."
     required: false
     default: ""
   ca-cert-path:
