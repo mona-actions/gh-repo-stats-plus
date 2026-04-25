@@ -2,6 +2,7 @@ import { OctokitClient } from './service.js';
 import { Arguments, Logger } from './types.js';
 import { createClientFromOpts } from './init.js';
 import { writeFileSync } from 'fs';
+import { isAbsolute } from 'path';
 import { generateOrgReposFileName, resolveOutputPath } from './utils.js';
 
 export interface BatchMatrix {
@@ -26,6 +27,15 @@ export function calculateBatchMatrix(
   requestedBatchSize: number,
   maxBatches: number,
 ): { batchSize: number; totalBatches: number; matrix: BatchMatrix } {
+  if (requestedBatchSize < 1) {
+    throw new Error(
+      `requestedBatchSize must be >= 1, got ${requestedBatchSize}`,
+    );
+  }
+  if (maxBatches < 1) {
+    throw new Error(`maxBatches must be >= 1, got ${maxBatches}`);
+  }
+
   let batchSize = requestedBatchSize;
   let totalBatches = Math.ceil(repos.length / batchSize);
 
@@ -92,7 +102,7 @@ export async function fetchOrgRepos({
   const result: OrgReposResult = { repos, repoCount: repos.length };
 
   if (opts.outputFileName) {
-    const fileName = opts.outputFileName.includes('/')
+    const fileName = isAbsolute(opts.outputFileName)
       ? opts.outputFileName
       : await resolveOutputPath(
           opts.outputDir,

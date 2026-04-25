@@ -56,6 +56,18 @@ describe('calculateBatchMatrix', () => {
     expect(matrix['batch-index']).toEqual([0]);
   });
 
+  it('throws when requestedBatchSize is less than 1', () => {
+    expect(() => calculateBatchMatrix([], 0, 256)).toThrow(
+      'requestedBatchSize must be >= 1',
+    );
+  });
+
+  it('throws when maxBatches is less than 1', () => {
+    expect(() => calculateBatchMatrix([], 10, 0)).toThrow(
+      'maxBatches must be >= 1',
+    );
+  });
+
   it('handles an empty repo list', () => {
     const { totalBatches, matrix } = calculateBatchMatrix([], 10, 256);
     expect(totalBatches).toBe(0);

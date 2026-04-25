@@ -1,6 +1,7 @@
 import * as commander from 'commander';
 import {
   parseIntOption,
+  parseBooleanOption,
   parseApiVersionOption,
   generateOrgReposFileName,
   resolveOutputPath,
@@ -108,7 +109,9 @@ orgReposCommand
     new Option(
       '--save-repo-list [value]',
       'Write the full repo list to a file in the output directory',
-    ).env('SAVE_REPO_LIST'),
+    )
+      .env('SAVE_REPO_LIST')
+      .argParser(parseBooleanOption),
   )
   .addOption(
     new Option(
@@ -148,17 +151,15 @@ orgReposCommand
     }
 
     if (result.outputFile) {
-      console.log(
-        `\n✅ Wrote ${result.repoCount} repos to ${result.outputFile}`,
-      );
+      console.log(`\nWrote ${result.repoCount} repos to ${result.outputFile}`);
     }
 
     if (result.matrix) {
-      console.log(`\n📊 Batch matrix:`);
-      console.log(`   Repos:         ${result.repoCount}`);
-      console.log(`   Batch size:    ${result.batchSize}`);
-      console.log(`   Total batches: ${result.totalBatches}`);
-      console.log(`   Matrix:        ${JSON.stringify(result.matrix)}`);
+      console.log(`\nBatch matrix:`);
+      console.log(`  Repos:         ${result.repoCount}`);
+      console.log(`  Batch size:    ${result.batchSize}`);
+      console.log(`  Total batches: ${result.totalBatches}`);
+      console.log(`  Matrix:        ${JSON.stringify(result.matrix)}`);
     }
   });
 
