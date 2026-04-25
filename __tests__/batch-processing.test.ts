@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createMockLogger } from './test-utils.js';
-import { existsSync, readFileSync } from 'fs';
 
 // Mock fs module
 vi.mock('fs');
+
+import { existsSync, readFileSync } from 'fs';
 
 import { getRepoListForBatch } from '../src/main.js';
 import repoStatsCommand from '../src/commands/repo-stats-command.js';

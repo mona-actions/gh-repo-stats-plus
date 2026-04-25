@@ -248,7 +248,7 @@ jobs:
   setup:
     runs-on: ubuntu-latest
     outputs:
-      total-batches: ${{ steps.calc.outputs.total }}
+      matrix: ${{ steps.calc.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
       - name: Install extension
@@ -256,6 +256,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.STATS_TOKEN }}
       - name: Fetch org repo list once
+        id: calc
         env:
           GH_TOKEN: ${{ secrets.STATS_TOKEN }}
           ORG: ${{ inputs.org }}
@@ -272,9 +273,9 @@ jobs:
             }' -F login="$ORG" \
             --jq '.data.organization.repositories.nodes[].nameWithOwner' \
             > repos.txt
-          echo "total=$(( ($(wc -l < repos.txt) + BATCH_SIZE - 1) / BATCH_SIZE ))" >> "$GITHUB_OUTPUT"
-      - id: calc
-        run: cat "$GITHUB_OUTPUT"
+          TOTAL=$(( ($(wc -l < repos.txt) + BATCH_SIZE - 1) / BATCH_SIZE ))
+          INDICES=$(jq -nc "[range($TOTAL)]")
+          echo "matrix={\"batch-index\":$INDICES}" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         with:
           name: org-repo-list
@@ -286,8 +287,7 @@ jobs:
     strategy:
       fail-fast: false
       max-parallel: 10
-      matrix:
-        batch-index: ${{ fromJson(needs.setup.outputs.total-batches) }}
+      matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
       - run: gh extension install mona-actions/gh-repo-stats-plus
