@@ -8,7 +8,7 @@ branding:
 
 inputs:
   type:
-    description: "Type of stats gathering: 'repository', 'organization', 'project-stats', 'app-install-stats', 'package-stats', 'codespace-stats', 'migration-audit', or 'combine'"
+    description: "Type of stats gathering: 'repository', 'organization', 'project-stats', 'app-install-stats', 'package-stats', 'codespace-stats', 'migration-audit', 'org-repos', or 'combine'"
     required: false
     default: "repository"
   github-token:
@@ -164,6 +164,18 @@ outputs:
   artifact-id:
     description: "ID of the uploaded artifact containing the stats"
     value: ${{ steps.upload-artifact.outputs.artifact-id }}
+  matrix:
+    description: "JSON matrix object for strategy.matrix (contains batch-index array). Only set when type is 'org-repos' and batch-size is provided."
+    value: ${{ steps.org-repos.outputs.matrix }}
+  batch_size:
+    description: "Effective batch size (may be increased if repo count exceeds max-batches). Only set when type is 'org-repos' and batch-size is provided."
+    value: ${{ steps.org-repos.outputs.batch_size }}
+  repo_count:
+    description: "Total number of repositories found. Only set when type is 'org-repos'."
+    value: ${{ steps.org-repos.outputs.repo_count }}
+  repo-list-file:
+    description: "Absolute path to the repo list file written by org-repos (one owner/repo per line). Only set when type is 'org-repos'."
+    value: ${{ steps.org-repos.outputs.repo_list_file }}
 
 runs:
   using: "composite"
@@ -183,11 +195,11 @@ runs:
         INPUT_TYPE: ${{ inputs.type }}
       run: |
         case "${INPUT_TYPE}" in
-          repository|organization|project-stats|app-install-stats|package-stats|codespace-stats|migration-audit|combine)
+          repository|organization|project-stats|app-install-stats|package-stats|codespace-stats|migration-audit|org-repos|combine)
             echo "✓ Valid type: ${INPUT_TYPE}"
             ;;
           *)
-            echo "::error::Invalid type '${INPUT_TYPE}'. Must be one of: repository, organization, project-stats, app-install-stats, package-stats, codespace-stats, migration-audit, combine."
+            echo "::error::Invalid type '${INPUT_TYPE}'. Must be one of: repository, organization, project-stats, app-install-stats, package-stats, codespace-stats, migration-audit, org-repos, combine."
             exit 1
             ;;
         esac
@@ -332,7 +344,7 @@ runs:
         echo "✓ App install stats authentication validated"
 
     - name: Validate Organization Exists
-      if: ${{ inputs.type == 'organization' || inputs.type == 'project-stats' || inputs.type == 'app-install-stats' || inputs.type == 'package-stats' || inputs.type == 'codespace-stats' || inputs.type == 'migration-audit' }}
+      if: ${{ inputs.type == 'organization' || inputs.type == 'project-stats' || inputs.type == 'app-install-stats' || inputs.type == 'package-stats' || inputs.type == 'codespace-stats' || inputs.type == 'migration-audit' || inputs.type == 'org-repos' }}
       shell: bash
       env:
         GH_TOKEN: ${{ steps.app-install.outputs.token || inputs.access-token || inputs.github-token }}
@@ -390,6 +402,56 @@ runs:
         gh migration-audit --version
 
         echo "✓ Dependencies installed successfully"
+
+    # --- org-repos: list repos + compute batch matrix ---
+    - name: List Organization Repositories
+      id: org-repos
+      if: ${{ inputs.type == 'org-repos' }}
+      shell: bash
+      env:
+        BATCH_SIZE: ${{ inputs.batch-size }}
+      run: |
+        ORG_REPOS_ARGS=(
+          --org-name "${{ inputs.organization }}"
+          --base-url "${{ inputs.base-url }}"
+          --output-dir "${{ steps.setup-paths.outputs.output_dir }}"
+          --save-repo-list
+          --output-file-name "${{ github.workspace }}/repos.txt"
+        )
+
+        # Auth: prefer app installation, then access-token
+        if [[ -n "${{ inputs.github-app-id }}" ]] && [[ -n "${{ inputs.github-app-private-key }}" ]]; then
+          ORG_REPOS_ARGS+=(--app-id "${{ inputs.github-app-id }}")
+          ORG_REPOS_ARGS+=(--private-key "${{ inputs.github-app-private-key }}")
+          if [[ -n "${{ steps.app-install.outputs.installation-id }}" ]]; then
+            ORG_REPOS_ARGS+=(--app-installation-id "${{ steps.app-install.outputs.installation-id }}")
+          fi
+        elif [[ -n "${{ inputs.access-token }}" ]]; then
+          ORG_REPOS_ARGS+=(--access-token "${{ inputs.access-token }}")
+        fi
+
+        if [[ -n "${BATCH_SIZE}" ]]; then
+          [[ "${BATCH_SIZE}" =~ ^[0-9]+$ ]] && [[ "${BATCH_SIZE}" -ge 1 ]] || { echo "::error::batch-size must be a positive integer"; exit 1; }
+          ORG_REPOS_ARGS+=(--batch-size "${BATCH_SIZE}")
+        fi
+
+        OUTPUT=$(gh repo-stats-plus org-repos "${ORG_REPOS_ARGS[@]}")
+
+        # Extract repo count from stdout
+        REPO_COUNT=$(echo "${OUTPUT}" | grep -c '/' || echo "0")
+        echo "repo_count=${REPO_COUNT}" >> "$GITHUB_OUTPUT"
+        echo "repo_list_file=${{ github.workspace }}/repos.txt" >> "$GITHUB_OUTPUT"
+
+        # If batch-size was provided, parse the matrix from CLI output
+        if [[ -n "${BATCH_SIZE}" ]]; then
+          MATRIX_LINE=$(echo "${OUTPUT}" | grep '  Matrix:' | sed 's/.*Matrix: *//')
+          BATCH_SIZE_LINE=$(echo "${OUTPUT}" | grep '  Batch size:' | sed 's/.*Batch size: *//')
+          echo "matrix=${MATRIX_LINE}" >> "$GITHUB_OUTPUT"
+          echo "batch_size=${BATCH_SIZE_LINE}" >> "$GITHUB_OUTPUT"
+          echo "✅ Batch matrix computed: ${REPO_COUNT} repos"
+        fi
+
+        echo "✅ Listed ${REPO_COUNT} repos for ${{ inputs.organization }}"
 
     - name: Resolve Resume Mode
       id: resolve-resume
