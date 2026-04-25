@@ -135,23 +135,15 @@ jobs:
       matrix: ${{ steps.org-repos.outputs.matrix }}
       batch-size: ${{ steps.org-repos.outputs.batch-size }}
     steps:
+      - uses: actions/checkout@v4
       - name: Get org repos and build matrix
         id: org-repos
         uses: mona-actions/gh-repo-stats-plus@v1
-        env:
-          OUTPUT_FILE_NAME: my-org-org-repos.txt
         with:
-          command: org-repos
+          type: org-repos
           organization: my-org
           batch-size: 50
-          save-repo-list: true
           github-token: ${{ github.token }}
-
-      - name: Upload repo list artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: repo-list
-          path: output/*.txt
 
   collect:
     needs: setup
@@ -159,20 +151,14 @@ jobs:
     strategy:
       matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
     steps:
-      - name: Download repo list
-        uses: actions/download-artifact@v4
-        with:
-          name: repo-list
-          path: output/
-
+      - uses: actions/checkout@v4
       - name: Run repo-stats for batch
         uses: mona-actions/gh-repo-stats-plus@v1
         with:
-          command: repo-stats
+          type: organization
           organization: my-org
           batch-size: ${{ needs.setup.outputs.batch-size }}
           batch-index: ${{ matrix.batch-index }}
-          batch-repo-list-file: output/my-org-org-repos.txt
           github-token: ${{ github.token }}
 ```
 
