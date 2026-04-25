@@ -485,7 +485,11 @@ runs:
             echo "::error::batch-repo-list-file '${BATCH_REPO_LIST_FILE}' does not exist on the runner. Make sure the file is created (e.g. by a previous job + actions/download-artifact) before this step runs."
             exit 1
           fi
-          BATCH_ARGS+=(--batch-repo-list-file "${BATCH_REPO_LIST_FILE}")
+          # Resolve to absolute path so the CLI can find the file regardless
+          # of the working directory it ends up running in (gh extensions may
+          # change cwd to their install dir).
+          BATCH_REPO_LIST_FILE_ABS="$(cd "$(dirname "${BATCH_REPO_LIST_FILE}")" && pwd)/$(basename "${BATCH_REPO_LIST_FILE}")"
+          BATCH_ARGS+=(--batch-repo-list-file "${BATCH_REPO_LIST_FILE_ABS}")
         fi
 
         REPO_LIST_ARGS=()
@@ -565,7 +569,10 @@ runs:
             echo "::error::batch-repo-list-file '${BATCH_REPO_LIST_FILE}' does not exist on the runner."
             exit 1
           fi
-          BATCH_ARGS+=(--batch-repo-list-file "${BATCH_REPO_LIST_FILE}")
+          # Resolve to absolute path so the CLI can find the file regardless
+          # of the working directory it ends up running in.
+          BATCH_REPO_LIST_FILE_ABS="$(cd "$(dirname "${BATCH_REPO_LIST_FILE}")" && pwd)/$(basename "${BATCH_REPO_LIST_FILE}")"
+          BATCH_ARGS+=(--batch-repo-list-file "${BATCH_REPO_LIST_FILE_ABS}")
         fi
 
         REPO_LIST_ARGS=()
