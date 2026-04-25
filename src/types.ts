@@ -57,6 +57,14 @@ export interface Arguments {
   batchSize?: number;
   batchIndex?: number;
   batchDelay?: number;
+  /**
+   * Optional path to a pre-fetched repository list (one entry per line,
+   * either bare repo name or `owner/repo`). When provided alongside
+   * `batchSize`, `getRepoListForBatch` reads from this file instead of
+   * paginating the org's repos via GraphQL — useful for large parallel
+   * matrix runs that would otherwise exhaust the installation rate limit.
+   */
+  batchRepoListFile?: string;
 
   // multi-org options
   delayBetweenOrgs?: number;

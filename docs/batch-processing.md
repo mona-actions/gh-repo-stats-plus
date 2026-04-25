@@ -237,6 +237,80 @@ The same pattern works for `project-stats` — just swap the command:
 - **GitHub Actions matrix limit** is 256 jobs. At 50 repos/batch that covers up to 12,800 repos.
 - **Resume on failure**: Add `--resume-from-last-save` and cache/persist the state files between retries so a re-run picks up where it left off.
 - **`merge-multiple: true`** on `download-artifact` flattens all batch artifacts into a single directory, which is exactly what `combine-stats --files` expects.
+- **Avoid re-paginating the org list in every batch** — by default each batch independently calls `listOrgRepoNames` before slicing. With many parallel batches this can exhaust the GitHub App installation rate limit. Use `--batch-repo-list-file` (see below) to fetch the list once and have every batch reuse it.
+
+## Pre-fetched repo list (`--batch-repo-list-file`)
+
+For very large organizations (hundreds of batches), the redundant `listOrgRepoNames` call each batch makes can dominate the install's request budget. Fetch the list once in a setup job, upload it as an artifact, and have each matrix batch read from it:
+
+```yaml
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      total-batches: ${{ steps.calc.outputs.total }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install extension
+        run: gh extension install mona-actions/gh-repo-stats-plus
+        env:
+          GH_TOKEN: ${{ secrets.STATS_TOKEN }}
+      - name: Fetch org repo list once
+        env:
+          GH_TOKEN: ${{ secrets.STATS_TOKEN }}
+          ORG: ${{ inputs.org }}
+          BATCH_SIZE: ${{ inputs.batch-size }}
+        run: |
+          gh api graphql --paginate \
+            -f query='query($login: String!, $cursor: String) {
+              organization(login: $login) {
+                repositories(first: 100, after: $cursor) {
+                  pageInfo { hasNextPage endCursor }
+                  nodes { nameWithOwner }
+                }
+              }
+            }' -F login="$ORG" \
+            --jq '.data.organization.repositories.nodes[].nameWithOwner' \
+            > repos.txt
+          echo "total=$(( ($(wc -l < repos.txt) + BATCH_SIZE - 1) / BATCH_SIZE ))" >> "$GITHUB_OUTPUT"
+      - id: calc
+        run: cat "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: org-repo-list
+          path: repos.txt
+
+  collect:
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        batch-index: ${{ fromJson(needs.setup.outputs.total-batches) }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: gh extension install mona-actions/gh-repo-stats-plus
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: org-repo-list
+      - name: Collect stats (batch ${{ matrix.batch-index }})
+        env:
+          GH_TOKEN: ${{ secrets.STATS_TOKEN }}
+          ORG: ${{ inputs.org }}
+          BATCH_SIZE: ${{ inputs.batch-size }}
+        run: |
+          gh repo-stats-plus repo-stats \
+            --org-name "$ORG" \
+            --batch-size "$BATCH_SIZE" \
+            --batch-index ${{ matrix.batch-index }} \
+            --batch-repo-list-file repos.txt \
+            --output-dir output
+```
+
+File format: one entry per line, either `owner/repo` or a bare repo name (combined with `--org-name`). Blank lines and lines starting with `#` are ignored. Entries whose owner does not match `--org-name` are skipped with a warning.
 
 ## Using the GitHub Action
 

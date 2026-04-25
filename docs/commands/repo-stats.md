@@ -53,8 +53,19 @@ gh repo-stats-plus repo-stats [options]
 - `--batch-size <size>`: Number of repositories per batch. Fetches the full repo list for the org and processes only the slice for the given batch index.
 - `--batch-index <index>`: Zero-based batch index to process (Default: 0). Requires `--batch-size`.
 - `--batch-delay <seconds>`: Stagger delay in seconds per batch index before starting (Default: 0). For example, with `--batch-delay 10`, batch 0 starts immediately, batch 1 waits 10s, batch 2 waits 20s, etc. Useful when launching multiple batches simultaneously to avoid API bursts.
+- `--batch-repo-list-file <file>`: Path to a pre-fetched repository list (one entry per line, `owner/repo` or bare repo name; `#` comments allowed). When provided, batches read from this file instead of paginating the org's repos for every batch. Requires `--batch-size`.
 
 Batch mode cannot be used with `--org-list` or `--repo-list`.
+
+#### When to use `--batch-repo-list-file`
+
+By default, every batch independently paginates the org's repository list before processing its slice. For large organizations split across many parallel matrix jobs, those redundant pagination calls multiply (`ceil(repo_count / page_size) × N batches`) and can quickly exhaust the GitHub App installation rate limit.
+
+Workflow that fetches the list once and reuses it across batches:
+
+1. A `setup` job fetches the org's repos once and writes them to `repos.txt`, then uploads it as an artifact.
+2. The matrix `collect` jobs each download the artifact and pass the file path via `--batch-repo-list-file`.
+3. Each batch reads from the file and slices to its `--batch-index`. No org-list pagination occurs in the matrix jobs.
 
 ## Examples
 
