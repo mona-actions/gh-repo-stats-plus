@@ -108,6 +108,7 @@ gh repo-stats-plus org-repos \
 gh repo-stats-plus org-repos \
   --org-name my-org \
   --save-repo-list \
+  --output-file-name my-org-org-repos.txt \
   --batch-size 100
 ```
 
@@ -137,6 +138,8 @@ jobs:
       - name: Get org repos and build matrix
         id: org-repos
         uses: mona-actions/gh-repo-stats-plus@v1
+        env:
+          OUTPUT_FILE_NAME: my-org-org-repos.txt
         with:
           command: org-repos
           organization: my-org

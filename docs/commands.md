@@ -82,7 +82,8 @@ Use `org-repos` as a setup job to fetch the full repo list once and calculate th
 gh repo-stats-plus org-repos \
   --org-name myorg \
   --batch-size 50 \
-  --save-repo-list
+  --save-repo-list \
+  --output-file-name myorg-org-repos.txt
 
 # Then run repo-stats for each batch index from the matrix output
 gh repo-stats-plus repo-stats \
