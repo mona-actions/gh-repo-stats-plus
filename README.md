@@ -65,6 +65,8 @@ This TypeScript rewrite offers several advantages:
 
 16. **Codespace Stats**: Retrieve codespace usage statistics for organizations, including machine details (CPU, memory, storage), ownership information, and lifecycle timestamps. Based on [scottluskcis/gh-data-fetch](https://github.com/scottluskcis/gh-data-fetch). See the [Codespace Stats Command Reference](docs/commands/codespace-stats.md).
 
+17. **Org Repos Listing with Batch Matrix**: List all repositories in an organization, optionally write the list to a file, and calculate a batch matrix for parallel GitHub Actions matrix jobs. Supports `--max-batches` to cap the number of batches and automatically adjust batch size. See the [Org Repos Command Reference](docs/commands/org-repos.md).
+
 ## Technical Implementation
 
 The extension is built using modern TypeScript patterns with:
@@ -110,6 +112,7 @@ See the [GitHub Action documentation](action/README.md) for full inputs/outputs 
 | [Rows-to-Columns](docs/commands/rows-to-columns.md) | Pivot additional CSV rows into columns        |
 | [Package Stats](docs/commands/package-stats.md)     | Retrieve package statistics for organizations |
 | [Codespace Stats](docs/commands/codespace-stats.md) | Retrieve codespace usage for organizations    |
+| [Org Repos](docs/commands/org-repos.md)             | List org repos and generate a batch matrix    |
 
 ## Common Usage Examples
 
@@ -209,6 +212,30 @@ gh repo-stats-plus missing-repos \
 # Auto-process missing repositories
 gh repo-stats-plus repo-stats --org-name my-org --auto-process-missing
 ```
+
+### Org Repos and Batch Matrix
+
+List all repos for an organization and optionally generate a batch matrix for parallel GitHub Actions jobs:
+
+```bash
+# Print all repos to stdout
+gh repo-stats-plus org-repos --org-name my-org
+
+# Save the list to a file
+gh repo-stats-plus org-repos --org-name my-org --save-repo-list
+
+# Generate a batch matrix (50 repos per batch) — useful as a setup job
+gh repo-stats-plus org-repos --org-name my-org --batch-size 50
+
+# Save repo list and generate matrix together, capping at 20 batches
+gh repo-stats-plus org-repos \
+  --org-name my-org \
+  --batch-size 50 \
+  --max-batches 20 \
+  --save-repo-list
+```
+
+See the [Org Repos Command Reference](docs/commands/org-repos.md) for the full GitHub Actions matrix workflow example.
 
 ### Batch Processing
 
