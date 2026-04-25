@@ -1,9 +1,6 @@
-import { OctokitClient, DEFAULT_API_VERSION } from './service.js';
-import { createOctokit } from './octokit.js';
-import { loadCaCertificate } from './tls.js';
+import { OctokitClient } from './service.js';
 import { Arguments, Logger } from './types.js';
-import { createLogger } from './logger.js';
-import { createAuthConfig } from './auth.js';
+import { createClientFromOpts } from './init.js';
 import { writeFileSync } from 'fs';
 import { generateOrgReposFileName, resolveOutputPath } from './utils.js';
 
@@ -57,23 +54,7 @@ export async function runOrgRepos(opts: Arguments): Promise<OrgReposResult> {
   const logFileName = `${orgName}-org-repos-${
     new Date().toISOString().split('T')[0]
   }.log`;
-  const logger = await createLogger(opts.verbose, logFileName);
-
-  const caCert = loadCaCertificate(opts.caCertPath, logger);
-  const authConfig = createAuthConfig({ ...opts, logger });
-  const octokit = createOctokit(
-    authConfig,
-    opts.baseUrl,
-    opts.proxyUrl,
-    logger,
-    {
-      caCert,
-    },
-  );
-  const client = new OctokitClient(
-    octokit,
-    opts.apiVersion ?? DEFAULT_API_VERSION,
-  );
+  const { logger, client } = await createClientFromOpts(opts, logFileName);
 
   return fetchOrgRepos({ orgName, opts, client, logger });
 }

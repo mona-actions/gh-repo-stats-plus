@@ -490,3 +490,33 @@ function logSummary(
     );
   }
 }
+
+/**
+ * Creates a logger and OctokitClient from command options.
+ *
+ * Lightweight alternative to initCommand for commands that only need a GitHub
+ * API client without the full processing pipeline (state management, CSV
+ * output, multi-org loops, etc.).
+ */
+export async function createClientFromOpts(
+  opts: Arguments,
+  logFileName: string,
+): Promise<{ logger: Logger; client: OctokitClient }> {
+  const logger = await createLogger(opts.verbose, logFileName);
+  const caCert = loadCaCertificate(opts.caCertPath, logger);
+  const authConfig = createAuthConfig({ ...opts, logger });
+  const octokit = createOctokit(
+    authConfig,
+    opts.baseUrl,
+    opts.proxyUrl,
+    logger,
+    {
+      caCert,
+    },
+  );
+  const client = new OctokitClient(
+    octokit,
+    opts.apiVersion ?? DEFAULT_API_VERSION,
+  );
+  return { logger, client };
+}

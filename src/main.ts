@@ -1,6 +1,4 @@
 import { OctokitClient } from './service.js';
-import { createOctokit } from './octokit.js';
-import { loadCaCertificate } from './tls.js';
 import {
   Arguments,
   IssuesConnection,
@@ -15,8 +13,6 @@ import {
   OrgContext,
   CommandConfig,
 } from './types.js';
-import { createLogger } from './logger.js';
-import { createAuthConfig } from './auth.js';
 import { StateManager } from './state.js';
 import {
   appendFileSync,
@@ -43,7 +39,7 @@ import {
   readCsvFile,
   REPO_STATS_COLUMNS,
 } from './csv.js';
-import { initCommand, executeCommand } from './init.js';
+import { initCommand, executeCommand, createClientFromOpts } from './init.js';
 
 // --- Command configuration ---
 
@@ -1238,24 +1234,10 @@ export async function checkForMissingRepos({
 }): Promise<{
   missingRepos: string[];
 }> {
-  // Initialize only what we need - logger and client
   const logFileName = `${opts.orgName!}-missing-repos-check-${
     new Date().toISOString().split('T')[0]
   }.log`;
-  const logger = await createLogger(opts.verbose, logFileName);
-
-  const authConfig = createAuthConfig({ ...opts, logger: logger });
-  const caCert = loadCaCertificate(opts.caCertPath, logger);
-  const octokit = createOctokit(
-    authConfig,
-    opts.baseUrl,
-    opts.proxyUrl,
-    logger,
-    {
-      caCert,
-    },
-  );
-  const client = new OctokitClient(octokit);
+  const { logger, client } = await createClientFromOpts(opts, logFileName);
 
   const org = opts.orgName!.toLowerCase();
   const per_page = opts.pageSize || 10;
