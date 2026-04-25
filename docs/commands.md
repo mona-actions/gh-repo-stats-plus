@@ -12,6 +12,7 @@ This page provides an overview of all available commands. See the individual com
 | [app-install-stats](commands/app-install-stats.md) | Retrieve GitHub App installation statistics for an organization (PAT only)     |
 | [package-stats](commands/package-stats.md)         | Retrieve package statistics (Maven, npm, etc.) for an organization             |
 | [codespace-stats](commands/codespace-stats.md)     | Retrieve codespace usage statistics for an organization                        |
+| [org-repos](commands/org-repos.md)                 | List all repositories in an organization and optionally build a batch matrix   |
 | [combine-stats](commands/combine-stats.md)         | Merge multiple CSV output files into a single combined report                  |
 | [post-process](commands/post-process.md)           | Transform CSV data using configurable rules for pattern matching and cleanup   |
 | [rows-to-columns](commands/rows-to-columns.md)     | Pivot rows from an additional CSV into columns in a base CSV                   |
@@ -40,6 +41,12 @@ gh repo-stats-plus package-stats --org-name my-org --package-type NPM
 # Collect codespace usage statistics
 gh repo-stats-plus codespace-stats --org-name my-org
 
+# List all repos in an organization
+gh repo-stats-plus org-repos --org-name my-org
+
+# List repos and generate a batch matrix (e.g., for GitHub Actions)
+gh repo-stats-plus org-repos --org-name my-org --batch-size 50
+
 # Combine multiple CSV files
 gh repo-stats-plus combine-stats --files file1.csv file2.csv
 
@@ -65,6 +72,28 @@ All of these commands can also be run via the [GitHub Action](github-action.md) 
 ---
 
 ## Common Workflows
+
+### Batch Matrix Setup
+
+Use `org-repos` as a setup job to fetch the full repo list once and calculate the batch matrix for parallel GitHub Actions matrix jobs:
+
+```bash
+# Fetch all repos and generate a batch matrix (50 repos per batch)
+gh repo-stats-plus org-repos \
+  --org-name myorg \
+  --batch-size 50 \
+  --save-repo-list \
+  --output-file-name myorg-org-repos.txt
+
+# Then run repo-stats for each batch index from the matrix output
+gh repo-stats-plus repo-stats \
+  --org-name myorg \
+  --batch-size 50 \
+  --batch-index 0 \
+  --batch-repo-list-file output/myorg-org-repos.txt
+```
+
+See the [org-repos Command Reference](commands/org-repos.md) and the [Batch Processing Guide](batch-processing.md) for complete GitHub Actions workflow examples.
 
 ### Complete Organization Analysis
 
