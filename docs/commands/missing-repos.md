@@ -17,6 +17,7 @@ gh repo-stats-plus missing-repos [options]
 - `-t, --access-token <token>`: GitHub access token
 - `-u, --base-url <url>`: GitHub API base URL (Default: `https://api.github.com`)
 - `--proxy-url <url>`: Proxy URL if required
+- `--ca-cert <path>`: Path to CA certificate bundle (PEM) for TLS verification (e.g. GHES with internal CA, Env: `NODE_EXTRA_CA_CERTS`)
 - `--api-version <version>`: GitHub API version to use (`2022-11-28` or `2026-03-10`, Default: `2022-11-28`, Env: `GITHUB_API_VERSION`)
 - `-v, --verbose`: Enable verbose logging
 
@@ -25,7 +26,7 @@ gh repo-stats-plus missing-repos [options]
 - `--app-id <id>`: GitHub App ID
 - `--private-key <key>`: GitHub App private key
 - `--private-key-file <file>`: Path to GitHub App private key file
-- `--app-installation-id <id>`: GitHub App installation ID
+- `--app-installation-id <id>`: GitHub App installation ID (optional — automatically looked up if omitted)
 
 ### Performance
 
@@ -53,6 +54,14 @@ gh repo-stats-plus missing-repos \
 ### With GitHub App Authentication
 
 ```bash
+# Installation ID is auto-looked up when omitted
+gh repo-stats-plus missing-repos \
+  --org-name github \
+  --file github-repo-stats.csv \
+  --app-id 12345 \
+  --private-key-file /path/to/key.pem
+
+# Or provide it explicitly to skip the lookup
 gh repo-stats-plus missing-repos \
   --org-name github \
   --file github-repo-stats.csv \

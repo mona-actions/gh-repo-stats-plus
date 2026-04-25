@@ -54,7 +54,18 @@ The `github-token` input (typically `${{ github.token }}`) is always required fo
 
 ## GitHub Enterprise Support
 
-The action is compatible with GitHub Enterprise Server (GHES). Set the `base-url` input to your GHE API endpoint. For GHES instances with self-signed certificates, use `skip-tls-verification: "true"`.
+The action is compatible with GitHub Enterprise Server (GHES). Set the `base-url` input to your GHE API endpoint.
+
+For GHES instances with internal or self-signed CA certificates, provide the certificate via:
+
+- **`ca-cert`** — Pass the PEM content directly from a GitHub secret (recommended):
+  ```yaml
+  ca-cert: ${{ secrets.GHES_CA_CERT }}
+  ```
+- **`ca-cert-path`** — Point to a certificate file already on the runner:
+  ```yaml
+  ca-cert-path: /etc/ssl/certs/ghes-ca-bundle.pem
+  ```
 
 If your GHE instance cannot reach github.com to download CLI extensions, provide `ghec-token` as well.
 

@@ -1,5 +1,6 @@
 import {
   fetch as undiciFetch,
+  Agent,
   ProxyAgent,
   RequestInfo as undiciRequestInfo,
   RequestInit as undiciRequestInit,
@@ -17,17 +18,46 @@ interface OnRateLimitOptions {
   url: string;
 }
 
+/**
+ * Builds a undici Dispatcher configured for the given proxy and/or CA
+ * certificate.  Returns `undefined` when neither is needed (default
+ * Node.js behaviour).
+ */
+const buildDispatcher = (
+  proxyUrl: string | undefined,
+  caCert: string | undefined,
+): Agent | ProxyAgent | undefined => {
+  if (proxyUrl && caCert) {
+    return new ProxyAgent({ uri: proxyUrl, requestTls: { ca: caCert } });
+  }
+  if (proxyUrl) {
+    return new ProxyAgent(proxyUrl);
+  }
+  if (caCert) {
+    return new Agent({ connect: { ca: caCert } });
+  }
+  return undefined;
+};
+
+export interface CreateOctokitOptions {
+  fetch?: any;
+  caCert?: string;
+}
+
 export const createOctokit = (
   authConfig: AuthConfig,
   baseUrl: string,
   proxyUrl: string | undefined,
   logger: Logger,
-  fetch?: any,
+  options?: CreateOctokitOptions,
 ): Octokit => {
-  const customFetch = (url: undiciRequestInfo, options: undiciRequestInit) => {
+  const { fetch, caCert } = options ?? {};
+  const dispatcher = buildDispatcher(proxyUrl, caCert);
+
+  const customFetch = (url: undiciRequestInfo, opts: undiciRequestInit) => {
     return undiciFetch(url, {
-      ...options,
-      dispatcher: proxyUrl ? new ProxyAgent(proxyUrl) : undefined,
+      ...opts,
+      dispatcher,
     });
   };
 

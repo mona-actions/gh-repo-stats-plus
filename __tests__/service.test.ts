@@ -4,6 +4,8 @@ import {
   OctokitClient,
   DEFAULT_API_VERSION,
   VALID_API_VERSIONS,
+  getAppInstallationId,
+  lookupInstallationId,
 } from '../src/service.js';
 
 // Setup mocks
@@ -657,5 +659,184 @@ describe('OctokitClient', () => {
         }),
       );
     });
+  });
+});
+
+describe('getAppInstallationId', () => {
+  it('should return installation ID via direct org lookup', async () => {
+    const mockOctokit = {
+      rest: {
+        apps: {
+          getOrgInstallation: vi.fn().mockResolvedValue({ data: { id: 42 } }),
+        },
+      },
+    };
+
+    const result = await getAppInstallationId(
+      mockOctokit as unknown as Octokit,
+      'my-org',
+    );
+
+    expect(result).toBe(42);
+    expect(mockOctokit.rest.apps.getOrgInstallation).toHaveBeenCalledWith({
+      org: 'my-org',
+    });
+  });
+
+  it('should throw a clear error when the installation is not found (404)', async () => {
+    const mockOctokit = {
+      rest: {
+        apps: {
+          getOrgInstallation: vi
+            .fn()
+            .mockRejectedValue(
+              Object.assign(new Error('Not Found'), { status: 404 }),
+            ),
+        },
+      },
+    };
+
+    await expect(
+      getAppInstallationId(mockOctokit as unknown as Octokit, 'missing-org'),
+    ).rejects.toThrow(
+      'Failed to get app installation ID for organization "missing-org": Not Found',
+    );
+  });
+
+  it('should wrap unexpected API errors', async () => {
+    const mockOctokit = {
+      rest: {
+        apps: {
+          getOrgInstallation: vi
+            .fn()
+            .mockRejectedValue(new Error('API rate limit exceeded')),
+        },
+      },
+    };
+
+    await expect(
+      getAppInstallationId(mockOctokit as unknown as Octokit, 'my-org'),
+    ).rejects.toThrow(
+      'Failed to get app installation ID for organization "my-org": API rate limit exceeded',
+    );
+  });
+});
+
+describe('lookupInstallationId', () => {
+  it('should call getAppInstallationId using a temp client', async () => {
+    const mockTempOctokit = {
+      rest: {
+        apps: {
+          getOrgInstallation: vi.fn().mockResolvedValue({ data: { id: 88 } }),
+        },
+      },
+    };
+
+    const mockCreateOctokitFn = vi.fn().mockReturnValue(mockTempOctokit);
+
+    vi.mock('../src/auth.js', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('../src/auth.js')>();
+      return {
+        ...actual,
+        createAppLevelAuthConfig: vi.fn().mockReturnValue({
+          authStrategy: vi.fn(),
+          auth: { type: 'app', appId: 12345, privateKey: 'test-key' },
+        }),
+      };
+    });
+
+    const mockLogger = {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    };
+
+    const result = await lookupInstallationId({
+      appId: '12345',
+      privateKey: 'test-key',
+      org: 'acme',
+      createOctokitFn: mockCreateOctokitFn,
+      logger: mockLogger,
+    });
+
+    expect(result).toBe(88);
+    expect(mockCreateOctokitFn).toHaveBeenCalledOnce();
+  });
+
+  it('should throw when appId is empty', async () => {
+    const mockLogger = {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    };
+
+    await expect(
+      lookupInstallationId({
+        appId: '',
+        privateKey: 'key',
+        org: 'org',
+        createOctokitFn: vi.fn(),
+        logger: mockLogger,
+      }),
+    ).rejects.toThrow('appId is required');
+  });
+
+  it('should throw when privateKey is empty', async () => {
+    const mockLogger = {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    };
+
+    await expect(
+      lookupInstallationId({
+        appId: '12345',
+        privateKey: '',
+        org: 'org',
+        createOctokitFn: vi.fn(),
+        logger: mockLogger,
+      }),
+    ).rejects.toThrow('privateKey is required');
+  });
+
+  it('should throw when org is empty', async () => {
+    const mockLogger = {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    };
+
+    await expect(
+      lookupInstallationId({
+        appId: '12345',
+        privateKey: 'key',
+        org: '',
+        createOctokitFn: vi.fn(),
+        logger: mockLogger,
+      }),
+    ).rejects.toThrow('org is required');
+  });
+
+  it('should throw when appId is not numeric', async () => {
+    const mockLogger = {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    };
+
+    await expect(
+      lookupInstallationId({
+        appId: 'not-a-number',
+        privateKey: 'key',
+        org: 'org',
+        createOctokitFn: vi.fn(),
+        logger: mockLogger,
+      }),
+    ).rejects.toThrow('appId must be a valid numeric string');
   });
 });

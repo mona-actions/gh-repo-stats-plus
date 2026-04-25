@@ -6,8 +6,14 @@ import type { AuthConfig } from '../src/auth.js';
 // Mock external dependencies
 vi.mock('undici', () => ({
   fetch: vi.fn(),
+  Agent: vi.fn(),
   ProxyAgent: vi.fn(),
 }));
+
+import { Agent, ProxyAgent } from 'undici';
+
+const MockAgent = vi.mocked(Agent);
+const MockProxyAgent = vi.mocked(ProxyAgent);
 
 vi.mock('octokit', () => {
   const mockOctokit = {
@@ -64,62 +70,66 @@ describe('octokit', () => {
 
   describe('createOctokit', () => {
     it('should create Octokit instance with basic configuration', () => {
-      // Arrange
-      const baseUrl = 'https://api.github.com';
-
-      // Act
       const result = createOctokit(
         mockAuthConfig,
-        baseUrl,
+        'https://api.github.com',
         undefined,
         mockLogger,
       );
 
-      // Assert
       expect(result).toBeDefined();
       expect(result.hook).toBeDefined();
       expect(result.hook.after).toBeInstanceOf(Function);
       expect(result.hook.error).toBeInstanceOf(Function);
     });
 
-    it('should configure proxy when proxyUrl is provided', () => {
-      // Arrange
-      const proxyUrl = 'http://proxy.example.com:8080';
-      const baseUrl = 'https://api.github.com';
+    it('should not create any dispatcher when no proxy or caCert', () => {
+      createOctokit(
+        mockAuthConfig,
+        'https://api.github.com',
+        undefined,
+        mockLogger,
+      );
 
-      // Act & Assert - Simply test that the function doesn't throw
-      expect(() => {
-        createOctokit(mockAuthConfig, baseUrl, proxyUrl, mockLogger);
-      }).not.toThrow();
+      expect(MockAgent).not.toHaveBeenCalled();
+      expect(MockProxyAgent).not.toHaveBeenCalled();
+    });
+
+    it('should configure ProxyAgent when proxyUrl is provided', () => {
+      createOctokit(
+        mockAuthConfig,
+        'https://api.github.com',
+        'http://proxy.example.com:8080',
+        mockLogger,
+      );
+
+      expect(MockProxyAgent).toHaveBeenCalledWith(
+        'http://proxy.example.com:8080',
+      );
+      expect(MockAgent).not.toHaveBeenCalled();
     });
 
     it('should use custom fetch function when provided', () => {
-      // Arrange
       const customFetch = vi.fn();
-      const baseUrl = 'https://api.github.com';
 
-      // Act
       const result = createOctokit(
         mockAuthConfig,
-        baseUrl,
+        'https://api.github.com',
         undefined,
         mockLogger,
-        customFetch,
+        { fetch: customFetch },
       );
 
-      // Assert
       expect(result).toBeDefined();
     });
 
     it('should configure auth strategy when provided', () => {
-      // Arrange
       const mockAuthStrategy = vi.fn();
       const authConfigWithStrategy: AuthConfig = {
         authStrategy: mockAuthStrategy,
         auth: { type: 'installation', appId: 123 },
       };
 
-      // Act
       const result = createOctokit(
         authConfigWithStrategy,
         'https://api.github.com',
@@ -127,13 +137,51 @@ describe('octokit', () => {
         mockLogger,
       );
 
-      // Assert
       expect(result).toBeDefined();
+    });
+
+    it('should create Agent with CA cert when caCert is provided without proxy', () => {
+      const caCert =
+        '-----BEGIN CERTIFICATE-----\ntest\n-----END CERTIFICATE-----';
+
+      createOctokit(
+        mockAuthConfig,
+        'https://ghes.example.com/api/v3',
+        undefined,
+        mockLogger,
+        {
+          caCert,
+        },
+      );
+
+      expect(MockAgent).toHaveBeenCalledWith({ connect: { ca: caCert } });
+      expect(MockProxyAgent).not.toHaveBeenCalled();
+    });
+
+    it('should create ProxyAgent with requestTls when both proxy and caCert are provided', () => {
+      const caCert =
+        '-----BEGIN CERTIFICATE-----\ntest\n-----END CERTIFICATE-----';
+      const proxyUrl = 'http://proxy.example.com:8080';
+
+      createOctokit(
+        mockAuthConfig,
+        'https://ghes.example.com/api/v3',
+        proxyUrl,
+        mockLogger,
+        {
+          caCert,
+        },
+      );
+
+      expect(MockProxyAgent).toHaveBeenCalledWith({
+        uri: proxyUrl,
+        requestTls: { ca: caCert },
+      });
+      expect(MockAgent).not.toHaveBeenCalled();
     });
 
     describe('hook handlers', () => {
       it('should have after and error hooks configured', () => {
-        // Arrange
         const result = createOctokit(
           mockAuthConfig,
           'https://api.github.com',
@@ -141,7 +189,6 @@ describe('octokit', () => {
           mockLogger,
         );
 
-        // Assert
         expect(result.hook.after).toHaveBeenCalled();
         expect(result.hook.error).toHaveBeenCalled();
       });

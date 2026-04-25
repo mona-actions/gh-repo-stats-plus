@@ -35,7 +35,8 @@ In both cases, the `github-token` input (typically `${{ secrets.GITHUB_TOKEN }}`
 | `run-migration-audit` | Whether to run migration audit (`true`/`false`) | No | `false` |
 | `node-version` | Node.js version to use | No | `25` |
 | `base-url` | GitHub API base URL | No | `https://api.github.com` |
-| `skip-tls-verification` | Skip TLS certificate verification for the target GitHub instance (use for GHES with self-signed certs or IP-based access) | No | `false` |
+| `ca-cert` | CA certificate bundle content (PEM) for TLS verification against GHES. Use when the certificate is stored as a GitHub secret. | No | `""` |
+| `ca-cert-path` | Path to a CA certificate bundle file (PEM) on the runner. Use `ca-cert` instead when the certificate is stored as a secret. | No | `""` |
 | `retention-days` | Number of days to retain uploaded artifacts | No | `7` |
 | `batch-size` | Number of repositories per batch (enables batch processing for large organizations). Cannot be combined with `repository` — batch mode generates its own repo list. | No | `""` |
 | `batch-index` | Zero-based batch index (used with `batch-size` for parallel matrix jobs) | No | `""` |
@@ -165,6 +166,36 @@ To use with a GitHub Enterprise instance, set the `base-url` input to your GHE A
     repository: my-repo
     base-url: https://github.example.com/api/v3
 ```
+
+#### GHES with Custom CA Certificate
+
+For GHES instances that use an internal or self-signed CA certificate, provide the certificate so TLS verification works correctly. The recommended approach is to store the PEM content as a GitHub secret and pass it via the `ca-cert` input:
+
+```yaml
+- name: Gather Repository Stats (GHES with CA cert)
+  uses: mona-actions/gh-repo-stats-plus@v1
+  with:
+    github-token: ${{ github.token }}
+    access-token: ${{ secrets.GHES_TOKEN }}
+    organization: my-org
+    base-url: https://ghes.example.com/api/v3
+    ca-cert: ${{ secrets.GHES_CA_CERT }}
+```
+
+Alternatively, if the certificate file already exists on the runner (e.g., pre-installed or downloaded in an earlier step), use `ca-cert-path`:
+
+```yaml
+- name: Gather Repository Stats (GHES with CA cert file)
+  uses: mona-actions/gh-repo-stats-plus@v1
+  with:
+    github-token: ${{ github.token }}
+    access-token: ${{ secrets.GHES_TOKEN }}
+    organization: my-org
+    base-url: https://ghes.example.com/api/v3
+    ca-cert-path: /etc/ssl/certs/ghes-ca-bundle.pem
+```
+
+> **Note:** Specify either `ca-cert` or `ca-cert-path`, not both. When using `ca-cert`, the action automatically writes the content to a temporary file on the runner.
 
 ### Batch Processing (Organization)
 

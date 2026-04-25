@@ -44,6 +44,12 @@ missingReposCommand
   )
   .addOption(
     new Option(
+      '--ca-cert <path>',
+      'Path to CA certificate bundle (PEM) for TLS verification (e.g. GHES with internal CA)',
+    ).env('NODE_EXTRA_CA_CERTS'),
+  )
+  .addOption(
+    new Option(
       '--api-version <version>',
       `GitHub API version to use (${VALID_API_VERSIONS.join(' or ')})`,
     )

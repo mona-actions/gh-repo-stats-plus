@@ -13,6 +13,10 @@ vi.mock('../src/csv.js', () => ({
 vi.mock('../src/logger.js');
 vi.mock('../src/auth.js', () => ({
   createAuthConfig: vi.fn(() => ({ type: 'token', token: 'test-token' })),
+  needsInstallationLookup: vi.fn().mockReturnValue(false),
+  createAppLevelAuthConfig: vi
+    .fn()
+    .mockReturnValue({ authStrategy: vi.fn(), auth: { type: 'app' } }),
 }));
 vi.mock('../src/octokit.js');
 vi.mock('../src/service.js');

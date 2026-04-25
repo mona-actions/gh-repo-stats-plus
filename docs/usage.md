@@ -44,9 +44,10 @@ gh repo-stats-plus repo-stats --org-name my-org --resume-from-last-save
 gh repo-stats-plus repo-stats \
   --org-name my-org \
   --app-id YOUR_APP_ID \
-  --private-key-file key.pem \
-  --app-installation-id INSTALLATION_ID
+  --private-key-file key.pem
 ```
+
+> **Note:** `--app-installation-id` is optional. When omitted, the CLI automatically looks up the installation ID via the GitHub API. You can still provide it explicitly to skip the lookup.
 
 ### Process Missing Repositories
 
@@ -132,7 +133,16 @@ When using GitHub CLI authentication, you can use your personal access token. Th
 
 ### GitHub App Authentication
 
-For GitHub App authentication, you can pass additional parameters:
+For GitHub App authentication, provide your App ID and private key:
+
+```bash
+gh repo-stats-plus repo-stats \
+  --org-name myorg \
+  --app-id 12345 \
+  --private-key-file /path/to/key.pem
+```
+
+The `--app-installation-id` flag is optional. When omitted, the CLI automatically looks up the installation ID for the target organization using the GitHub API. If you already know the installation ID, you can provide it explicitly to skip the lookup:
 
 ```bash
 gh repo-stats-plus repo-stats \
@@ -143,6 +153,38 @@ gh repo-stats-plus repo-stats \
 ```
 
 ## Working with Large Organizations
+
+### GitHub Enterprise Server (GHES)
+
+When connecting to a GHES instance with an internal or self-signed CA certificate, provide the CA certificate bundle so TLS verification works correctly:
+
+```bash
+gh repo-stats-plus repo-stats \
+  --org-name my-org \
+  --base-url https://ghes.example.com/api/v3 \
+  --ca-cert /path/to/ca-bundle.pem
+```
+
+Alternatively, set the `NODE_EXTRA_CA_CERTS` environment variable:
+
+```bash
+export NODE_EXTRA_CA_CERTS=/path/to/ca-bundle.pem
+gh repo-stats-plus repo-stats \
+  --org-name my-org \
+  --base-url https://ghes.example.com/api/v3
+```
+
+When using the GitHub Action, the recommended approach is to store the PEM content as a GitHub secret and pass it via the `ca-cert` input:
+
+```yaml
+- uses: mona-actions/gh-repo-stats-plus@v1
+  with:
+    github-token: ${{ github.token }}
+    access-token: ${{ secrets.GHES_TOKEN }}
+    organization: my-org
+    base-url: https://ghes.example.com/api/v3
+    ca-cert: ${{ secrets.GHES_CA_CERT }}
+```
 
 For organizations with many repositories, consider these best practices:
 
