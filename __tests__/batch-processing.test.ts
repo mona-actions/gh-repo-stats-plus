@@ -4,6 +4,8 @@ import { createMockLogger } from './test-utils.js';
 // Mock fs module
 vi.mock('fs');
 
+import { existsSync, readFileSync } from 'fs';
+
 import { getRepoListForBatch } from '../src/main.js';
 import repoStatsCommand from '../src/commands/repo-stats-command.js';
 import projectStatsCommand from '../src/commands/project-stats-command.js';
@@ -213,6 +215,179 @@ describe('getRepoListForBatch', () => {
   });
 });
 
+describe('getRepoListForBatch with repoListFile', () => {
+  let logger: ReturnType<typeof createMockLogger>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    logger = createMockLogger();
+  });
+
+  it('should read repos from file and skip listOrgRepoNames', async () => {
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(readFileSync).mockReturnValue(
+      'test-org/alpha\ntest-org/bravo\ntest-org/charlie\n',
+    );
+    const client = createMockClient(['should-not-be-used']);
+
+    const result = await getRepoListForBatch({
+      client,
+      orgName: 'test-org',
+      batchSize: 2,
+      batchIndex: 0,
+      pageSize: 10,
+      logger,
+      repoListFile: '/tmp/repos.txt',
+    });
+
+    expect(result).toEqual(['test-org/alpha', 'test-org/bravo']);
+    expect(client.listOrgRepoNames).not.toHaveBeenCalled();
+  });
+
+  it('should slice the second batch from a file', async () => {
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(readFileSync).mockReturnValue(
+      'test-org/alpha\ntest-org/bravo\ntest-org/charlie\ntest-org/delta\n',
+    );
+    const client = createMockClient([]);
+
+    const result = await getRepoListForBatch({
+      client,
+      orgName: 'test-org',
+      batchSize: 2,
+      batchIndex: 1,
+      pageSize: 10,
+      logger,
+      repoListFile: '/tmp/repos.txt',
+    });
+
+    expect(result).toEqual(['test-org/charlie', 'test-org/delta']);
+  });
+
+  it('should accept bare repo names and prefix them with orgName', async () => {
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(readFileSync).mockReturnValue('alpha\nbravo\ncharlie\n');
+    const client = createMockClient([]);
+
+    const result = await getRepoListForBatch({
+      client,
+      orgName: 'test-org',
+      batchSize: 10,
+      batchIndex: 0,
+      pageSize: 10,
+      logger,
+      repoListFile: '/tmp/repos.txt',
+    });
+
+    expect(result).toEqual([
+      'test-org/alpha',
+      'test-org/bravo',
+      'test-org/charlie',
+    ]);
+  });
+
+  it('should ignore blank lines and comments', async () => {
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(readFileSync).mockReturnValue(
+      '# header comment\ntest-org/alpha\n\n# spacer\ntest-org/bravo\n',
+    );
+    const client = createMockClient([]);
+
+    const result = await getRepoListForBatch({
+      client,
+      orgName: 'test-org',
+      batchSize: 10,
+      batchIndex: 0,
+      pageSize: 10,
+      logger,
+      repoListFile: '/tmp/repos.txt',
+    });
+
+    expect(result).toEqual(['test-org/alpha', 'test-org/bravo']);
+  });
+
+  it('should skip entries whose owner does not match orgName and warn', async () => {
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(readFileSync).mockReturnValue(
+      'test-org/alpha\nother-org/bravo\ntest-org/charlie\n',
+    );
+    const client = createMockClient([]);
+
+    const result = await getRepoListForBatch({
+      client,
+      orgName: 'test-org',
+      batchSize: 10,
+      batchIndex: 0,
+      pageSize: 10,
+      logger,
+      repoListFile: '/tmp/repos.txt',
+    });
+
+    expect(result).toEqual(['test-org/alpha', 'test-org/charlie']);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining("does not match --org-name 'test-org'"),
+    );
+  });
+
+  it('should be case-insensitive on owner match', async () => {
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(readFileSync).mockReturnValue('Test-Org/alpha\nTEST-ORG/bravo\n');
+    const client = createMockClient([]);
+
+    const result = await getRepoListForBatch({
+      client,
+      orgName: 'test-org',
+      batchSize: 10,
+      batchIndex: 0,
+      pageSize: 10,
+      logger,
+      repoListFile: '/tmp/repos.txt',
+    });
+
+    expect(result).toEqual(['Test-Org/alpha', 'TEST-ORG/bravo']);
+  });
+
+  it('should throw when the file does not exist', async () => {
+    vi.mocked(existsSync).mockReturnValue(false);
+    const client = createMockClient([]);
+
+    await expect(
+      getRepoListForBatch({
+        client,
+        orgName: 'test-org',
+        batchSize: 10,
+        batchIndex: 0,
+        pageSize: 10,
+        logger,
+        repoListFile: '/tmp/missing.txt',
+      }),
+    ).rejects.toThrow(/Batch repo list file not found/);
+  });
+
+  it('should warn on malformed entries and continue', async () => {
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(readFileSync).mockReturnValue(
+      'test-org/alpha\ntoo/many/slashes\n/empty-owner\nowner/\ntest-org/bravo\n',
+    );
+    const client = createMockClient([]);
+
+    const result = await getRepoListForBatch({
+      client,
+      orgName: 'test-org',
+      batchSize: 10,
+      batchIndex: 0,
+      pageSize: 10,
+      logger,
+      repoListFile: '/tmp/repos.txt',
+    });
+
+    expect(result).toEqual(['test-org/alpha', 'test-org/bravo']);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('malformed entry'),
+    );
+  });
+});
+
 describe('repo-stats-command batch options', () => {
   it('should have batch-size option defined', () => {
     const options = repoStatsCommand.options;
@@ -243,6 +418,18 @@ describe('repo-stats-command batch options', () => {
       (opt) => opt.long === '--batch-index',
     );
     expect(batchIndexOption?.envVar).toBe('BATCH_INDEX');
+  });
+
+  it('should have batch-repo-list-file option defined', () => {
+    const optionNames = repoStatsCommand.options.map((opt) => opt.long);
+    expect(optionNames).toContain('--batch-repo-list-file');
+  });
+
+  it('should map BATCH_REPO_LIST_FILE env var', () => {
+    const opt = repoStatsCommand.options.find(
+      (o) => o.long === '--batch-repo-list-file',
+    );
+    expect(opt?.envVar).toBe('BATCH_REPO_LIST_FILE');
   });
 });
 
@@ -294,5 +481,10 @@ describe('project-stats-command batch options', () => {
       (opt) => opt.long === '--batch-delay',
     );
     expect(batchDelayOption?.envVar).toBe('BATCH_DELAY');
+  });
+
+  it('should have batch-repo-list-file option defined', () => {
+    const optionNames = projectStatsCommand.options.map((opt) => opt.long);
+    expect(optionNames).toContain('--batch-repo-list-file');
   });
 });

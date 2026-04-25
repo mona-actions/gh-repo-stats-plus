@@ -162,6 +162,7 @@ async function processProjectStats({
       batchIndex: opts.batchIndex ?? 0,
       pageSize: opts.pageSize || 100,
       logger,
+      repoListFile: opts.batchRepoListFile,
     });
 
     if (batchRepos.length === 0) {

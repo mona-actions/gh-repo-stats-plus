@@ -48,6 +48,12 @@ function validate(opts: Arguments) {
       );
     }
   }
+
+  if (opts.batchRepoListFile && opts.batchSize == null) {
+    throw new Error(
+      '--batch-repo-list-file requires --batch-size. Use --repo-list instead if you want to process a flat list of repos without batching.',
+    );
+  }
 }
 
 const projectStatsCommand = new commander.Command();
@@ -271,6 +277,12 @@ projectStatsCommand
       .env('BATCH_DELAY')
       .default(0)
       .argParser(parseIntOption),
+  )
+  .addOption(
+    new Option(
+      '--batch-repo-list-file <file>',
+      "Path to a pre-fetched repository list (one entry per line, 'owner/repo' or bare repo name). When provided with --batch-size, batches read from this file instead of paginating the org's repos for every batch. Useful for large parallel matrix runs to avoid exhausting the installation rate limit.",
+    ).env('BATCH_REPO_LIST_FILE'),
   )
   .action(async (options: Arguments) => {
     console.log('Version:', VERSION);

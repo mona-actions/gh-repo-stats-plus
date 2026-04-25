@@ -25,6 +25,7 @@ import {
   unlinkSync,
   writeFileSync,
 } from 'fs';
+import { resolve } from 'path';
 
 import { withRetry, RetryConfig } from './retry.js';
 import {
@@ -286,8 +287,16 @@ export function initializeCsvFile(fileName: string, logger: Logger): void {
 }
 
 /**
- * Fetches the full list of repository names for an organization using a
- * lightweight GraphQL query, then returns the slice for the requested batch.
+ * Returns the slice of an organization's repository list for the requested
+ * batch.
+ *
+ * By default, fetches the full list of repository names via a lightweight
+ * GraphQL query. When `repoListFile` is provided, reads the list from that
+ * file instead — useful for parallel matrix runs that would otherwise have
+ * every batch re-paginate the same org list and exhaust the installation
+ * rate limit. The file format is one entry per line, either bare repo
+ * names (combined with `orgName`) or `owner/repo` pairs; blank lines and
+ * lines starting with `#` are ignored.
  *
  * Logs the total repository count and batch count so users know how many
  * batches to run.
@@ -299,6 +308,7 @@ export async function getRepoListForBatch({
   batchIndex,
   pageSize,
   logger,
+  repoListFile,
 }: {
   client: Pick<OctokitClient, 'listOrgRepoNames'>;
   orgName: string;
@@ -306,14 +316,23 @@ export async function getRepoListForBatch({
   batchIndex: number;
   pageSize: number;
   logger: Logger;
+  repoListFile?: string;
 }): Promise<string[]> {
-  logger.info(
-    `Batch mode: fetching repository list for org '${orgName}' (batch size: ${batchSize}, batch index: ${batchIndex})`,
-  );
+  let allRepos: string[];
 
-  const allRepos: string[] = [];
-  for await (const repo of client.listOrgRepoNames(orgName, pageSize)) {
-    allRepos.push(`${repo.owner.login}/${repo.name}`);
+  if (repoListFile) {
+    logger.info(
+      `Batch mode: reading repository list from file '${repoListFile}' for org '${orgName}' (batch size: ${batchSize}, batch index: ${batchIndex})`,
+    );
+    allRepos = readRepoListFromFile(repoListFile, orgName, logger);
+  } else {
+    logger.info(
+      `Batch mode: fetching repository list for org '${orgName}' (batch size: ${batchSize}, batch index: ${batchIndex})`,
+    );
+    allRepos = [];
+    for await (const repo of client.listOrgRepoNames(orgName, pageSize)) {
+      allRepos.push(`${repo.owner.login}/${repo.name}`);
+    }
   }
 
   const totalRepos = allRepos.length;
@@ -346,6 +365,68 @@ export async function getRepoListForBatch({
   );
 
   return batchRepos;
+}
+
+/**
+ * Reads a repo list file and normalises every entry to `owner/repo` form.
+ * Each non-empty, non-comment line is either a bare repo name (combined
+ * with `orgName`) or already in `owner/repo` form. Entries that do not
+ * match `orgName` are dropped with a warning so a misplaced list cannot
+ * silently process the wrong organization.
+ */
+function readRepoListFromFile(
+  filePath: string,
+  orgName: string,
+  logger: Logger,
+): string[] {
+  const resolved = resolve(process.cwd(), filePath);
+  if (!existsSync(resolved)) {
+    throw new Error(`Batch repo list file not found: ${filePath}`);
+  }
+
+  const raw = readFileSync(resolved, 'utf-8');
+  const result: string[] = [];
+  let skipped = 0;
+
+  for (const rawLine of raw.split('\n')) {
+    const line = rawLine.trim();
+    if (line === '' || line.startsWith('#')) continue;
+
+    let owner: string;
+    let repo: string;
+    if (line.includes('/')) {
+      const parts = line.split('/');
+      if (parts.length !== 2 || !parts[0] || !parts[1]) {
+        logger.warn(
+          `Skipping malformed entry in repo list file: '${rawLine}' (expected 'owner/repo' or bare repo name)`,
+        );
+        skipped++;
+        continue;
+      }
+      [owner, repo] = parts;
+    } else {
+      owner = orgName;
+      repo = line;
+    }
+
+    if (owner.toLowerCase() !== orgName.toLowerCase()) {
+      logger.warn(
+        `Skipping entry '${rawLine}' from repo list file: owner '${owner}' does not match --org-name '${orgName}'`,
+      );
+      skipped++;
+      continue;
+    }
+
+    result.push(`${owner}/${repo}`);
+  }
+
+  if (skipped > 0) {
+    logger.warn(
+      `Skipped ${skipped} entr${skipped === 1 ? 'y' : 'ies'} from repo list file '${filePath}'`,
+    );
+  }
+
+  return result;
 }
 
 async function analyzeRepositoryStats({
@@ -610,6 +691,7 @@ async function processRepositories({
       batchIndex: opts.batchIndex ?? 0,
       pageSize: opts.pageSize || 10,
       logger,
+      repoListFile: opts.batchRepoListFile,
     });
 
     if (batchRepos.length === 0) {

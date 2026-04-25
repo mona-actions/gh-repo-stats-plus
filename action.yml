@@ -77,6 +77,10 @@ inputs:
     description: "Delay in seconds multiplied by batch index to stagger API requests and avoid rate limits"
     required: false
     default: ""
+  batch-repo-list-file:
+    description: "Path to a pre-fetched repository list file (one entry per line, 'owner/repo' or bare repo name). When provided alongside batch-size, batches read from this file instead of paginating the org's repos for every batch. Useful for large parallel matrix runs to avoid exhausting the GitHub App installation rate limit."
+    required: false
+    default: ""
   resume-from-last-save:
     description: "Resume from the last saved state. Automatically enabled when re-running failed jobs (run_attempt > 1). Downloads state artifact from a previous attempt and passes --resume-from-last-save to the CLI."
     required: false
@@ -450,6 +454,7 @@ runs:
         BATCH_SIZE: ${{ inputs.batch-size }}
         BATCH_INDEX: ${{ inputs.batch-index }}
         BATCH_DELAY: ${{ inputs.batch-delay }}
+        BATCH_REPO_LIST_FILE: ${{ inputs.batch-repo-list-file }}
         RESUME: ${{ steps.resolve-resume.outputs.resume }}
       run: |
         BATCH_ARGS=()
@@ -470,6 +475,17 @@ runs:
           BATCH_ARGS+=(--batch-delay "${BATCH_DELAY}")
         else
           unset BATCH_DELAY
+        fi
+        if [[ -n "${BATCH_REPO_LIST_FILE}" ]]; then
+          if [[ -z "${BATCH_SIZE}" ]]; then
+            echo "::error::batch-repo-list-file requires batch-size. Set the batch-size input or remove batch-repo-list-file."
+            exit 1
+          fi
+          if [[ ! -f "${BATCH_REPO_LIST_FILE}" ]]; then
+            echo "::error::batch-repo-list-file '${BATCH_REPO_LIST_FILE}' does not exist on the runner. Make sure the file is created (e.g. by a previous job + actions/download-artifact) before this step runs."
+            exit 1
+          fi
+          BATCH_ARGS+=(--batch-repo-list-file "${BATCH_REPO_LIST_FILE}")
         fi
 
         REPO_LIST_ARGS=()
@@ -518,6 +534,7 @@ runs:
         BATCH_SIZE: ${{ inputs.batch-size }}
         BATCH_INDEX: ${{ inputs.batch-index }}
         BATCH_DELAY: ${{ inputs.batch-delay }}
+        BATCH_REPO_LIST_FILE: ${{ inputs.batch-repo-list-file }}
         RESUME: ${{ steps.resolve-resume.outputs.resume }}
       run: |
         BATCH_ARGS=()
@@ -538,6 +555,17 @@ runs:
           BATCH_ARGS+=(--batch-delay "${BATCH_DELAY}")
         else
           unset BATCH_DELAY
+        fi
+        if [[ -n "${BATCH_REPO_LIST_FILE}" ]]; then
+          if [[ -z "${BATCH_SIZE}" ]]; then
+            echo "::error::batch-repo-list-file requires batch-size. Set the batch-size input or remove batch-repo-list-file."
+            exit 1
+          fi
+          if [[ ! -f "${BATCH_REPO_LIST_FILE}" ]]; then
+            echo "::error::batch-repo-list-file '${BATCH_REPO_LIST_FILE}' does not exist on the runner."
+            exit 1
+          fi
+          BATCH_ARGS+=(--batch-repo-list-file "${BATCH_REPO_LIST_FILE}")
         fi
 
         REPO_LIST_ARGS=()
