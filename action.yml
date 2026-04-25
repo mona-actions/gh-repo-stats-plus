@@ -167,15 +167,15 @@ outputs:
   matrix:
     description: "JSON matrix object for strategy.matrix (contains batch-index array). Only set when type is 'org-repos' and batch-size is provided."
     value: ${{ steps.org-repos.outputs.matrix }}
-  batch_size:
+  batch-size:
     description: "Effective batch size (may be increased if repo count exceeds max-batches). Only set when type is 'org-repos' and batch-size is provided."
-    value: ${{ steps.org-repos.outputs.batch_size }}
-  repo_count:
+    value: ${{ steps.org-repos.outputs.batch-size }}
+  repo-count:
     description: "Total number of repositories found. Only set when type is 'org-repos'."
-    value: ${{ steps.org-repos.outputs.repo_count }}
+    value: ${{ steps.org-repos.outputs.repo-count }}
   repo-list-file:
     description: "Absolute path to the repo list file written by org-repos (one owner/repo per line). Only set when type is 'org-repos'."
-    value: ${{ steps.org-repos.outputs.repo_list_file }}
+    value: ${{ steps.org-repos.outputs.repo-list-file }}
 
 runs:
   using: "composite"
@@ -435,19 +435,47 @@ runs:
           ORG_REPOS_ARGS+=(--batch-size "${BATCH_SIZE}")
         fi
 
-        OUTPUT=$(gh repo-stats-plus org-repos "${ORG_REPOS_ARGS[@]}")
+        ORG_REPOS_STDOUT_FILE="$(mktemp)"
+        trap 'rm -f "${ORG_REPOS_STDOUT_FILE}"' EXIT
 
-        # Extract repo count from stdout
-        REPO_COUNT=$(echo "${OUTPUT}" | grep -c '/' || echo "0")
-        echo "repo_count=${REPO_COUNT}" >> "$GITHUB_OUTPUT"
-        echo "repo_list_file=${{ github.workspace }}/repos.txt" >> "$GITHUB_OUTPUT"
+        gh repo-stats-plus org-repos "${ORG_REPOS_ARGS[@]}" > "${ORG_REPOS_STDOUT_FILE}"
+
+        # Count repositories from the written repo list file instead of stdout,
+        # because stdout may contain non-repository lines with '/' characters.
+        REPO_LIST_FILE="${{ github.workspace }}/repos.txt"
+        if [[ -f "${REPO_LIST_FILE}" ]]; then
+          REPO_COUNT=$(wc -l < "${REPO_LIST_FILE}")
+        else
+          REPO_COUNT=0
+        fi
+        echo "repo-count=${REPO_COUNT}" >> "$GITHUB_OUTPUT"
+        echo "repo-list-file=${REPO_LIST_FILE}" >> "$GITHUB_OUTPUT"
 
         # If batch-size was provided, parse the matrix from CLI output
         if [[ -n "${BATCH_SIZE}" ]]; then
-          MATRIX_LINE=$(echo "${OUTPUT}" | grep '  Matrix:' | sed 's/.*Matrix: *//')
-          BATCH_SIZE_LINE=$(echo "${OUTPUT}" | grep '  Batch size:' | sed 's/.*Batch size: *//')
+          MATRIX_RAW_LINE=$(grep -m 1 '  Matrix:' "${ORG_REPOS_STDOUT_FILE}" || true)
+          BATCH_SIZE_RAW_LINE=$(grep -m 1 '  Batch size:' "${ORG_REPOS_STDOUT_FILE}" || true)
+
+          if [[ -z "${MATRIX_RAW_LINE}" ]] || [[ -z "${BATCH_SIZE_RAW_LINE}" ]]; then
+            echo "::error::Failed to parse matrix or batch size from gh repo-stats-plus org-repos output. The CLI output format may have changed."
+            exit 1
+          fi
+
+          MATRIX_LINE=$(echo "${MATRIX_RAW_LINE}" | sed 's/.*Matrix: *//')
+          BATCH_SIZE_LINE=$(echo "${BATCH_SIZE_RAW_LINE}" | sed 's/.*Batch size: *//')
+
+          if [[ -z "${MATRIX_LINE}" ]] || [[ -z "${BATCH_SIZE_LINE}" ]]; then
+            echo "::error::Parsed matrix or batch size was empty. Raw matrix line: '${MATRIX_RAW_LINE}'. Raw batch size line: '${BATCH_SIZE_RAW_LINE}'."
+            exit 1
+          fi
+
+          [[ "${BATCH_SIZE_LINE}" =~ ^[0-9]+$ ]] && [[ "${BATCH_SIZE_LINE}" -ge 1 ]] || {
+            echo "::error::Parsed batch size '${BATCH_SIZE_LINE}' is invalid."
+            exit 1
+          }
+
           echo "matrix=${MATRIX_LINE}" >> "$GITHUB_OUTPUT"
-          echo "batch_size=${BATCH_SIZE_LINE}" >> "$GITHUB_OUTPUT"
+          echo "batch-size=${BATCH_SIZE_LINE}" >> "$GITHUB_OUTPUT"
           echo "✅ Batch matrix computed: ${REPO_COUNT} repos"
         fi
 
