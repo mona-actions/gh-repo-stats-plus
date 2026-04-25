@@ -13,6 +13,7 @@ import codespaceStatsCommand from './commands/codespace-stats-command.js';
 import combineStatsCommand from './commands/combine-stats-command.js';
 import postProcessCommand from './commands/post-process-command.js';
 import rowsToColumnsCommand from './commands/rows-to-columns-command.js';
+import orgReposCommand from './commands/org-repos-command.js';
 
 const program = new commander.Command();
 
@@ -29,6 +30,7 @@ program
   .addCommand(codespaceStatsCommand)
   .addCommand(combineStatsCommand)
   .addCommand(postProcessCommand)
-  .addCommand(rowsToColumnsCommand);
+  .addCommand(rowsToColumnsCommand)
+  .addCommand(orgReposCommand);
 
 program.parse(process.argv);

@@ -53,6 +53,11 @@ export function generatePackageStatsFileName(orgName: string): string {
   return `${orgName.toLowerCase()}-package-stats-${timestamp}_ts.csv`;
 }
 
+export function generateOrgReposFileName(orgName: string): string {
+  const timestamp = generateTimestamp();
+  return `${orgName.toLowerCase()}-repos-${timestamp}.txt`;
+}
+
 /**
  * Converts kilobytes to megabytes
  * @param kb Size in kilobytes, can be null or undefined
