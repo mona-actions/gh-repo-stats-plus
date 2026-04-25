@@ -83,6 +83,9 @@ export interface Arguments {
 
   // GitHub API version
   apiVersion?: string;
+
+  // org-repos options
+  maxBatches?: number;
 }
 
 export type AuthResponse = {
