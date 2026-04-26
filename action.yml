@@ -862,8 +862,21 @@ runs:
         GH_TOKEN: ${{ inputs.github-token }}
         OUTPUT_DIR: ${{ steps.setup-paths.outputs.output_dir }}
       run: |
+        # Collect CSV files into an array to handle 0 or 1 match gracefully
+        CSV_FILES=()
+        while IFS= read -r -d '' f; do
+          CSV_FILES+=("$f")
+        done < <(find "${OUTPUT_DIR}" -maxdepth 1 -name "*.csv" -print0 2>/dev/null)
+
+        CSV_COUNT=${#CSV_FILES[@]}
+
+        if [[ ${CSV_COUNT} -lt 2 ]]; then
+          echo "⚠ Found ${CSV_COUNT} CSV file(s) in ${OUTPUT_DIR} — at least 2 are required to combine. Skipping combine step."
+          exit 0
+        fi
+
         gh repo-stats-plus combine-stats \
-          --files "${OUTPUT_DIR}"/*.csv \
+          --files "${CSV_FILES[@]}" \
           --output-dir "${OUTPUT_DIR}" \
           --output-file-name combined-stats.csv
 
