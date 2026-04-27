@@ -871,7 +871,7 @@ runs:
         CSV_COUNT=${#CSV_FILES[@]}
 
         if [[ ${CSV_COUNT} -lt 2 ]]; then
-          echo "⚠ Found ${CSV_COUNT} CSV file(s) in ${OUTPUT_DIR} — at least 2 are required to combine. Skipping combine step."
+          echo "::warning::Found ${CSV_COUNT} CSV file(s) in ${OUTPUT_DIR} - at least 2 are required to combine. Skipping combine step."
           exit 0
         fi
 
