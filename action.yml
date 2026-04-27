@@ -863,10 +863,11 @@ runs:
         OUTPUT_DIR: ${{ steps.setup-paths.outputs.output_dir }}
       run: |
         # Collect CSV files into an array to handle 0 or 1 match gracefully
+        # Sort the discovered paths so combine order is deterministic.
         CSV_FILES=()
         while IFS= read -r -d '' f; do
           CSV_FILES+=("$f")
-        done < <(find "${OUTPUT_DIR}" -maxdepth 1 -name "*.csv" -print0 2>/dev/null)
+        done < <(find "${OUTPUT_DIR}" -maxdepth 1 -name "*.csv" -print0 2>/dev/null | sort -z)
 
         CSV_COUNT=${#CSV_FILES[@]}
 
