@@ -17,6 +17,7 @@ fi
 
 # Validate Node.js version against the engines.node field in package.json.
 # This avoids hardcoding version numbers — package.json is the single source of truth.
+echo "Checking Node.js version..."
 NODE_CHECK=$(node -e '
 var fs = require("fs");
 var path = require("path");
@@ -135,6 +136,7 @@ if (!satisfied) {
   process.exit(1);
 }
 ' "$SCRIPT_DIR" 2>&1) || { echo "$NODE_CHECK"; exit 1; }
+echo "Node.js $(node --version) - OK"
 
 # Check if npm is available
 if ! command -v npm >/dev/null 2>&1; then
