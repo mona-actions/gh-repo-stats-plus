@@ -11,7 +11,26 @@ cd "$SCRIPT_DIR"
 # Check if Node.js is available
 if ! command -v node >/dev/null 2>&1; then
     echo "Error: Node.js is required but not installed."
-    echo "Please install Node.js and try again."
+    echo "Please install Node.js (v22.19.0+ or v24+) and try again."
+    exit 1
+fi
+
+# Check Node.js version meets minimum requirement (^22.19.0 || >=24)
+NODE_VERSION=$(node -v | sed 's/^v//')
+NODE_MAJOR=$(echo "$NODE_VERSION" | cut -d. -f1)
+NODE_MINOR=$(echo "$NODE_VERSION" | cut -d. -f2)
+
+VERSION_OK=false
+if [ "$NODE_MAJOR" -ge 24 ]; then
+    VERSION_OK=true
+elif [ "$NODE_MAJOR" -eq 22 ] && [ "$NODE_MINOR" -ge 19 ]; then
+    VERSION_OK=true
+fi
+
+if [ "$VERSION_OK" = false ]; then
+    echo "Error: Node.js v${NODE_VERSION} is not supported."
+    echo "This extension requires Node.js v22.19.0+ or v24+."
+    echo "Please upgrade Node.js and try again: https://nodejs.org/"
     exit 1
 fi
 
