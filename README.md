@@ -501,7 +501,7 @@ See the [Development Guide](docs/development.md) for detailed setup instructions
 
 ## Requirements
 
-- **Node.js** 20 or later
+- **Node.js** 22.19.0+ or 24+ (required for `undici` dependency)
 - **GitHub CLI** (latest version recommended)
 - **GitHub Authentication** (personal token, GitHub App, or GitHub CLI)
 

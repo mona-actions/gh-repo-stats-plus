@@ -11,9 +11,132 @@ cd "$SCRIPT_DIR"
 # Check if Node.js is available
 if ! command -v node >/dev/null 2>&1; then
     echo "Error: Node.js is required but not installed."
-    echo "Please install Node.js and try again."
+    echo "Please install Node.js and try again: https://nodejs.org/"
     exit 1
 fi
+
+# Validate Node.js version against the engines.node field in package.json.
+# This avoids hardcoding version numbers — package.json is the single source of truth.
+echo "Checking Node.js version..."
+NODE_CHECK=$(node -e '
+var fs = require("fs");
+var path = require("path");
+var pkg = JSON.parse(fs.readFileSync(path.join(process.argv[1], "package.json"), "utf8"));
+var required = pkg.engines && pkg.engines.node;
+if (!required) process.exit(0);
+
+function parseVersion(version) {
+  var match = String(version).trim().match(/^(\d+)(?:\.(\d+))?(?:\.(\d+))?$/);
+  if (!match) return null;
+  return [
+    Number(match[1]),
+    Number(match[2] || 0),
+    Number(match[3] || 0)
+  ];
+}
+
+function compareVersions(left, right) {
+  for (var i = 0; i < 3; i += 1) {
+    if (left[i] < right[i]) return -1;
+    if (left[i] > right[i]) return 1;
+  }
+  return 0;
+}
+
+function evaluateComparator(currentVersion, comparator) {
+  var trimmed = comparator.trim();
+  if (!trimmed) return true;
+
+  var operatorMatch = trimmed.match(/^(\^|>=|<=|>|<)?\s*(\d+(?:\.\d+){0,2})$/);
+  if (!operatorMatch) {
+    return null;
+  }
+
+  var operator = operatorMatch[1] || "=";
+  var targetVersion = parseVersion(operatorMatch[2]);
+  if (!targetVersion) {
+    return null;
+  }
+
+  var comparison = compareVersions(currentVersion, targetVersion);
+
+  if (operator === "=") return comparison === 0;
+  if (operator === ">") return comparison > 0;
+  if (operator === ">=") return comparison >= 0;
+  if (operator === "<") return comparison < 0;
+  if (operator === "<=") return comparison <= 0;
+  if (operator === "^") {
+    var upperBound = [targetVersion[0] + 1, 0, 0];
+    return compareVersions(currentVersion, targetVersion) >= 0 &&
+      compareVersions(currentVersion, upperBound) < 0;
+  }
+
+  return null;
+}
+
+function hasUnsupportedSyntax(rangeExpression) {
+  // Detects: hyphen ranges (x - y), tilde (~), asterisk (*), and x/X wildcards
+  return /(^|[^|])-(?=[^|]|$)|[~*xX]/.test(rangeExpression);
+}
+
+function humanizeRange(range) {
+  return range.trim().split(/\s+/).filter(Boolean).map(function(p) {
+    var caret = p.match(/^\^(\d+(?:\.\d+){0,2})$/);
+    if (caret) return caret[1] + "+";
+    var gte = p.match(/^>=(\d+(?:\.\d+){0,2})$/);
+    if (gte) return gte[1] + "+";
+    return p;
+  }).join(" ");
+}
+
+var currentVersion = parseVersion(process.versions.node);
+if (!currentVersion) {
+  console.error("Error: Unable to parse current Node.js version: " + process.versions.node);
+  process.exit(1);
+}
+
+if (hasUnsupportedSyntax(required)) {
+  console.error("Error: Unsupported engines.node syntax in package.json: " + required);
+  console.error("This launcher supports exact versions plus ^, >, >=, <, <=, whitespace-separated comparator sets, and ||.");
+  console.error("Please update the version check to match package.json before releasing this change.");
+  process.exit(1);
+}
+
+var ranges = required.split("||").map(function(range) {
+  return range.trim();
+}).filter(Boolean);
+
+var unsupportedComparator = null;
+var satisfied = ranges.some(function(range) {
+  var comparators = range.split(/\s+/).filter(Boolean);
+  if (comparators.length === 0) return false;
+
+  return comparators.every(function(comparator) {
+    var result = evaluateComparator(currentVersion, comparator);
+    if (result === null) {
+      unsupportedComparator = comparator;
+      return false;
+    }
+    return result;
+  });
+});
+
+if (unsupportedComparator) {
+  console.error("Error: Unsupported engines.node comparator in package.json: " + unsupportedComparator);
+  console.error("Full engines.node value: " + required);
+  console.error("Please update the version check to support this syntax before releasing this change.");
+  process.exit(1);
+}
+
+if (!satisfied) {
+  var humanReadable = required.split("||").map(humanizeRange).join(" or ");
+  console.error("Error: Node.js v" + process.versions.node + " is not supported.");
+  console.error("This extension requires Node.js " + humanReadable + " (semver: " + required + ")");
+  console.error("Please upgrade Node.js and try again: https://nodejs.org/");
+  process.exit(1);
+}
+' "$SCRIPT_DIR" 2>&1) || { echo "$NODE_CHECK"; exit 1; }
+echo "Node.js $(node --version) - OK"
 
 # Check if npm is available
 if ! command -v npm >/dev/null 2>&1; then
