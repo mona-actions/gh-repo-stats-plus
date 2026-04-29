@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - **GitHub CLI**: [Install the GitHub CLI](https://cli.github.com/) (version 2.0 or later)
-- **Node.js**: Version 22.19.0 or later ([Download Node.js](https://nodejs.org/))
+- **Node.js**: Version 22.19.0+ or 24+ ([Download Node.js](https://nodejs.org/))
 
 ## Installation
 
