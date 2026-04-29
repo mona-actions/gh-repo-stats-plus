@@ -11,28 +11,38 @@ cd "$SCRIPT_DIR"
 # Check if Node.js is available
 if ! command -v node >/dev/null 2>&1; then
     echo "Error: Node.js is required but not installed."
-    echo "Please install Node.js (v22.19.0+ or v24+) and try again."
+    echo "Please install Node.js and try again: https://nodejs.org/"
     exit 1
 fi
 
-# Check Node.js version meets minimum requirement (^22.19.0 || >=24)
-NODE_VERSION=$(node -v | sed 's/^v//')
-NODE_MAJOR=$(echo "$NODE_VERSION" | cut -d. -f1)
-NODE_MINOR=$(echo "$NODE_VERSION" | cut -d. -f2)
-
-VERSION_OK=false
-if [ "$NODE_MAJOR" -ge 24 ]; then
-    VERSION_OK=true
-elif [ "$NODE_MAJOR" -eq 22 ] && [ "$NODE_MINOR" -ge 19 ]; then
-    VERSION_OK=true
-fi
-
-if [ "$VERSION_OK" = false ]; then
-    echo "Error: Node.js v${NODE_VERSION} is not supported."
-    echo "This extension requires Node.js v22.19.0+ or v24+."
-    echo "Please upgrade Node.js and try again: https://nodejs.org/"
-    exit 1
-fi
+# Validate Node.js version against the engines.node field in package.json.
+# This avoids hardcoding version numbers — package.json is the single source of truth.
+NODE_CHECK=$(node -e '
+var fs = require("fs");
+var path = require("path");
+var pkg = JSON.parse(fs.readFileSync(path.join(process.argv[1], "package.json"), "utf8"));
+var required = pkg.engines && pkg.engines.node;
+if (!required) process.exit(0);
+var parts = process.versions.node.split(".");
+var major = Number(parts[0]), minor = Number(parts[1]), patch = Number(parts[2]);
+var ranges = required.split("||").map(function(r) { return r.trim(); });
+var satisfied = ranges.some(function(range) {
+  var caret = range.match(/\^(\d+)\.(\d+)\.(\d+)/);
+  if (caret) {
+    var rMaj = Number(caret[1]), rMin = Number(caret[2]), rPatch = Number(caret[3]);
+    return major === rMaj && (minor > rMin || (minor === rMin && patch >= rPatch));
+  }
+  var gte = range.match(/>=(\d+)/);
+  if (gte) return major >= Number(gte[1]);
+  return false;
+});
+if (!satisfied) {
+  console.error("Error: Node.js v" + process.versions.node + " is not supported.");
+  console.error("This extension requires Node.js " + required);
+  console.error("Please upgrade Node.js and try again: https://nodejs.org/");
+  process.exit(1);
+}
+' "$SCRIPT_DIR" 2>&1) || { echo "$NODE_CHECK"; exit 1; }
 
 # Check if npm is available
 if ! command -v npm >/dev/null 2>&1; then
