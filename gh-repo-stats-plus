@@ -74,14 +74,15 @@ function evaluateComparator(currentVersion, comparator) {
 }
 
 function hasUnsupportedSyntax(rangeExpression) {
+  // Detects: hyphen ranges (x - y), tilde (~), asterisk (*), and x/X wildcards
   return /(^|[^|])-(?=[^|]|$)|[~*xX]/.test(rangeExpression);
 }
 
 function humanizeRange(range) {
   return range.trim().split(/\s+/).filter(Boolean).map(function(p) {
-    var caret = p.match(/^\^(\d+\.\d+\.\d+)$/);
+    var caret = p.match(/^\^(\d+(?:\.\d+){0,2})$/);
     if (caret) return caret[1] + "+";
-    var gte = p.match(/^>=(\d+)$/);
+    var gte = p.match(/^>=(\d+(?:\.\d+){0,2})$/);
     if (gte) return gte[1] + "+";
     return p;
   }).join(" ");
