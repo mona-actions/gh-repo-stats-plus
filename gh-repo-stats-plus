@@ -5,6 +5,8 @@ set -e
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+export GH_REPO_STATS_PLUS_INVOCATION_DIR="$PWD"
+
 # Change to the extension directory
 cd "$SCRIPT_DIR"
 

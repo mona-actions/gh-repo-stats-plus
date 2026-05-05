@@ -46,8 +46,9 @@ import {
   NormalizedRepoList,
   RepoListOwnerGroup,
   createRepoListKey,
-  parseRepoList,
-  resolveRepoListPath,
+  parseRepoListInput,
+  hasRepoListInput,
+  readRepoListInputLines,
 } from './repo-list.js';
 
 // --- Command configuration ---
@@ -85,9 +86,7 @@ export async function run(opts: Arguments): Promise<string[]> {
 }
 
 function isStandaloneRepoListMode(opts: Arguments): boolean {
-  const hasRepoList = Array.isArray(opts.repoList)
-    ? opts.repoList.length > 0
-    : Boolean(opts.repoList);
+  const hasRepoList = hasRepoListInput(opts.repoList);
   const hasOrgList = Array.isArray(opts.orgList) && opts.orgList.length > 0;
 
   return hasRepoList && !opts.orgName && !hasOrgList;
@@ -129,7 +128,7 @@ function validateRepoListAuthSupport(
 }
 
 async function runRepoListOnly(opts: Arguments): Promise<string[]> {
-  const normalizedRepoList = normalizeRepoListInput(opts.repoList);
+  const normalizedRepoList = parseRepoListInput(opts.repoList);
   if (normalizedRepoList.entries.length === 0) {
     throw new Error('--repo-list must contain at least one repository entry');
   }
@@ -185,10 +184,7 @@ async function runRepoListOnly(opts: Arguments): Promise<string[]> {
     retryCount: 0,
     processedCount: 0,
   };
-  const processedRepoKeys = buildProcessedRepoKeySet(
-    processedState,
-    'repo-list',
-  );
+  const processedRepoKeys = buildProcessedRepoKeySet(processedState);
   const startTime = new Date();
 
   await withRetry(
@@ -251,25 +247,6 @@ async function runRepoListOnly(opts: Arguments): Promise<string[]> {
   }
 
   return [fileName];
-}
-
-function normalizeRepoListInput(repoList: Arguments['repoList']) {
-  if (Array.isArray(repoList)) {
-    return parseRepoList(repoList);
-  }
-
-  if (typeof repoList === 'string' && repoList.trim() !== '') {
-    const resolvedPath = resolveRepoListPath(repoList);
-    if (existsSync(resolvedPath)) {
-      return parseRepoList(readFileSync(resolvedPath, 'utf-8'), {
-        sourcePath: resolvedPath,
-      });
-    }
-
-    return parseRepoList(repoList);
-  }
-
-  return parseRepoList([]);
 }
 
 export function findMissingRepoListEntries({
@@ -406,14 +383,7 @@ async function processMissingRepoListRepositories({
 
 export function buildProcessedRepoKeySet(
   processedState: ProcessedPageState,
-  mode: 'org' | 'repo-list' = 'org',
 ): Set<string> {
-  if (mode === 'repo-list') {
-    return new Set(
-      processedState.processedRepos.map((repoName) => repoName.toLowerCase()),
-    );
-  }
-
   return new Set(
     processedState.processedRepos.map((repoName) => repoName.toLowerCase()),
   );
@@ -1062,15 +1032,11 @@ async function processRepositoriesFromFile({
 }): Promise<RepoProcessingResult> {
   logger.info(`Processing repositories from list: ${opts.repoList}`);
 
-  if (!opts.repoList || opts.repoList.length === 0) {
+  if (!hasRepoListInput(opts.repoList)) {
     throw new Error('Repository list is required and cannot be empty');
   }
 
-  const repoListRaw = Array.isArray(opts.repoList)
-    ? opts.repoList
-    : readFileSync(opts.repoList, 'utf-8').split('\n');
-
-  const repoList = parseRepoList(repoListRaw).entries.filter(
+  const repoList = parseRepoListInput(opts.repoList).entries.filter(
     ({ owner }) => owner.toLowerCase() === opts.orgName!.toLowerCase(),
   );
 
@@ -1094,7 +1060,7 @@ async function processRepositoriesFromFile({
 
   let processedCount = 0;
 
-  const processedRepoKeys = buildProcessedRepoKeySet(processedState, 'org');
+  const processedRepoKeys = buildProcessedRepoKeySet(processedState);
 
   for (const entry of repoList) {
     try {
@@ -1203,7 +1169,7 @@ async function processRepositories({
     });
   }
 
-  if (opts.repoList && opts.repoList.length > 0) {
+  if (hasRepoListInput(opts.repoList)) {
     return processRepositoriesFromFile({
       client,
       logger,
@@ -1762,12 +1728,10 @@ export async function checkForMissingRepos({
   logger.info('Checking for missing repositories');
   const missingRepos = [];
 
-  if (opts.repoList && opts.repoList.length > 0) {
+  if (hasRepoListInput(opts.repoList)) {
     // Check missing repos from the provided repo list
     logger.info('Checking against provided repo list');
-    const repoListRaw = Array.isArray(opts.repoList)
-      ? opts.repoList
-      : readFileSync(opts.repoList, 'utf-8').split('\n');
+    const repoListRaw = readRepoListInputLines(opts.repoList);
 
     const repoList = repoListRaw
       .filter((line) => line.trim() !== '' && !line.trim().startsWith('#'))

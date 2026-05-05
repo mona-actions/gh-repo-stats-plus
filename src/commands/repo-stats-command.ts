@@ -9,7 +9,11 @@ import {
 import { Arguments } from '../types.js';
 import { DEFAULT_API_VERSION, VALID_API_VERSIONS } from '../service.js';
 import VERSION from '../version.js';
-import { parseRepoListFileOption } from '../repo-list.js';
+import {
+  hasEmptyParsedRepoList,
+  hasRepoListInput,
+  parseRepoListFileOption,
+} from '../repo-list.js';
 
 import { run } from '../main.js';
 
@@ -18,11 +22,8 @@ const { Option } = commander;
 export function validateRepoStatsOptions(opts: Arguments) {
   const hasOrgName = Boolean(opts.orgName);
   const hasOrgList = Array.isArray(opts.orgList) && opts.orgList.length > 0;
-  const hasRepoList = Array.isArray(opts.repoList)
-    ? opts.repoList.length > 0
-    : Boolean(opts.repoList);
-  const hasEmptyRepoList =
-    Array.isArray(opts.repoList) && opts.repoList.length === 0;
+  const hasRepoList = hasRepoListInput(opts.repoList);
+  const hasEmptyRepoList = hasEmptyParsedRepoList(opts.repoList);
   const sourceModeCount = [hasOrgName, hasOrgList, hasRepoList].filter(
     Boolean,
   ).length;

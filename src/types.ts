@@ -1,3 +1,5 @@
+import type { RepoListOptionValue } from './repo-list.js';
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type LoggerFn = (message: string, meta?: any) => unknown;
 export interface Logger {
@@ -49,7 +51,7 @@ export interface Arguments {
   // state management
   cleanState?: boolean;
 
-  repoList: string[] | string | undefined;
+  repoList: RepoListOptionValue;
   repoNamesFile?: string;
   autoProcessMissing?: boolean;
 

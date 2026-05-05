@@ -2,9 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { existsSync, readFileSync } from 'fs';
 import {
   parseRepoList,
+  parseRepoListInput,
   parseRepoListFileOption,
   RepoListParseError,
   resolveRepoListPath,
+  isRepoListFileSource,
 } from '../src/repo-list.js';
 import { parseFileAsNewlineSeparatedOption } from '../src/utils.js';
 
@@ -181,7 +183,13 @@ describe('repo-list file path parsing', () => {
       'github/repo-stats\n# comment\nocto-org/hello\n',
     );
 
-    expect(parseRepoListFileOption('lists/repos.txt')).toEqual([
+    const source = parseRepoListFileOption('lists/repos.txt');
+    expect(source).toEqual({
+      kind: 'repo-list-file',
+      sourcePath: '/users/me/project/lists/repos.txt',
+      content: 'github/repo-stats\n# comment\nocto-org/hello\n',
+    });
+    expect(parseRepoListInput(source).entries.map(({ key }) => key)).toEqual([
       'github/repo-stats',
       'octo-org/hello',
     ]);
@@ -223,6 +231,67 @@ describe('repo-list file path parsing', () => {
     ]);
     expect(existsSync).not.toHaveBeenCalled();
     expect(readFileSync).not.toHaveBeenCalled();
+  });
+
+  it('preserves source path and original line numbers from repo-list files', () => {
+    process.env.GH_REPO_STATS_PLUS_INVOCATION_DIR = '/users/me/project';
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(readFileSync).mockReturnValue(
+      '# comment\n\n  github/repo-stats  \ninvalid-entry\n',
+    );
+
+    const source = parseRepoListFileOption('lists/repos.txt');
+
+    expect(() => parseRepoListInput(source)).toThrow(
+      new RepoListParseError({
+        message: 'Expected repo-list entry in owner/repo format',
+        sourcePath: '/users/me/project/lists/repos.txt',
+        lineNumber: 4,
+        line: 'invalid-entry',
+      }),
+    );
+  });
+
+  it('preserves original line text and duplicate first occurrence metadata from files', () => {
+    process.env.GH_REPO_STATS_PLUS_INVOCATION_DIR = '/users/me/project';
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(readFileSync).mockReturnValue(
+      '# comment\n\n  GitHub/Repo-Stats  \ngithub/repo-stats\n',
+    );
+
+    const source = parseRepoListFileOption('lists/repos.txt');
+    const result = parseRepoListInput(source);
+
+    expect(result.entries[0]).toEqual(
+      expect.objectContaining({
+        key: 'github/repo-stats',
+        lineNumber: 3,
+        originalLine: '  GitHub/Repo-Stats  ',
+        sourcePath: '/users/me/project/lists/repos.txt',
+      }),
+    );
+    expect(result.duplicates[0]).toEqual(
+      expect.objectContaining({
+        key: 'github/repo-stats',
+        lineNumber: 4,
+        firstOccurrence: {
+          sourcePath: '/users/me/project/lists/repos.txt',
+          lineNumber: 3,
+          originalLine: '  GitHub/Repo-Stats  ',
+        },
+      }),
+    );
+  });
+
+  it('identifies structured repo-list file sources', () => {
+    process.env.GH_REPO_STATS_PLUS_INVOCATION_DIR = '/users/me/project';
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(readFileSync).mockReturnValue('github/repo-stats\n');
+
+    expect(isRepoListFileSource(parseRepoListFileOption('repos.txt'))).toBe(
+      true,
+    );
+    expect(isRepoListFileSource(['github/repo-stats'])).toBe(false);
   });
 
   it('does not apply the wrapper invocation directory to org-list file parsing', () => {

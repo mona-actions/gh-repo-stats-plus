@@ -220,6 +220,20 @@ describe('Commands', () => {
         ).not.toThrow();
       });
 
+      it('should allow repo-list file source only', () => {
+        expect(() =>
+          validateRepoStatsOptions(
+            createOptions({
+              repoList: {
+                kind: 'repo-list-file',
+                sourcePath: '/tmp/repos.txt',
+                content: 'github/repo-stats\n',
+              },
+            }),
+          ),
+        ).not.toThrow();
+      });
+
       it('should reject missing source mode', () => {
         expect(() => validateRepoStatsOptions(createOptions())).toThrow(
           'Exactly one source mode must be provided',
@@ -248,6 +262,21 @@ describe('Commands', () => {
         ).toThrow('Cannot combine source modes');
       });
 
+      it('should reject org-list combined with repo-list file source', () => {
+        expect(() =>
+          validateRepoStatsOptions(
+            createOptions({
+              orgList: ['test-org'],
+              repoList: {
+                kind: 'repo-list-file',
+                sourcePath: '/tmp/repos.txt',
+                content: 'github/repo-stats\n',
+              },
+            }),
+          ),
+        ).toThrow('Cannot combine source modes');
+      });
+
       it('should reject empty repo-list clearly', () => {
         expect(() =>
           validateRepoStatsOptions(createOptions({ repoList: [] })),
@@ -261,6 +290,21 @@ describe('Commands', () => {
           validateRepoStatsOptions(
             createOptions({
               repoList: ['github/repo-stats'],
+              batchSize: 10,
+            }),
+          ),
+        ).toThrow('Batch mode (--batch-size) cannot be used with --repo-list');
+      });
+
+      it('should preserve batch incompatibility with repo-list file sources', () => {
+        expect(() =>
+          validateRepoStatsOptions(
+            createOptions({
+              repoList: {
+                kind: 'repo-list-file',
+                sourcePath: '/tmp/repos.txt',
+                content: 'github/repo-stats\n',
+              },
               batchSize: 10,
             }),
           ),

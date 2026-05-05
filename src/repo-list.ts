@@ -1,6 +1,14 @@
 import { existsSync, readFileSync } from 'fs';
 import { isAbsolute, resolve } from 'path';
-import { parseNewlineSeparatedOption } from './utils.js';
+
+export interface RepoListFileSource {
+  readonly kind: 'repo-list-file';
+  readonly sourcePath: string;
+  readonly content: string;
+}
+
+export type RepoListInput = readonly string[] | string | RepoListFileSource;
+export type RepoListOptionValue = RepoListInput | undefined;
 
 export interface RepoListLineMetadata {
   readonly sourcePath?: string;
@@ -67,8 +75,8 @@ export function resolveRepoListPath(filePath: string): string {
 
 export function parseRepoListFileOption(
   filePath: string,
-  previous?: string[],
-): string[] | undefined {
+  previous?: string[] | RepoListFileSource,
+): RepoListFileSource | string[] | undefined {
   if (!filePath || filePath.trim() === '') {
     return previous;
   }
@@ -82,7 +90,89 @@ export function parseRepoListFileOption(
   }
 
   const fileContent = readFileSync(resolvedPath, 'utf-8');
-  return parseNewlineSeparatedOption(fileContent, previous);
+  return {
+    kind: 'repo-list-file',
+    sourcePath: resolvedPath,
+    content: fileContent,
+  };
+}
+
+export function isRepoListFileSource(
+  repoList: RepoListOptionValue,
+): repoList is RepoListFileSource {
+  return (
+    typeof repoList === 'object' &&
+    repoList !== null &&
+    !Array.isArray(repoList) &&
+    'kind' in repoList &&
+    repoList.kind === 'repo-list-file'
+  );
+}
+
+export function hasRepoListInput(repoList: RepoListOptionValue): boolean {
+  if (Array.isArray(repoList)) {
+    return repoList.length > 0;
+  }
+
+  if (isRepoListFileSource(repoList)) {
+    return true;
+  }
+
+  return typeof repoList === 'string' && repoList.trim() !== '';
+}
+
+export function hasEmptyParsedRepoList(repoList: RepoListOptionValue): boolean {
+  return Array.isArray(repoList) && repoList.length === 0;
+}
+
+export function parseRepoListInput(
+  repoList: RepoListOptionValue,
+): NormalizedRepoList {
+  if (isRepoListFileSource(repoList)) {
+    return parseRepoList(repoList.content, {
+      sourcePath: repoList.sourcePath,
+    });
+  }
+
+  if (Array.isArray(repoList)) {
+    return parseRepoList(repoList);
+  }
+
+  if (typeof repoList === 'string' && repoList.trim() !== '') {
+    const resolvedPath = resolveRepoListPath(repoList);
+    if (existsSync(resolvedPath)) {
+      return parseRepoList(readFileSync(resolvedPath, 'utf-8'), {
+        sourcePath: resolvedPath,
+      });
+    }
+
+    return parseRepoList(repoList);
+  }
+
+  return parseRepoList([]);
+}
+
+export function readRepoListInputLines(
+  repoList: RepoListOptionValue,
+): readonly string[] {
+  if (isRepoListFileSource(repoList)) {
+    return repoList.content.split(/\r?\n/);
+  }
+
+  if (Array.isArray(repoList)) {
+    return repoList;
+  }
+
+  if (typeof repoList === 'string' && repoList.trim() !== '') {
+    const resolvedPath = resolveRepoListPath(repoList);
+    if (existsSync(resolvedPath)) {
+      return readFileSync(resolvedPath, 'utf-8').split(/\r?\n/);
+    }
+
+    return repoList.split(/\r?\n/);
+  }
+
+  return [];
 }
 
 export class RepoListParseError extends Error {

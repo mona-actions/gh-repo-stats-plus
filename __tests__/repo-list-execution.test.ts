@@ -180,19 +180,16 @@ describe('standalone repo-list execution', () => {
   it('builds lowercase owner/repo skip keys from saved state', async () => {
     const { buildProcessedRepoKeySet } = await import('../src/main.js');
 
-    const result = buildProcessedRepoKeySet(
-      {
-        organizationName: 'repo-list',
-        currentCursor: null,
-        processedRepos: ['OwnerA/RepoOne', 'ownerb/repotwo'],
-        lastSuccessfulCursor: null,
-        lastProcessedRepo: null,
-        lastUpdated: null,
-        completedSuccessfully: false,
-        outputFileName: null,
-      },
-      'repo-list',
-    );
+    const result = buildProcessedRepoKeySet({
+      organizationName: 'repo-list',
+      currentCursor: null,
+      processedRepos: ['OwnerA/RepoOne', 'ownerb/repotwo'],
+      lastSuccessfulCursor: null,
+      lastProcessedRepo: null,
+      lastUpdated: null,
+      completedSuccessfully: false,
+      outputFileName: null,
+    });
 
     expect([...result]).toEqual(['ownera/repoone', 'ownerb/repotwo']);
   });

@@ -10,6 +10,7 @@ import {
 } from './types.js';
 import { StateManager } from './state.js';
 import { existsSync, readFileSync } from 'fs';
+import { hasRepoListInput, readRepoListInputLines } from './repo-list.js';
 
 import { withRetry } from './retry.js';
 import {
@@ -188,7 +189,7 @@ async function processProjectStats({
     });
   }
 
-  if (opts.repoList && opts.repoList.length > 0) {
+  if (hasRepoListInput(opts.repoList)) {
     return processProjectStatsFromFile({
       client,
       logger,
@@ -230,13 +231,11 @@ async function processProjectStatsFromFile({
 }): Promise<RepoProcessingResult> {
   logger.info(`Processing repositories from list: ${opts.repoList}`);
 
-  if (!opts.repoList || opts.repoList.length === 0) {
+  if (!hasRepoListInput(opts.repoList)) {
     throw new Error('Repository list is required and cannot be empty');
   }
 
-  const repoListRaw = Array.isArray(opts.repoList)
-    ? opts.repoList
-    : readFileSync(opts.repoList, 'utf-8').split('\n');
+  const repoListRaw = readRepoListInputLines(opts.repoList);
 
   const repoList = repoListRaw
     .filter((line) => line.trim() !== '' && !line.trim().startsWith('#'))
