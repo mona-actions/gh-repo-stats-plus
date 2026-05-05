@@ -65,7 +65,7 @@ jobs:
         run: |
           pip install pyyaml
           mkdir -p /tmp/scripts
-          python3 -c "
+          python3 - <<'PY'
           import yaml, os, re
           with open('action.yml') as f:
               data = yaml.safe_load(f)
@@ -82,15 +82,16 @@ jobs:
                       out.write('#!/usr/bin/env bash\n')
                       out.write(run_block)
                   print(f'Extracted: {path}')
-          "
+          PY
 
       - name: Run ShellCheck
         run: |
           if ls /tmp/scripts/*.sh 1>/dev/null 2>&1; then
             echo "Running ShellCheck on extracted scripts..."
             # SC2194: "This word is constant" — expected when GitHub Actions
+            # SC2157: "-n argument always true" — expected with literal placeholders
             # GitHub expressions are replaced with placeholders
-            shellcheck --severity=warning --exclude=SC2194 /tmp/scripts/*.sh
+            shellcheck --severity=warning --exclude=SC2194,SC2157 /tmp/scripts/*.sh
           else
             echo "No shell scripts found to lint"
           fi
