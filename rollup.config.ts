@@ -22,7 +22,9 @@ const config = {
     }),
     commonjs(),
   ],
-  // Mark dependencies as external - they'll be installed when users install the extension
+  // Only mark Node.js built-ins as external - all npm dependencies are bundled
+  // into dist/index.js so the extension is self-contained and does not require
+  // a node_modules directory at runtime.
   external: [
     // Node.js built-ins
     /^node:/,
@@ -46,17 +48,6 @@ const config = {
     'cluster',
     'worker_threads',
     'perf_hooks',
-    // npm dependencies
-    'dotenv',
-    'winston',
-    'octokit',
-    '@octokit/graphql',
-    '@octokit/plugin-paginate-graphql',
-    '@octokit/plugin-throttling',
-    'commander',
-    '@fast-csv/parse',
-    'csv-parse',
-    'undici',
   ],
 };
 

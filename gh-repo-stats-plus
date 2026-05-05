@@ -145,13 +145,6 @@ if ! command -v npm >/dev/null 2>&1; then
     exit 1
 fi
 
-# Ensure dependencies are installed
-if [ ! -d "$SCRIPT_DIR/node_modules" ]; then
-    echo "Installing extension dependencies..."
-    cd "$SCRIPT_DIR"
-    npm install --production --silent
-fi
-
 # Check if the bundled script exists, build if needed
 if [ ! -f "$SCRIPT_DIR/dist/index.js" ]; then
     echo "Building extension..."
