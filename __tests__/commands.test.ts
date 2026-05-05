@@ -9,10 +9,17 @@ import packageStatsCommand from '../src/commands/package-stats-command.js';
 import codespaceStatsCommand from '../src/commands/codespace-stats-command.js';
 import { Arguments } from '../src/types.js';
 import { parseRepoListFileOption } from '../src/repo-list.js';
+import {
+  getRepoStatsSourceModeStatus,
+  isStandaloneRepoListSourceMode,
+} from '../src/repo-stats-source-mode.js';
 
 // Mock the main module functions
 vi.mock('../src/main.js', () => ({
   run: vi.fn(),
+}));
+
+vi.mock('../src/missing-repos-service.js', () => ({
   checkForMissingRepos: vi.fn(),
 }));
 
@@ -309,6 +316,65 @@ describe('Commands', () => {
             }),
           ),
         ).toThrow('Batch mode (--batch-size) cannot be used with --repo-list');
+      });
+
+      it('should classify source modes independently from command and main modules', () => {
+        expect(
+          getRepoStatsSourceModeStatus(createOptions({ orgName: 'test-org' })),
+        ).toMatchObject({
+          hasOrgName: true,
+          hasOrgList: false,
+          hasRepoList: false,
+          hasEmptyRepoList: false,
+          sourceModeCount: 1,
+          sourceMode: 'org-name',
+        });
+
+        expect(
+          getRepoStatsSourceModeStatus(
+            createOptions({
+              orgList: ['test-org'],
+              repoList: parseRepoListFileOption(''),
+            }),
+          ),
+        ).toMatchObject({
+          hasOrgName: false,
+          hasOrgList: true,
+          hasRepoList: false,
+          hasEmptyRepoList: false,
+          sourceModeCount: 1,
+          sourceMode: 'org-list',
+        });
+
+        expect(
+          getRepoStatsSourceModeStatus(
+            createOptions({ repoList: ['github/repo-stats'] }),
+          ),
+        ).toMatchObject({
+          hasOrgName: false,
+          hasOrgList: false,
+          hasRepoList: true,
+          hasEmptyRepoList: false,
+          sourceModeCount: 1,
+          sourceMode: 'repo-list',
+        });
+      });
+
+      it('should only route standalone repo-list mode when repo-list is the sole source', () => {
+        expect(
+          isStandaloneRepoListSourceMode(
+            createOptions({ repoList: ['github/repo-stats'] }),
+          ),
+        ).toBe(true);
+
+        expect(
+          isStandaloneRepoListSourceMode(
+            createOptions({
+              orgName: 'test-org',
+              repoList: ['github/repo-stats'],
+            }),
+          ),
+        ).toBe(false);
       });
     });
   });

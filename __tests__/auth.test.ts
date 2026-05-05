@@ -2,7 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   createAuthConfig,
   createAppLevelAuthConfig,
+  hasTokenAuth,
   needsInstallationLookup,
+  usesInstallationAuth,
+  validateRepoListAuthSupport,
 } from '../src/auth.js';
 import { createMockLogger } from './test-utils.js';
 import { readFileSync } from 'fs';
@@ -397,6 +400,79 @@ describe('auth', () => {
       process.env.GITHUB_APP_INSTALLATION_ID = '67890';
 
       expect(needsInstallationLookup({})).toBe(false);
+    });
+  });
+
+  describe('repo-list auth policy', () => {
+    it('should expose token auth detection for arguments and environment', () => {
+      expect(hasTokenAuth({ accessToken: 'token' })).toBe(true);
+      expect(hasTokenAuth({})).toBe(false);
+
+      process.env.GITHUB_TOKEN = 'env-token';
+      expect(hasTokenAuth({})).toBe(true);
+    });
+
+    it('should expose installation auth detection for arguments and environment', () => {
+      expect(usesInstallationAuth({ appInstallationId: '12345' })).toBe(true);
+      expect(usesInstallationAuth({})).toBe(false);
+
+      process.env.GITHUB_APP_INSTALLATION_ID = '67890';
+      expect(usesInstallationAuth({})).toBe(true);
+    });
+
+    it('should reject app auto installation lookup without token auth', () => {
+      expect(() =>
+        validateRepoListAuthSupport(
+          {
+            appId: '12345',
+            privateKey: 'test-key',
+          },
+          { ownerCount: 1 },
+        ),
+      ).toThrow(
+        'Standalone --repo-list does not currently support GitHub App auto installation lookup. Provide --app-installation-id for a single-owner list or use a GitHub token.',
+      );
+    });
+
+    it('should allow app auto installation lookup when token auth is available', () => {
+      expect(() =>
+        validateRepoListAuthSupport(
+          {
+            accessToken: 'token',
+            appId: '12345',
+            privateKey: 'test-key',
+          },
+          { ownerCount: 2 },
+        ),
+      ).not.toThrow();
+    });
+
+    it('should reject installation auth for multi-owner repo lists', () => {
+      expect(() =>
+        validateRepoListAuthSupport(
+          {
+            appId: '12345',
+            privateKey: 'test-key',
+            appInstallationId: '67890',
+          },
+          { ownerCount: 2 },
+        ),
+      ).toThrow(
+        'Standalone --repo-list with GitHub App installation auth currently supports one owner per run. Use a GitHub token or split the list by owner.',
+      );
+    });
+
+    it('should allow installation auth for single-owner repo lists', () => {
+      expect(() =>
+        validateRepoListAuthSupport(
+          {
+            appId: '12345',
+            privateKey: 'test-key',
+            appInstallationId: '67890',
+          },
+          { ownerCount: 1 },
+        ),
+      ).not.toThrow();
     });
   });
 });
