@@ -32,6 +32,23 @@ gh repo-stats-plus project-stats --org-name my-org
 gh repo-stats-plus repo-stats --org-name my-org
 ```
 
+### Standalone Repository List
+
+Create a repo list with one strict `owner/repo` entry per line:
+
+```text
+my-org/repo-one
+another-owner/repo-two
+```
+
+Then run `repo-stats` using the list as the only source:
+
+```bash
+gh repo-stats-plus repo-stats --repo-list repos-to-process.txt
+```
+
+`--repo-list` is mutually exclusive with `--org-name` and `--org-list`. Relative repo-list paths resolve from the directory where you invoke `gh repo-stats-plus`, not from the installed extension directory. Repositories can span multiple owners; processing is grouped by owner internally for efficiency, but the run writes one combined CSV and one `last_known_state_repo-list.json` state file.
+
 ### Resume from Previous Run
 
 ```bash
@@ -54,7 +71,10 @@ gh repo-stats-plus repo-stats \
 ```bash
 gh repo-stats-plus missing-repos --org-name my-org --file output.csv
 gh repo-stats-plus repo-stats --org-name my-org --auto-process-missing
+gh repo-stats-plus repo-stats --repo-list repos-to-process.txt --auto-process-missing
 ```
+
+For standalone repo-list mode, `--auto-process-missing` compares requested `owner/repo` keys to the combined CSV `Org_Name` and `Repo_Name` columns. Organization-based missing-repo behavior is unchanged.
 
 ### Count Project Associations
 
@@ -72,8 +92,7 @@ gh repo-stats-plus project-stats --org-list orgs.txt --continue-on-error
 ### Multiple Organizations
 
 ```bash
-# Process multiple organizations sequentially
-# Each organization automatically maintains its own state file
+# Process multiple organizations sequentially; each org maintains its own state file
 gh repo-stats-plus repo-stats --org-name org1
 gh repo-stats-plus repo-stats --org-name org2
 gh repo-stats-plus repo-stats --org-name org3
@@ -108,14 +127,16 @@ gh repo-stats-plus repo-stats --org-name myorg --resume-from-last-save
 ### Process Specific Repositories
 
 ```bash
-# Create a file with repositories to process
+# Create a file with repositories to process; every entry must be owner/repo
 echo "owner/repo1
 owner/repo2
 owner/repo3" > repos-to-process.txt
 
-# Run the command
-gh repo-stats-plus repo-stats --org-name myorg --repo-list repos-to-process.txt
+# Run the command; all entries are written to one combined CSV/state file
+gh repo-stats-plus repo-stats --repo-list repos-to-process.txt
 ```
+
+Do not combine `--repo-list` with `--org-name` or `--org-list`. If you need per-organization outputs or org-list orchestration, continue using `--org-name` or `--org-list`; their behavior has not changed.
 
 ### Auto-Process Missing Repositories
 

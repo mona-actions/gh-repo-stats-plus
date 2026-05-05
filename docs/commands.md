@@ -23,6 +23,9 @@ This page provides an overview of all available commands. See the individual com
 # Collect repo statistics
 gh repo-stats-plus repo-stats --org-name my-org
 
+# Collect repo statistics for an explicit owner/repo list
+gh repo-stats-plus repo-stats --repo-list repos.txt
+
 # Check for missing repositories
 gh repo-stats-plus missing-repos --org-name my-org --file output.csv
 
@@ -63,7 +66,7 @@ gh repo-stats-plus rows-to-columns \
 
 ## Output
 
-All commands generate output in the `output/` directory by default and write log files to `logs/`. Commands that support state management create organization-specific state files (e.g., `last_known_state_<org>.json`) for resume capability.
+All commands generate output in the `output/` directory by default and write log files to `logs/`. Commands that support state management create organization-specific state files (e.g., `last_known_state_<org>.json`) for resume capability. Standalone `repo-stats --repo-list` writes one combined output and uses `last_known_state_repo-list.json`.
 
 ## GitHub Action
 
@@ -94,6 +97,16 @@ gh repo-stats-plus repo-stats \
 ```
 
 See the [org-repos Command Reference](commands/org-repos.md) and the [Batch Processing Guide](batch-processing.md) for complete GitHub Actions workflow examples.
+
+### Explicit Repository List
+
+Use `repo-stats --repo-list` when you already have a strict `owner/repo` list and want one combined report, even when entries span multiple owners:
+
+```bash
+gh repo-stats-plus repo-stats --repo-list repos.txt
+```
+
+`--repo-list` is mutually exclusive with `--org-name` and `--org-list`. Relative repo-list paths resolve from the directory where you invoked `gh repo-stats-plus`.
 
 ### Complete Organization Analysis
 

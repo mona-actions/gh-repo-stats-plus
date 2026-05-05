@@ -123,6 +123,22 @@ See the [GitHub Action documentation](action/README.md) for full inputs/outputs 
 gh repo-stats-plus repo-stats --org-name my-org
 ```
 
+### Specific Repository List
+
+Process a standalone list of repositories without an organization source:
+
+```text
+my-org/repo-one
+another-owner/repo-two
+```
+
+```bash
+# Relative paths resolve from the directory where you run the command
+gh repo-stats-plus repo-stats --repo-list repos.txt
+```
+
+Repo-list entries must use strict `owner/repo` format. `--repo-list` is mutually exclusive with `--org-name` and `--org-list`; use exactly one source mode. Multi-owner repo-list runs are grouped by owner internally for efficient API calls, but they produce one combined CSV and one `last_known_state_repo-list.json` state file rather than separate org-list outputs.
+
 ### Multiple Organizations
 
 Process multiple organizations from a single file:
@@ -211,7 +227,12 @@ gh repo-stats-plus missing-repos \
 
 # Auto-process missing repositories
 gh repo-stats-plus repo-stats --org-name my-org --auto-process-missing
+
+# Auto-process missing repositories from a standalone repo list
+gh repo-stats-plus repo-stats --repo-list repos.txt --auto-process-missing
 ```
+
+For repo-list mode, missing detection compares each requested `owner/repo` key to the combined CSV `Org_Name` and `Repo_Name` columns. Existing `--org-name` and `--org-list` missing-repo behavior is unchanged.
 
 ### Org Repos and Batch Matrix
 
@@ -325,6 +346,9 @@ See the [Rows-to-Columns Command Reference](docs/commands/rows-to-columns.md) fo
 
 - `-o, --org-name <org>`: Process a single organization
 - `--org-list <file>`: Process multiple organizations from a file (one org per line)
+- `--repo-list <file>`: Process a standalone repository list (one strict `owner/repo` per line)
+
+Specify exactly one source mode. `--repo-list` cannot be combined with `--org-name` or `--org-list`; relative repo-list paths resolve from the user's invocation directory.
 
 **Multi-Organization Options**:
 
@@ -342,7 +366,6 @@ See the [Rows-to-Columns Command Reference](docs/commands/rows-to-columns.md) fo
 **Processing Options**:
 
 - `--resume-from-last-save`: Resume from the last saved state
-- `--repo-list <file>`: Path to file containing list of repositories to process (format: owner/repo_name)
 - `--auto-process-missing`: Automatically process any missing repositories when main processing is complete
 - `--clean-state`: Remove state file after successful completion
 
@@ -351,6 +374,7 @@ See the [Rows-to-Columns Command Reference](docs/commands/rows-to-columns.md) fo
 - `--batch-size <size>`: Number of repositories per batch
 - `--batch-index <index>`: Zero-based index of the batch to process
 - `--batch-delay <seconds>`: Delay before starting a batch (multiplied by batch index to stagger parallel runs)
+- `--batch-repo-list-file <file>`: Pre-fetched repo list for a batched `--org-name` run; separate from standalone `--repo-list`
 
 **Configuration**:
 
@@ -407,7 +431,7 @@ The app requires `Read-only` permissions to the following:
 The tool generates:
 
 1. A CSV file with repository statistics (or project statistics for the `project-stats` command)
-2. A `last_known_state.json` file with the current processing state
+2. A state file with the current processing state (`last_known_state_<org>.json` for organization runs, `last_known_state_repo-list.json` for standalone repo-list runs)
 3. Log files in the `logs/` directory
 
 ### CSV Output Columns

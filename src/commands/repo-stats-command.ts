@@ -9,21 +9,39 @@ import {
 import { Arguments } from '../types.js';
 import { DEFAULT_API_VERSION, VALID_API_VERSIONS } from '../service.js';
 import VERSION from '../version.js';
+import { parseRepoListFileOption } from '../repo-list.js';
 
 import { run } from '../main.js';
 
 const { Option } = commander;
 
-function validate(opts: Arguments) {
-  if (!opts.orgName && !opts.orgList) {
+export function validateRepoStatsOptions(opts: Arguments) {
+  const hasOrgName = Boolean(opts.orgName);
+  const hasOrgList = Array.isArray(opts.orgList) && opts.orgList.length > 0;
+  const hasRepoList = Array.isArray(opts.repoList)
+    ? opts.repoList.length > 0
+    : Boolean(opts.repoList);
+  const hasEmptyRepoList =
+    Array.isArray(opts.repoList) && opts.repoList.length === 0;
+  const sourceModeCount = [hasOrgName, hasOrgList, hasRepoList].filter(
+    Boolean,
+  ).length;
+
+  if (hasEmptyRepoList) {
     throw new Error(
-      'Either orgName (-o, --org-name <org>) or orgList (--org-list <file>) must be provided',
+      '--repo-list must contain at least one repository entry in owner/repo format',
     );
   }
 
-  if (opts.orgName && opts.orgList) {
+  if (sourceModeCount === 0) {
     throw new Error(
-      'Cannot specify both orgName (-o, --org-name <org>) and orgList (--org-list <file>)',
+      'Exactly one source mode must be provided: orgName (-o, --org-name <org>), orgList (--org-list <file>), or repoList (--repo-list <file>)',
+    );
+  }
+
+  if (sourceModeCount > 1) {
+    throw new Error(
+      'Cannot combine source modes. Specify exactly one of --org-name, --org-list, or --repo-list.',
     );
   }
 
@@ -36,13 +54,13 @@ function validate(opts: Arguments) {
       throw new Error('--batch-index must be 0 or greater');
     }
 
-    if (opts.orgList) {
+    if (hasOrgList) {
       throw new Error(
         'Batch mode (--batch-size) cannot be used with --org-list. Use with a single --org-name instead.',
       );
     }
 
-    if (opts.repoList) {
+    if (hasRepoList) {
       throw new Error(
         'Batch mode (--batch-size) cannot be used with --repo-list. Batch mode generates its own repo list.',
       );
@@ -214,7 +232,7 @@ repoStatsCommand
       'Path to file containing list of repositories to process (format: owner/repo_name)',
     )
       .env('REPO_LIST')
-      .argParser(parseFileAsNewlineSeparatedOption),
+      .argParser(parseRepoListFileOption),
   )
   .addOption(
     new Option(
@@ -296,7 +314,7 @@ repoStatsCommand
     console.log('Version:', VERSION);
 
     console.log('Validating options...');
-    validate(options);
+    validateRepoStatsOptions(options);
 
     console.log('Starting repo-stats...');
     await run(options);

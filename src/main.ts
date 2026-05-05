@@ -40,6 +40,15 @@ import {
   REPO_STATS_COLUMNS,
 } from './csv.js';
 import { initCommand, executeCommand, createClientFromOpts } from './init.js';
+import { needsInstallationLookup } from './auth.js';
+import {
+  NormalizedRepoListEntry,
+  NormalizedRepoList,
+  RepoListOwnerGroup,
+  createRepoListKey,
+  parseRepoList,
+  resolveRepoListPath,
+} from './repo-list.js';
 
 // --- Command configuration ---
 
@@ -54,6 +63,10 @@ const repoStatsConfig: CommandConfig = {
 // --- Public entry point ---
 
 export async function run(opts: Arguments): Promise<string[]> {
+  if (isStandaloneRepoListMode(opts)) {
+    return runRepoListOnly(opts);
+  }
+
   // Build batch-aware config if batch mode is enabled
   const config = { ...repoStatsConfig };
   if (opts.batchSize != null) {
@@ -69,6 +82,431 @@ export async function run(opts: Arguments): Promise<string[]> {
   const context = await initCommand(opts, config);
   const result = await executeCommand(context, config);
   return result.outputFiles;
+}
+
+function isStandaloneRepoListMode(opts: Arguments): boolean {
+  const hasRepoList = Array.isArray(opts.repoList)
+    ? opts.repoList.length > 0
+    : Boolean(opts.repoList);
+  const hasOrgList = Array.isArray(opts.orgList) && opts.orgList.length > 0;
+
+  return hasRepoList && !opts.orgName && !hasOrgList;
+}
+
+function generateRepoListStatsFileName(): string {
+  const timestamp = new Date()
+    .toISOString()
+    .replace(/:/g, '')
+    .replace(/\..+/, '');
+  return `repo-list-all_repos-${timestamp}_ts.csv`;
+}
+
+function usesInstallationAuth(opts: Arguments): boolean {
+  return Boolean(
+    opts.appInstallationId || process.env.GITHUB_APP_INSTALLATION_ID,
+  );
+}
+
+function hasTokenAuth(opts: Arguments): boolean {
+  return Boolean(opts.accessToken || process.env.GITHUB_TOKEN);
+}
+
+function validateRepoListAuthSupport(
+  opts: Arguments,
+  normalizedRepoList: NormalizedRepoList,
+) {
+  if (needsInstallationLookup(opts) && !hasTokenAuth(opts)) {
+    throw new Error(
+      'Standalone --repo-list does not currently support GitHub App auto installation lookup. Provide --app-installation-id for a single-owner list or use a GitHub token.',
+    );
+  }
+
+  if (usesInstallationAuth(opts) && normalizedRepoList.summary.ownerCount > 1) {
+    throw new Error(
+      'Standalone --repo-list with GitHub App installation auth currently supports one owner per run. Use a GitHub token or split the list by owner.',
+    );
+  }
+}
+
+async function runRepoListOnly(opts: Arguments): Promise<string[]> {
+  const normalizedRepoList = normalizeRepoListInput(opts.repoList);
+  if (normalizedRepoList.entries.length === 0) {
+    throw new Error('--repo-list must contain at least one repository entry');
+  }
+  validateRepoListAuthSupport(opts, normalizedRepoList);
+
+  const { logger, client } = await createClientFromOpts(
+    opts,
+    `repo-list-repo-stats-${new Date().toISOString().split('T')[0]}.log`,
+  );
+  logger.info(
+    `Processing ${normalizedRepoList.summary.uniqueEntryCount} repositories ` +
+      `across ${normalizedRepoList.summary.ownerCount} owner groups from --repo-list`,
+  );
+  if (normalizedRepoList.duplicates.length > 0) {
+    logger.warn(
+      `Ignored ${normalizedRepoList.duplicates.length} duplicate repo-list entr${
+        normalizedRepoList.duplicates.length === 1 ? 'y' : 'ies'
+      }`,
+    );
+  }
+
+  const outputDir = opts.outputDir || 'output';
+  const stateManager = new StateManager(outputDir, 'repo-list', logger);
+  const initResult = stateManager.initialize(
+    opts.resumeFromLastSave || false,
+    opts.forceFreshStart || false,
+  );
+  const processedState = initResult.processedState;
+  let fileName = processedState.outputFileName || '';
+
+  if (initResult.resumeFromLastState && fileName) {
+    logger.info(
+      `Resuming from last repo-list state. Using existing file: ${fileName}`,
+    );
+  } else {
+    const baseFileName = opts.outputFileName || generateRepoListStatsFileName();
+    fileName = await resolveOutputPath(opts.outputDir, baseFileName);
+    initializeCsvFile(fileName, logger);
+    processedState.outputFileName = fileName;
+    stateManager.update(processedState, {});
+    logger.info(`Repo-list results will be saved to file: ${fileName}`);
+  }
+
+  const retryConfig: RetryConfig = {
+    maxAttempts: opts.retryMaxAttempts || 3,
+    initialDelayMs: opts.retryInitialDelay || 1000,
+    maxDelayMs: opts.retryMaxDelay || 30000,
+    backoffFactor: opts.retryBackoffFactor || 2,
+    successThreshold: opts.retrySuccessThreshold || 5,
+  };
+  const processingState = {
+    successCount: 0,
+    retryCount: 0,
+    processedCount: 0,
+  };
+  const processedRepoKeys = buildProcessedRepoKeySet(
+    processedState,
+    'repo-list',
+  );
+  const startTime = new Date();
+
+  await withRetry(
+    async () => {
+      let processedCount = 0;
+
+      for (const ownerGroup of normalizedRepoList.groupedByOwner.values()) {
+        processedCount += await processRepoListOwnerGroup({
+          ownerGroup,
+          client,
+          logger,
+          opts,
+          processedState,
+          processedRepoKeys,
+          state: processingState,
+          fileName,
+          stateManager,
+        });
+      }
+
+      processedState.completedSuccessfully = true;
+      stateManager.update(processedState, {});
+      logger.info(
+        `Completed repo-list processing. Processed ${processedCount} new repositories. ` +
+          `Total tracked repositories: ${processedRepoKeys.size}. ` +
+          `Elapsed time: ${formatElapsedTime(startTime, new Date())}. ` +
+          `Output saved to: ${fileName}`,
+      );
+    },
+    retryConfig,
+    (state) => {
+      processingState.retryCount++;
+      processingState.successCount = 0;
+      logger.warn(
+        `Retry attempt ${state.attempt}: Failed while processing repo-list. ` +
+          `Last processed repo: ${processedState.lastProcessedRepo}, ` +
+          `Processed repos count: ${processedState.processedRepos.length}, ` +
+          `Error: ${state.error?.message}`,
+      );
+      stateManager.update(processedState, {});
+    },
+  );
+
+  if (opts.autoProcessMissing) {
+    await processMissingRepoListRepositories({
+      opts,
+      normalizedRepoList,
+      client,
+      logger,
+      processedState,
+      processedRepoKeys,
+      retryConfig,
+      fileName,
+      stateManager,
+    });
+  }
+
+  if (opts.cleanState) {
+    stateManager.cleanup();
+  }
+
+  return [fileName];
+}
+
+function normalizeRepoListInput(repoList: Arguments['repoList']) {
+  if (Array.isArray(repoList)) {
+    return parseRepoList(repoList);
+  }
+
+  if (typeof repoList === 'string' && repoList.trim() !== '') {
+    const resolvedPath = resolveRepoListPath(repoList);
+    if (existsSync(resolvedPath)) {
+      return parseRepoList(readFileSync(resolvedPath, 'utf-8'), {
+        sourcePath: resolvedPath,
+      });
+    }
+
+    return parseRepoList(repoList);
+  }
+
+  return parseRepoList([]);
+}
+
+export function findMissingRepoListEntries({
+  normalizedRepoList,
+  processedFile,
+}: {
+  normalizedRepoList: NormalizedRepoList;
+  processedFile: string;
+}): NormalizedRepoListEntry[] {
+  const records = readCsvFile(processedFile);
+  const processedCsvKeys = new Set<string>();
+
+  (records as Array<{ Org_Name?: string; Repo_Name?: string }>).forEach(
+    (record) => {
+      if (record.Org_Name && record.Repo_Name) {
+        processedCsvKeys.add(
+          createRepoListKey(record.Org_Name, record.Repo_Name),
+        );
+      }
+    },
+  );
+
+  return normalizedRepoList.entries.filter(
+    (entry) => !processedCsvKeys.has(entry.key),
+  );
+}
+
+function groupRepoListEntriesForProcessing(
+  entries: readonly NormalizedRepoListEntry[],
+): RepoListOwnerGroup[] {
+  const groups = new Map<string, NormalizedRepoListEntry[]>();
+
+  for (const entry of entries) {
+    const ownerEntries = groups.get(entry.ownerKey) ?? [];
+    ownerEntries.push(entry);
+    groups.set(entry.ownerKey, ownerEntries);
+  }
+
+  return [...groups.values()].map((entriesForOwner) => ({
+    owner: entriesForOwner[0].owner,
+    ownerKey: entriesForOwner[0].ownerKey,
+    entries: entriesForOwner,
+  }));
+}
+
+async function processMissingRepoListRepositories({
+  opts,
+  normalizedRepoList,
+  client,
+  logger,
+  processedState,
+  processedRepoKeys,
+  retryConfig,
+  fileName,
+  stateManager,
+}: {
+  opts: Arguments;
+  normalizedRepoList: NormalizedRepoList;
+  client: OctokitClient;
+  logger: Logger;
+  processedState: ProcessedPageState;
+  processedRepoKeys: Set<string>;
+  retryConfig: RetryConfig;
+  fileName: string;
+  stateManager: StateManager;
+}): Promise<void> {
+  logger.info('Checking for missing repositories from --repo-list output...');
+  const missingEntries = findMissingRepoListEntries({
+    normalizedRepoList,
+    processedFile: fileName,
+  });
+
+  if (missingEntries.length === 0) {
+    logger.info(
+      'No missing repo-list repositories found. All requested repositories have output rows.',
+    );
+    return;
+  }
+
+  logger.info(
+    `Found ${missingEntries.length} missing repo-list repositories that need to be processed`,
+  );
+  processedState.completedSuccessfully = false;
+  stateManager.update(processedState, {});
+
+  for (const entry of missingEntries) {
+    processedRepoKeys.delete(entry.key);
+  }
+
+  const missingProcessingState = {
+    successCount: 0,
+    retryCount: 0,
+    processedCount: 0,
+  };
+
+  await withRetry(
+    async () => {
+      let processedCount = 0;
+      for (const ownerGroup of groupRepoListEntriesForProcessing(
+        missingEntries,
+      )) {
+        processedCount += await processRepoListOwnerGroup({
+          ownerGroup,
+          client,
+          logger,
+          opts,
+          processedState,
+          processedRepoKeys,
+          state: missingProcessingState,
+          fileName,
+          stateManager,
+        });
+      }
+
+      logger.info(
+        `Completed processing ${processedCount} missing repo-list repositories`,
+      );
+    },
+    retryConfig,
+    (state) => {
+      missingProcessingState.retryCount++;
+      missingProcessingState.successCount = 0;
+      logger.warn(
+        `Retry attempt ${state.attempt}: Failed while processing missing repo-list repositories. ` +
+          `Error: ${state.error?.message}`,
+      );
+      stateManager.update(processedState, {});
+    },
+  );
+
+  processedState.completedSuccessfully = true;
+  stateManager.update(processedState, {});
+}
+
+export function buildProcessedRepoKeySet(
+  processedState: ProcessedPageState,
+  mode: 'org' | 'repo-list' = 'org',
+): Set<string> {
+  if (mode === 'repo-list') {
+    return new Set(
+      processedState.processedRepos.map((repoName) => repoName.toLowerCase()),
+    );
+  }
+
+  return new Set(
+    processedState.processedRepos.map((repoName) => repoName.toLowerCase()),
+  );
+}
+
+function createProcessedRepoIdentity({
+  owner,
+  repo,
+  mode,
+}: {
+  owner?: string;
+  repo: string;
+  mode: 'org' | 'repo-list';
+}): string {
+  return mode === 'repo-list' && owner ? createRepoListKey(owner, repo) : repo;
+}
+
+function hasProcessedRepo({
+  processedState,
+  processedRepoKeys,
+  identity,
+  mode,
+}: {
+  processedState: ProcessedPageState;
+  processedRepoKeys: Set<string>;
+  identity: string;
+  mode: 'org' | 'repo-list';
+}): boolean {
+  if (processedRepoKeys.has(identity.toLowerCase())) {
+    return true;
+  }
+
+  return mode === 'org' && processedState.processedRepos.includes(identity);
+}
+
+async function processRepoListOwnerGroup({
+  ownerGroup,
+  client,
+  logger,
+  opts,
+  processedState,
+  processedRepoKeys,
+  state,
+  fileName,
+  stateManager,
+}: {
+  ownerGroup: RepoListOwnerGroup;
+  client: OctokitClient;
+  logger: Logger;
+  opts: Arguments;
+  processedState: ProcessedPageState;
+  processedRepoKeys: Set<string>;
+  state: { successCount: number; retryCount: number; processedCount: number };
+  fileName: string;
+  stateManager: StateManager;
+}): Promise<number> {
+  logger.info(
+    `Processing ${ownerGroup.entries.length} repositories for owner ${ownerGroup.owner}`,
+  );
+  let processedCount = 0;
+
+  for (const entry of ownerGroup.entries) {
+    if (processedRepoKeys.has(entry.key)) {
+      logger.debug(`Skipping already processed repository: ${entry.key}`);
+      continue;
+    }
+
+    try {
+      await processRepositoryByName({
+        entry,
+        client,
+        logger,
+        opts,
+        processedState,
+        processedRepoKeys,
+        state,
+        fileName,
+        stateManager,
+        processedCount: ++state.processedCount,
+      });
+      processedCount += 1;
+    } catch (error) {
+      state.successCount = 0;
+      logger.error(
+        `Failed processing repo ${entry.owner}/${entry.repo}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      throw error;
+    }
+  }
+
+  return processedCount;
 }
 
 // --- Per-org processing (called by shared executeForOrg via config.processOrg) ---
@@ -506,6 +944,7 @@ async function handleRepoProcessingSuccess({
   logger,
   processedCount,
   stateManager,
+  processedRepoKey,
 }: {
   result: RepoStatsResult;
   processedState: ProcessedPageState;
@@ -515,6 +954,7 @@ async function handleRepoProcessingSuccess({
   logger: Logger;
   processedCount: number;
   stateManager: StateManager;
+  processedRepoKey?: string;
 }): Promise<void> {
   const successThreshold = opts.retrySuccessThreshold || 5;
 
@@ -529,7 +969,7 @@ async function handleRepoProcessingSuccess({
   }
 
   stateManager.update(processedState, {
-    repoName: result.Repo_Name,
+    repoName: processedRepoKey ?? result.Repo_Name,
     lastSuccessfulCursor: processedState.currentCursor,
   });
 
@@ -547,6 +987,60 @@ async function handleRepoProcessingSuccess({
       );
     }
   }
+}
+
+async function processRepositoryByName({
+  entry,
+  client,
+  logger,
+  opts,
+  processedState,
+  processedRepoKeys,
+  state,
+  fileName,
+  stateManager,
+  processedCount,
+}: {
+  entry: Pick<NormalizedRepoListEntry, 'owner' | 'repo' | 'key'>;
+  client: OctokitClient;
+  logger: Logger;
+  opts: Arguments;
+  processedState: ProcessedPageState;
+  processedRepoKeys: Set<string>;
+  state: { successCount: number; retryCount: number };
+  fileName: string;
+  stateManager: StateManager;
+  processedCount: number;
+}): Promise<void> {
+  logger.info(`Processing repository: ${entry.owner}/${entry.repo}`);
+
+  const repoStats = await client.getRepoStats(
+    entry.owner,
+    entry.repo,
+    opts.pageSize != null ? Number(opts.pageSize) : 10,
+  );
+
+  const result = await analyzeRepositoryStats({
+    repo: repoStats,
+    owner: entry.owner,
+    extraPageSize: opts.extraPageSize != null ? Number(opts.extraPageSize) : 25,
+    client,
+    logger,
+  });
+
+  await writeResultToCsv(result, fileName, logger);
+  await handleRepoProcessingSuccess({
+    result,
+    processedState,
+    state,
+    opts,
+    client,
+    logger,
+    processedCount,
+    stateManager,
+    processedRepoKey: entry.key,
+  });
+  processedRepoKeys.add(entry.key);
 }
 
 async function processRepositoriesFromFile({
@@ -576,13 +1070,9 @@ async function processRepositoriesFromFile({
     ? opts.repoList
     : readFileSync(opts.repoList, 'utf-8').split('\n');
 
-  const repoList = repoListRaw
-    .filter((line) => line.trim() !== '' && !line.trim().startsWith('#'))
-    .map((line) => {
-      const [owner, repo] = line.trim().split('/');
-      return { owner, repo };
-    })
-    .filter(({ owner }) => owner.toLowerCase() === opts.orgName!.toLowerCase());
+  const repoList = parseRepoList(repoListRaw).entries.filter(
+    ({ owner }) => owner.toLowerCase() === opts.orgName!.toLowerCase(),
+  );
 
   logger.info(
     `Filtered to ${repoList.length} repositories for organization: ${opts.orgName}`,
@@ -604,45 +1094,45 @@ async function processRepositoriesFromFile({
 
   let processedCount = 0;
 
-  for (const { owner, repo } of repoList) {
+  const processedRepoKeys = buildProcessedRepoKeySet(processedState, 'org');
+
+  for (const entry of repoList) {
     try {
-      if (processedState.processedRepos.includes(repo)) {
-        logger.debug(`Skipping already processed repository: ${repo}`);
+      const identity = createProcessedRepoIdentity({
+        repo: entry.repo,
+        mode: 'org',
+      });
+      if (
+        hasProcessedRepo({
+          processedState,
+          processedRepoKeys,
+          identity,
+          mode: 'org',
+        })
+      ) {
+        logger.debug(`Skipping already processed repository: ${entry.repo}`);
         continue;
       }
 
-      logger.info(`Processing repository: ${owner}/${repo}`);
-
-      const repoStats = await client.getRepoStats(
-        owner,
-        repo,
-        opts.pageSize != null ? Number(opts.pageSize) : 10,
-      );
-
-      const result = await analyzeRepositoryStats({
-        repo: repoStats,
-        owner,
-        extraPageSize:
-          opts.extraPageSize != null ? Number(opts.extraPageSize) : 25,
+      await processRepositoryByName({
+        entry: {
+          owner: entry.owner,
+          repo: entry.repo,
+          key: identity,
+        },
         client,
         logger,
-      });
-
-      await writeResultToCsv(result, fileName, logger);
-
-      await handleRepoProcessingSuccess({
-        result,
-        processedState,
-        state,
         opts,
-        client,
-        logger,
+        processedState,
+        processedRepoKeys,
+        state,
         processedCount: ++processedCount,
+        fileName,
         stateManager,
       });
     } catch (error) {
       state.successCount = 0;
-      logger.error(`Failed processing repo ${repo}: ${error}`);
+      logger.error(`Failed processing repo ${entry.repo}: ${error}`);
       throw error;
     }
   }
