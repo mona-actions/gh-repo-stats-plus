@@ -4,7 +4,7 @@ import VERSION from '../version.js';
 import { parseIntOption, parseApiVersionOption } from '../utils.js';
 import { DEFAULT_API_VERSION, VALID_API_VERSIONS } from '../service.js';
 import { Arguments } from '../types.js';
-import { checkForMissingRepos } from '../main.js';
+import { checkForMissingRepos } from '../missing-repos-service.js';
 
 const missingReposCommand = new commander.Command();
 const { Option } = commander;

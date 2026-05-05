@@ -742,12 +742,21 @@ export interface OrgContext {
 export interface CommandConfig {
   /** Prefix for log files, e.g. 'repo-stats' or 'project-stats' */
   logPrefix: string;
+  /** Label used for log file naming when processing a non-org source */
+  sourceLabel?: string | ((opts: Arguments) => string);
+  /**
+   * Whether this command supports organization-scoped GitHub App installation
+   * lookup. Defaults to true for existing org-based commands.
+   */
+  supportsInstallationLookup?: boolean;
   /** Label used in summary output, e.g. 'PROCESSING' or 'PROJECT-STATS PROCESSING' */
   summaryLabel: string;
   /** Function that generates the output CSV file name for an org */
   generateFileName: (orgName: string) => string;
   /** Function that initializes the CSV file (writes headers) */
   initializeCsvFile: (fileName: string, logger: Logger) => void;
+  /** Optional non-org source processing logic */
+  processSource?: (context: CommandContext) => Promise<CommandResult>;
   /** The actual per-org processing logic */
   processOrg: (context: OrgContext) => Promise<void>;
   /** Optional prefix for state files to separate state between commands (e.g. 'projects') */

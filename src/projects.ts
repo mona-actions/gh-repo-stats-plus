@@ -24,7 +24,7 @@ import {
   PROJECT_STATS_COLUMNS,
 } from './csv.js';
 import { initCommand, executeCommand } from './init.js';
-import { getRepoListForBatch } from './main.js';
+import { getRepoListForBatch } from './repo-stats-batch.js';
 
 // --- Command configuration ---
 

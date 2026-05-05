@@ -14,6 +14,8 @@ const mockClient = {
 };
 const mockStateUpdate = vi.fn();
 const mockStateCleanup = vi.fn();
+const mockStateInitialize = vi.fn();
+const mockWithRetry = vi.fn().mockImplementation(async (fn) => await fn());
 
 vi.mock('fs', () => ({
   existsSync: vi.fn().mockReturnValue(false),
@@ -33,30 +35,32 @@ vi.mock('../src/csv.js', async (importOriginal) => {
 });
 
 vi.mock('../src/init.js', () => ({
-  initCommand: vi.fn(),
-  executeCommand: vi.fn(),
-  createClientFromOpts: vi.fn().mockResolvedValue({
+  initCommand: vi.fn().mockImplementation(async (opts) => ({
+    opts,
     logger: mockLogger,
     client: mockClient,
-  }),
+    fileName: '',
+    retryConfig: {
+      maxAttempts: opts.retryMaxAttempts || 3,
+      initialDelayMs: opts.retryInitialDelay || 1000,
+      maxDelayMs: opts.retryMaxDelay || 30000,
+      backoffFactor: opts.retryBackoffFactor || 2,
+      successThreshold: opts.retrySuccessThreshold || 5,
+    },
+    orgsToProcess: [],
+    resumeFromOrgIndex: 0,
+  })),
+  executeCommand: vi
+    .fn()
+    .mockImplementation(async (context, config) =>
+      config.processSource(context),
+    ),
 }));
 
 vi.mock('../src/state.js', () => ({
   StateManager: vi.fn().mockImplementation(function () {
     return {
-      initialize: vi.fn().mockReturnValue({
-        processedState: {
-          organizationName: 'repo-list',
-          currentCursor: null,
-          processedRepos: [],
-          lastSuccessfulCursor: null,
-          lastProcessedRepo: null,
-          lastUpdated: null,
-          completedSuccessfully: false,
-          outputFileName: null,
-        },
-        resumeFromLastState: false,
-      }),
+      initialize: mockStateInitialize,
       update: mockStateUpdate,
       cleanup: mockStateCleanup,
     };
@@ -64,7 +68,7 @@ vi.mock('../src/state.js', () => ({
 }));
 
 vi.mock('../src/retry.js', () => ({
-  withRetry: vi.fn().mockImplementation(async (fn) => await fn()),
+  withRetry: mockWithRetry,
 }));
 
 vi.mock('../src/utils.js', async (importOriginal) => {
@@ -111,25 +115,49 @@ function createArgs(overrides: Partial<Arguments> = {}): Arguments {
   } as Arguments;
 }
 
+function createProcessedState(
+  overrides: Partial<ProcessedPageState> = {},
+): ProcessedPageState {
+  return {
+    organizationName: 'repo-list',
+    currentCursor: null,
+    processedRepos: [],
+    lastSuccessfulCursor: null,
+    lastProcessedRepo: null,
+    lastUpdated: null,
+    completedSuccessfully: false,
+    outputFileName: null,
+    ...overrides,
+  };
+}
+
+function applyMockStateUpdate(
+  state: ProcessedPageState,
+  updates: { repoName?: string | null; lastSuccessfulCursor?: string | null },
+): void {
+  if (updates.repoName && !state.processedRepos.includes(updates.repoName)) {
+    state.processedRepos.push(updates.repoName);
+  }
+  if (updates.repoName) {
+    state.lastProcessedRepo = updates.repoName;
+  }
+  if (updates.lastSuccessfulCursor) {
+    state.lastSuccessfulCursor = updates.lastSuccessfulCursor;
+  }
+}
+
 describe('standalone repo-list execution', () => {
   const originalEnv = { ...process.env };
 
   beforeEach(() => {
     vi.clearAllMocks();
     process.env = { ...originalEnv };
-    mockStateUpdate.mockImplementation(
-      (
-        state: ProcessedPageState,
-        updates: { repoName?: string | null },
-      ): void => {
-        if (
-          updates.repoName &&
-          !state.processedRepos.includes(updates.repoName)
-        ) {
-          state.processedRepos.push(updates.repoName);
-        }
-      },
-    );
+    mockWithRetry.mockImplementation(async (fn) => await fn());
+    mockStateInitialize.mockReturnValue({
+      processedState: createProcessedState(),
+      resumeFromLastState: false,
+    });
+    mockStateUpdate.mockImplementation(applyMockStateUpdate);
     mockClient.getRepoStats.mockImplementation((owner: string, repo: string) =>
       Promise.resolve(createRepo(owner, repo)),
     );
@@ -177,8 +205,44 @@ describe('standalone repo-list execution', () => {
     expect(processedRepoKeys).toEqual(['ownera/repoone', 'ownerb/repotwo']);
   });
 
+  it('ignores duplicate repo-list entries without extra API calls', async () => {
+    const { run } = await import('../src/main.js');
+    const { appendFileSync } = await import('fs');
+
+    await run(
+      createArgs({
+        repoList: [
+          'OwnerA/RepoOne',
+          'ownera/repoone',
+          'OwnerA/RepoTwo',
+          'OWNERA/REPOTWO',
+        ],
+        outputFileName: 'combined.csv',
+      }),
+    );
+
+    expect(mockClient.getRepoStats).toHaveBeenCalledTimes(2);
+    expect(mockClient.getRepoStats).toHaveBeenNthCalledWith(
+      1,
+      'OwnerA',
+      'RepoOne',
+      10,
+    );
+    expect(mockClient.getRepoStats).toHaveBeenNthCalledWith(
+      2,
+      'OwnerA',
+      'RepoTwo',
+      10,
+    );
+    expect(appendFileSync).toHaveBeenCalledTimes(2);
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'Ignored 2 duplicate repo-list entries',
+    );
+  });
+
   it('builds lowercase owner/repo skip keys from saved state', async () => {
-    const { buildProcessedRepoKeySet } = await import('../src/main.js');
+    const { buildProcessedRepoKeySet } =
+      await import('../src/repo-stats-service.js');
 
     const result = buildProcessedRepoKeySet({
       organizationName: 'repo-list',
@@ -205,6 +269,95 @@ describe('standalone repo-list execution', () => {
     );
 
     expect(mockClient.checkRateLimits).toHaveBeenCalledTimes(1);
+  });
+
+  it('resumes repo-list runs from the existing output file and skips processed lowercase owner/repo keys', async () => {
+    const { run } = await import('../src/main.js');
+    const { appendFileSync, writeFileSync } = await import('fs');
+
+    mockStateInitialize.mockReturnValue({
+      processedState: createProcessedState({
+        processedRepos: ['OwnerA/RepoOne'],
+        outputFileName: 'existing.csv',
+      }),
+      resumeFromLastState: true,
+    });
+
+    const result = await run(
+      createArgs({
+        repoList: ['ownera/repoone', 'OwnerA/RepoTwo'],
+        outputFileName: 'new.csv',
+        resumeFromLastSave: true,
+      }),
+    );
+
+    expect(result).toEqual(['existing.csv']);
+    expect(writeFileSync).not.toHaveBeenCalled();
+    expect(mockClient.getRepoStats).toHaveBeenCalledTimes(1);
+    expect(mockClient.getRepoStats).toHaveBeenCalledWith(
+      'OwnerA',
+      'RepoTwo',
+      10,
+    );
+    expect(appendFileSync).toHaveBeenCalledTimes(1);
+    expect(mockLogger.debug).toHaveBeenCalledWith(
+      'Skipping already processed repository: ownera/repoone',
+    );
+  });
+
+  it('updates repo-list state through the retry callback after a processing failure', async () => {
+    const { run } = await import('../src/main.js');
+    const updateSnapshots: Array<{
+      completedSuccessfully: boolean;
+      processedRepos: string[];
+      updates: {
+        repoName?: string | null;
+        lastSuccessfulCursor?: string | null;
+      };
+    }> = [];
+
+    mockClient.getRepoStats
+      .mockRejectedValueOnce(new Error('temporary failure'))
+      .mockImplementation((owner: string, repo: string) =>
+        Promise.resolve(createRepo(owner, repo)),
+      );
+    mockStateUpdate.mockImplementation((state, updates) => {
+      updateSnapshots.push({
+        completedSuccessfully: state.completedSuccessfully,
+        processedRepos: [...state.processedRepos],
+        updates: { ...updates },
+      });
+      applyMockStateUpdate(state, updates);
+    });
+    mockWithRetry.mockImplementationOnce(
+      async (operation, _config, onRetry) => {
+        try {
+          return await operation();
+        } catch (error) {
+          onRetry?.({
+            attempt: 1,
+            successCount: 0,
+            retryCount: 1,
+            error: error instanceof Error ? error : new Error(String(error)),
+          });
+          return await operation();
+        }
+      },
+    );
+
+    await run(createArgs({ repoList: ['OwnerA/RepoOne'] }));
+
+    expect(mockClient.getRepoStats).toHaveBeenCalledTimes(2);
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'Retry attempt 1: Failed while processing repo-list.',
+      ),
+    );
+    expect(updateSnapshots[1]).toEqual({
+      completedSuccessfully: false,
+      processedRepos: [],
+      updates: {},
+    });
   });
 
   it('rejects multi-owner repo-list runs with GitHub App installation auth', async () => {
@@ -283,6 +436,34 @@ describe('standalone repo-list execution', () => {
     expect(appendFileSync).toHaveBeenCalledTimes(3);
   });
 
+  it('does not mark repo-list state complete when missing repo-list processing fails', async () => {
+    const { run } = await import('../src/main.js');
+    const { readCsvFile } = await import('../src/csv.js');
+    const completedValues: boolean[] = [];
+
+    vi.mocked(readCsvFile).mockReturnValue([]);
+    mockStateUpdate.mockImplementation((state, updates) => {
+      applyMockStateUpdate(state, updates);
+      completedValues.push(state.completedSuccessfully);
+    });
+    mockClient.getRepoStats
+      .mockResolvedValueOnce(createRepo('OwnerA', 'RepoOne'))
+      .mockRejectedValueOnce(new Error('missing processing failed'));
+
+    await expect(
+      run(
+        createArgs({
+          repoList: ['OwnerA/RepoOne'],
+          outputFileName: 'combined.csv',
+          autoProcessMissing: true,
+        }),
+      ),
+    ).rejects.toThrow('missing processing failed');
+
+    expect(completedValues.at(-1)).toBe(false);
+    expect(mockStateCleanup).not.toHaveBeenCalled();
+  });
+
   it('cleans repo-list state after successful standalone processing when requested', async () => {
     const { run } = await import('../src/main.js');
 
@@ -294,5 +475,22 @@ describe('standalone repo-list execution', () => {
     );
 
     expect(mockStateCleanup).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not clean repo-list state when standalone processing fails', async () => {
+    const { run } = await import('../src/main.js');
+
+    mockClient.getRepoStats.mockRejectedValueOnce(new Error('repo failed'));
+
+    await expect(
+      run(
+        createArgs({
+          repoList: ['OwnerA/RepoOne'],
+          cleanState: true,
+        }),
+      ),
+    ).rejects.toThrow('repo failed');
+
+    expect(mockStateCleanup).not.toHaveBeenCalled();
   });
 });
