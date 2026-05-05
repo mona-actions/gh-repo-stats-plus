@@ -89,7 +89,7 @@ jobs:
           if ls /tmp/scripts/*.sh 1>/dev/null 2>&1; then
             echo "Running ShellCheck on extracted scripts..."
             # SC2194: "This word is constant" — expected when GitHub Actions
-            # expressions (${{ ... }}) are replaced with placeholders
+            # GitHub expressions are replaced with placeholders
             shellcheck --severity=warning --exclude=SC2194 /tmp/scripts/*.sh
           else
             echo "No shell scripts found to lint"
