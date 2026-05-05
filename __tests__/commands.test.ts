@@ -1,14 +1,25 @@
 import { describe, it, expect, vi } from 'vitest';
-import repoStatsCommand from '../src/commands/repo-stats-command.js';
+import repoStatsCommand, {
+  validateRepoStatsOptions,
+} from '../src/commands/repo-stats-command.js';
 import missingReposCommand from '../src/commands/missing-repos-command.js';
 import projectStatsCommand from '../src/commands/project-stats-command.js';
 import appInstallStatsCommand from '../src/commands/app-install-stats-command.js';
 import packageStatsCommand from '../src/commands/package-stats-command.js';
 import codespaceStatsCommand from '../src/commands/codespace-stats-command.js';
+import { Arguments } from '../src/types.js';
+import { parseRepoListFileOption } from '../src/repo-list.js';
+import {
+  getRepoStatsSourceModeStatus,
+  isStandaloneRepoListSourceMode,
+} from '../src/repo-stats-source-mode.js';
 
 // Mock the main module functions
 vi.mock('../src/main.js', () => ({
   run: vi.fn(),
+}));
+
+vi.mock('../src/missing-repos-service.js', () => ({
   checkForMissingRepos: vi.fn(),
 }));
 
@@ -170,6 +181,201 @@ describe('Commands', () => {
         'Continue processing',
       );
       expect(continueOnErrorOption?.envVar).toBe('CONTINUE_ON_ERROR');
+    });
+
+    describe('source mode validation', () => {
+      function createOptions(overrides: Partial<Arguments> = {}): Arguments {
+        return {
+          orgName: undefined,
+          orgList: [],
+          repoList: undefined,
+          baseUrl: 'https://api.github.com',
+          proxyUrl: undefined,
+          verbose: false,
+          ...overrides,
+        } as Arguments;
+      }
+
+      it('should allow org-name only', () => {
+        expect(() =>
+          validateRepoStatsOptions(createOptions({ orgName: 'test-org' })),
+        ).not.toThrow();
+      });
+
+      it('should allow org-list only', () => {
+        expect(() =>
+          validateRepoStatsOptions(createOptions({ orgList: ['test-org'] })),
+        ).not.toThrow();
+      });
+
+      it('should allow org-list when REPO_LIST is set but empty', () => {
+        expect(() =>
+          validateRepoStatsOptions(
+            createOptions({
+              orgList: ['test-org'],
+              repoList: parseRepoListFileOption(''),
+            }),
+          ),
+        ).not.toThrow();
+      });
+
+      it('should allow repo-list only', () => {
+        expect(() =>
+          validateRepoStatsOptions(
+            createOptions({ repoList: ['github/repo-stats'] }),
+          ),
+        ).not.toThrow();
+      });
+
+      it('should allow repo-list file source only', () => {
+        expect(() =>
+          validateRepoStatsOptions(
+            createOptions({
+              repoList: {
+                kind: 'repo-list-file',
+                sourcePath: '/tmp/repos.txt',
+                content: 'github/repo-stats\n',
+              },
+            }),
+          ),
+        ).not.toThrow();
+      });
+
+      it('should reject missing source mode', () => {
+        expect(() => validateRepoStatsOptions(createOptions())).toThrow(
+          'Exactly one source mode must be provided',
+        );
+      });
+
+      it('should reject org-name combined with repo-list', () => {
+        expect(() =>
+          validateRepoStatsOptions(
+            createOptions({
+              orgName: 'test-org',
+              repoList: ['github/repo-stats'],
+            }),
+          ),
+        ).toThrow('Cannot combine source modes');
+      });
+
+      it('should reject org-list combined with repo-list', () => {
+        expect(() =>
+          validateRepoStatsOptions(
+            createOptions({
+              orgList: ['test-org'],
+              repoList: ['github/repo-stats'],
+            }),
+          ),
+        ).toThrow('Cannot combine source modes');
+      });
+
+      it('should reject org-list combined with repo-list file source', () => {
+        expect(() =>
+          validateRepoStatsOptions(
+            createOptions({
+              orgList: ['test-org'],
+              repoList: {
+                kind: 'repo-list-file',
+                sourcePath: '/tmp/repos.txt',
+                content: 'github/repo-stats\n',
+              },
+            }),
+          ),
+        ).toThrow('Cannot combine source modes');
+      });
+
+      it('should reject empty repo-list clearly', () => {
+        expect(() =>
+          validateRepoStatsOptions(createOptions({ repoList: [] })),
+        ).toThrow(
+          '--repo-list must contain at least one repository entry in owner/repo format',
+        );
+      });
+
+      it('should preserve batch incompatibility with repo-list', () => {
+        expect(() =>
+          validateRepoStatsOptions(
+            createOptions({
+              repoList: ['github/repo-stats'],
+              batchSize: 10,
+            }),
+          ),
+        ).toThrow('Batch mode (--batch-size) cannot be used with --repo-list');
+      });
+
+      it('should preserve batch incompatibility with repo-list file sources', () => {
+        expect(() =>
+          validateRepoStatsOptions(
+            createOptions({
+              repoList: {
+                kind: 'repo-list-file',
+                sourcePath: '/tmp/repos.txt',
+                content: 'github/repo-stats\n',
+              },
+              batchSize: 10,
+            }),
+          ),
+        ).toThrow('Batch mode (--batch-size) cannot be used with --repo-list');
+      });
+
+      it('should classify source modes independently from command and main modules', () => {
+        expect(
+          getRepoStatsSourceModeStatus(createOptions({ orgName: 'test-org' })),
+        ).toMatchObject({
+          hasOrgName: true,
+          hasOrgList: false,
+          hasRepoList: false,
+          hasEmptyRepoList: false,
+          sourceModeCount: 1,
+          sourceMode: 'org-name',
+        });
+
+        expect(
+          getRepoStatsSourceModeStatus(
+            createOptions({
+              orgList: ['test-org'],
+              repoList: parseRepoListFileOption(''),
+            }),
+          ),
+        ).toMatchObject({
+          hasOrgName: false,
+          hasOrgList: true,
+          hasRepoList: false,
+          hasEmptyRepoList: false,
+          sourceModeCount: 1,
+          sourceMode: 'org-list',
+        });
+
+        expect(
+          getRepoStatsSourceModeStatus(
+            createOptions({ repoList: ['github/repo-stats'] }),
+          ),
+        ).toMatchObject({
+          hasOrgName: false,
+          hasOrgList: false,
+          hasRepoList: true,
+          hasEmptyRepoList: false,
+          sourceModeCount: 1,
+          sourceMode: 'repo-list',
+        });
+      });
+
+      it('should only route standalone repo-list mode when repo-list is the sole source', () => {
+        expect(
+          isStandaloneRepoListSourceMode(
+            createOptions({ repoList: ['github/repo-stats'] }),
+          ),
+        ).toBe(true);
+
+        expect(
+          isStandaloneRepoListSourceMode(
+            createOptions({
+              orgName: 'test-org',
+              repoList: ['github/repo-stats'],
+            }),
+          ),
+        ).toBe(false);
+      });
     });
   });
 

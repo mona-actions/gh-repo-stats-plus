@@ -41,7 +41,16 @@ export async function initCommand(
   const singleOrg = orgName && !hasOrgList ? [orgName] : [];
   const orgsToProcess = hasOrgList ? orgList : singleOrg;
 
-  const orgForLog = orgsToProcess.length === 1 ? orgsToProcess[0] : 'multi-org';
+  const sourceLabel =
+    typeof config.sourceLabel === 'function'
+      ? config.sourceLabel(opts)
+      : config.sourceLabel;
+  const orgForLog =
+    orgsToProcess.length === 1
+      ? orgsToProcess[0]
+      : orgsToProcess.length > 1
+        ? 'multi-org'
+        : sourceLabel || 'source';
   const logFileName = `${orgForLog}-${config.logPrefix}-${
     new Date().toISOString().split('T')[0]
   }.log`;
@@ -65,7 +74,10 @@ export async function initCommand(
       caCert,
     });
 
-  const shouldLookupInstallation = needsInstallationLookup(opts);
+  const supportsInstallationLookup =
+    orgsToProcess.length > 0 || (config.supportsInstallationLookup ?? true);
+  const shouldLookupInstallation =
+    supportsInstallationLookup && needsInstallationLookup(opts);
 
   let resolvedOpts = opts;
   let createClientForOrg:
@@ -272,8 +284,21 @@ export async function executeCommand(
 ): Promise<CommandResult> {
   const { delayBetweenOrgs = 5, continueOnError = false } = context.opts;
   const { logger, orgsToProcess, sessionManager, resumeFromOrgIndex } = context;
+  const sourceLabel =
+    typeof config.sourceLabel === 'function'
+      ? config.sourceLabel(context.opts)
+      : config.sourceLabel;
 
   if (orgsToProcess.length === 0) {
+    if (config.processSource) {
+      logger.info(`Processing source: ${sourceLabel || 'source'}`);
+      const result = await config.processSource(context);
+      for (const file of result.outputFiles.filter(Boolean)) {
+        logger.info(`output_file=${file}`);
+      }
+      return result;
+    }
+
     throw new Error('Either orgName or orgList must be provided');
   }
 

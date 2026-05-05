@@ -6,7 +6,7 @@ vi.mock('fs');
 
 import { existsSync, readFileSync } from 'fs';
 
-import { getRepoListForBatch } from '../src/main.js';
+import { getRepoListForBatch } from '../src/repo-stats-batch.js';
 import repoStatsCommand from '../src/commands/repo-stats-command.js';
 import projectStatsCommand from '../src/commands/project-stats-command.js';
 

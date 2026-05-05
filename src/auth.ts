@@ -130,6 +130,37 @@ export const needsInstallationLookup = (opts: {
   return hasAppId && hasPrivateKey && !hasInstallationId;
 };
 
+export const hasTokenAuth = (opts: { accessToken?: string }): boolean =>
+  Boolean(opts.accessToken || process.env.GITHUB_TOKEN);
+
+export const usesInstallationAuth = (opts: {
+  appInstallationId?: string;
+}): boolean =>
+  Boolean(opts.appInstallationId || process.env.GITHUB_APP_INSTALLATION_ID);
+
+export const validateRepoListAuthSupport = (
+  opts: {
+    accessToken?: string;
+    appId?: string;
+    privateKey?: string;
+    privateKeyFile?: string;
+    appInstallationId?: string;
+  },
+  { ownerCount }: { ownerCount: number },
+): void => {
+  if (needsInstallationLookup(opts) && !hasTokenAuth(opts)) {
+    throw new Error(
+      'Standalone --repo-list does not currently support GitHub App auto installation lookup. Provide --app-installation-id for a single-owner list or use a GitHub token.',
+    );
+  }
+
+  if (usesInstallationAuth(opts) && ownerCount > 1) {
+    throw new Error(
+      'Standalone --repo-list with GitHub App installation auth currently supports one owner per run. Use a GitHub token or split the list by owner.',
+    );
+  }
+};
+
 export const createAuthConfig = ({
   accessToken,
   appId,

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { checkForMissingRepos } from '../src/main.js';
+import { checkForMissingRepos } from '../src/missing-repos-service.js';
 import { appendFileSync } from 'fs';
 import { readCsvFile } from '../src/csv.js';
 import { createLogger } from '../src/logger.js';

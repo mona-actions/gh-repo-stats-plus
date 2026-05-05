@@ -243,6 +243,8 @@ The same pattern works for `project-stats` — just swap the command:
 
 For very large organizations (hundreds of batches), the redundant `listOrgRepoNames` call each batch makes can dominate the install's request budget. Fetch the list once in a setup job, upload it as an artifact, and have each matrix batch read from it:
 
+`--batch-repo-list-file` is only for batched `--org-name` runs. It is separate from standalone `repo-stats --repo-list`, which treats the file as the source of strict `owner/repo` entries and produces one combined output/state file.
+
 ```yaml
 jobs:
   setup:
