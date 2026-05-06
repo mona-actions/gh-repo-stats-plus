@@ -13,7 +13,7 @@ vi.mock('../src/utils.js', async (importOriginal) => {
   };
 });
 
-import { writeFileSync } from 'fs';
+import { writeFileSync, appendFileSync } from 'fs';
 
 function makeClient(repos: { name: string; owner: { login: string } }[]) {
   return {
@@ -25,9 +25,8 @@ function makeClient(repos: { name: string; owner: { login: string } }[]) {
 
 describe('calculateBatchMatrix', () => {
   it('returns correct indices for an exact division', () => {
-    const repos = Array.from({ length: 10 }, (_, i) => `org/repo-${i}`);
     const { batchSize, totalBatches, matrix } = calculateBatchMatrix(
-      repos,
+      10,
       5,
       256,
     );
@@ -37,39 +36,36 @@ describe('calculateBatchMatrix', () => {
   });
 
   it('rounds up when repos do not divide evenly', () => {
-    const repos = Array.from({ length: 11 }, (_, i) => `org/repo-${i}`);
-    const { totalBatches } = calculateBatchMatrix(repos, 5, 256);
+    const { totalBatches } = calculateBatchMatrix(11, 5, 256);
     expect(totalBatches).toBe(3);
   });
 
   it('adjusts batch size when totalBatches would exceed maxBatches', () => {
-    const repos = Array.from({ length: 1000 }, (_, i) => `org/repo-${i}`);
-    const { batchSize, totalBatches } = calculateBatchMatrix(repos, 1, 10);
+    const { batchSize, totalBatches } = calculateBatchMatrix(1000, 1, 10);
     expect(totalBatches).toBeLessThanOrEqual(10);
     expect(batchSize).toBeGreaterThan(1);
   });
 
   it('returns a single batch for repos <= batchSize', () => {
-    const repos = Array.from({ length: 3 }, (_, i) => `org/repo-${i}`);
-    const { totalBatches, matrix } = calculateBatchMatrix(repos, 10, 256);
+    const { totalBatches, matrix } = calculateBatchMatrix(3, 10, 256);
     expect(totalBatches).toBe(1);
     expect(matrix['batch-index']).toEqual([0]);
   });
 
   it('throws when requestedBatchSize is less than 1', () => {
-    expect(() => calculateBatchMatrix([], 0, 256)).toThrow(
+    expect(() => calculateBatchMatrix(0, 0, 256)).toThrow(
       'requestedBatchSize must be >= 1',
     );
   });
 
   it('throws when maxBatches is less than 1', () => {
-    expect(() => calculateBatchMatrix([], 10, 0)).toThrow(
+    expect(() => calculateBatchMatrix(0, 10, 0)).toThrow(
       'maxBatches must be >= 1',
     );
   });
 
   it('handles an empty repo list', () => {
-    const { totalBatches, matrix } = calculateBatchMatrix([], 10, 256);
+    const { totalBatches, matrix } = calculateBatchMatrix(0, 10, 256);
     expect(totalBatches).toBe(0);
     expect(matrix['batch-index']).toEqual([]);
   });
@@ -112,7 +108,13 @@ describe('fetchOrgRepos', () => {
       logger,
     });
 
+    // File is initialized empty then repos appended incrementally
     expect(writeFileSync).toHaveBeenCalledWith(
+      expect.stringContaining('repos.txt'),
+      '',
+      'utf-8',
+    );
+    expect(appendFileSync).toHaveBeenCalledWith(
       expect.stringContaining('repos.txt'),
       'my-org/alpha\n',
       'utf-8',

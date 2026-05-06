@@ -1,7 +1,7 @@
 import { OctokitClient } from './service.js';
 import { Arguments, Logger } from './types.js';
 import { createClientFromOpts } from './init.js';
-import { writeFileSync } from 'fs';
+import { appendFileSync, writeFileSync } from 'fs';
 import { isAbsolute } from 'path';
 import { generateOrgReposFileName, resolveOutputPath } from './utils.js';
 
@@ -19,11 +19,11 @@ export interface OrgReposResult {
 }
 
 /**
- * Calculates a batch matrix from a list of repos, respecting the maxBatches limit.
+ * Calculates a batch matrix from a repo count, respecting the maxBatches limit.
  * If the natural number of batches exceeds maxBatches, the batch size is adjusted upward.
  */
 export function calculateBatchMatrix(
-  repos: string[],
+  repoCount: number,
   requestedBatchSize: number,
   maxBatches: number,
 ): { batchSize: number; totalBatches: number; matrix: BatchMatrix } {
@@ -37,11 +37,11 @@ export function calculateBatchMatrix(
   }
 
   let batchSize = requestedBatchSize;
-  let totalBatches = Math.ceil(repos.length / batchSize);
+  let totalBatches = Math.ceil(repoCount / batchSize);
 
   if (totalBatches > maxBatches) {
-    batchSize = Math.ceil(repos.length / maxBatches);
-    totalBatches = Math.ceil(repos.length / batchSize);
+    batchSize = Math.ceil(repoCount / maxBatches);
+    totalBatches = Math.ceil(repoCount / batchSize);
   }
 
   const matrix: BatchMatrix = {
@@ -71,6 +71,7 @@ export async function runOrgRepos(opts: Arguments): Promise<OrgReposResult> {
 
 /**
  * Core fetch logic — separated so it can be unit tested with a mock client.
+ * Streams repos to file incrementally as they arrive from the API.
  */
 export async function fetchOrgRepos({
   orgName,
@@ -90,10 +91,27 @@ export async function fetchOrgRepos({
 
   logger.info(`Fetching repos for organization: ${orgName}`);
 
+  // Resolve file path up front if writing is requested
+  let fileName: string | undefined;
+  if (opts.outputFileName) {
+    fileName = isAbsolute(opts.outputFileName)
+      ? opts.outputFileName
+      : await resolveOutputPath(
+          opts.outputDir,
+          opts.outputFileName || generateOrgReposFileName(orgName),
+        );
+    // Initialize empty file (truncate if exists)
+    writeFileSync(fileName, '', 'utf-8');
+  }
+
+  // Stream repos: write to file incrementally and collect into array
   const repos: string[] = [];
   for await (const repo of client.listOrgRepoNames(orgName, pageSize)) {
     const fullName = `${repo.owner.login}/${repo.name}`;
     repos.push(fullName);
+    if (fileName) {
+      appendFileSync(fileName, `${fullName}\n`, 'utf-8');
+    }
     logger.debug(`Found repo: ${fullName}`);
   }
 
@@ -101,14 +119,7 @@ export async function fetchOrgRepos({
 
   const result: OrgReposResult = { repos, repoCount: repos.length };
 
-  if (opts.outputFileName) {
-    const fileName = isAbsolute(opts.outputFileName)
-      ? opts.outputFileName
-      : await resolveOutputPath(
-          opts.outputDir,
-          opts.outputFileName || generateOrgReposFileName(orgName),
-        );
-    writeFileSync(fileName, repos.join('\n') + '\n', 'utf-8');
+  if (fileName) {
     result.outputFile = fileName;
     logger.info(`Wrote ${repos.length} repos to ${fileName}`);
   }
@@ -116,7 +127,7 @@ export async function fetchOrgRepos({
   if (opts.batchSize != null) {
     const maxBatches = opts.maxBatches ?? 256;
     const { batchSize, totalBatches, matrix } = calculateBatchMatrix(
-      repos,
+      repos.length,
       opts.batchSize,
       maxBatches,
     );
