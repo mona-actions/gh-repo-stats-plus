@@ -43,6 +43,31 @@ Take into consideration the following when providing responses:
 
 Code should always be readable and maintainable. Break things down into separate functions and into separate files where it makes sense to do so.
 
+## Design Principles
+
+Follow **SOLID** design principles throughout the codebase:
+
+- **Single Responsibility**: Each module, class, or function should have one reason to change. Keep concerns separated into focused files and functions.
+- **Open/Closed**: Design modules to be open for extension but closed for modification. Prefer composition and well-defined interfaces over modifying existing implementations.
+- **Liskov Substitution**: Subtypes and implementations should be interchangeable without altering correctness. Honor the contracts defined by interfaces and base types.
+- **Interface Segregation**: Prefer small, focused interfaces over large monolithic ones. Consumers should not depend on methods they do not use.
+- **Dependency Inversion**: Depend on abstractions (interfaces/types), not concrete implementations. Pass dependencies in rather than hard-coding them.
+
+Keep code **DRY** (Don't Repeat Yourself). This project has established reusable patterns and utilities — look for existing abstractions before introducing new ones. Shared logic belongs in dedicated modules so it can be maintained in one place.
+
+Apply **YAGNI** (You Ain't Gonna Need It) to avoid premature abstraction. Only introduce new abstractions, configuration options, or extensibility points when there is a concrete, immediate need. Simplicity and clarity take priority over speculative flexibility.
+
+## Async Generators and Streaming Data
+
+When retrieving large amounts of data (e.g., paginated API results, repository statistics) or writing results to files, use **async generators** (`async function*`) to process data incrementally rather than buffering entire datasets in memory. This enables:
+
+- Incremental processing of paginated API responses without waiting for all pages
+- Streaming writes to output files as data becomes available
+- Backpressure-friendly pipelines that keep memory usage predictable
+- Composable data pipelines where generators can be chained together
+
+Prefer `for await...of` loops to consume async generators and structure data flows as pipelines of small, focused generator functions.
+
 ## Verification Before Completion
 
 **IMPORTANT**: When implementing features, fixing bugs, or making any code changes, always run the following checks before considering the work complete:
