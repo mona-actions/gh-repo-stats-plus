@@ -21,6 +21,7 @@ import {
   initializeCsvFile as initializeCsvFileGeneric,
   REPO_STATS_COLUMNS,
 } from './csv.js';
+import { formatErrorMessage } from './errors.js';
 
 export interface RepoStatsRepositoryEntry {
   owner: string;
@@ -162,12 +163,64 @@ export async function processRepositoryByName({
 }): Promise<void> {
   logger.info(`Processing repository: ${entry.owner}/${entry.repo}`);
 
-  const repoStats = await client.getRepoStats(
+  const repoStats = await fetchRepositoryStatsByName({ entry, client, opts });
+
+  await processFetchedRepositoryStats({
+    entry,
+    repoStats,
+    client,
+    logger,
+    opts,
+    processedState,
+    processedRepoKeys,
+    state,
+    fileName,
+    stateManager,
+    processedCount,
+  });
+}
+
+export async function fetchRepositoryStatsByName({
+  entry,
+  client,
+  opts,
+}: {
+  entry: RepoStatsRepositoryEntry;
+  client: OctokitClient;
+  opts: Arguments;
+}): Promise<RepositoryStats> {
+  return client.getRepoStats(
     entry.owner,
     entry.repo,
     opts.pageSize != null ? Number(opts.pageSize) : 10,
   );
+}
 
+export async function processFetchedRepositoryStats({
+  entry,
+  repoStats,
+  client,
+  logger,
+  opts,
+  processedState,
+  processedRepoKeys,
+  state,
+  fileName,
+  stateManager,
+  processedCount,
+}: {
+  entry: RepoStatsRepositoryEntry;
+  repoStats: RepositoryStats;
+  client: OctokitClient;
+  logger: Logger;
+  opts: Arguments;
+  processedState: ProcessedPageState;
+  processedRepoKeys: Set<string>;
+  state: RepoStatsProcessingState;
+  fileName: string;
+  stateManager: StateManager;
+  processedCount: number;
+}): Promise<void> {
   const result = await analyzeRepositoryStats({
     repo: repoStats,
     owner: entry.owner,
@@ -322,9 +375,7 @@ export async function writeResultToCsv(
     );
   } catch (error) {
     logger.error(
-      `Failed to write CSV for repository ${result.Repo_Name}: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
+      `Failed to write CSV for repository ${result.Repo_Name}: ${formatErrorMessage(error)}`,
     );
     throw error;
   }
