@@ -588,7 +588,7 @@ describe('standalone repo-list execution', () => {
     const { run } = await import('../src/main.js');
     const { appendFileSync } = await import('fs');
 
-    let repoOneCallCount = 0;
+    let flakyCallCount = 0;
     mockClient.getRepoStats.mockImplementation(
       (owner: string, repo: string) => {
         if (repo === 'Missing') {
@@ -597,8 +597,8 @@ describe('standalone repo-list execution', () => {
           );
         }
         if (repo === 'Flaky') {
-          repoOneCallCount++;
-          if (repoOneCallCount === 1) {
+          flakyCallCount++;
+          if (flakyCallCount === 1) {
             return Promise.reject(
               Object.assign(new Error('Server Error'), { status: 500 }),
             );
