@@ -83,7 +83,9 @@ export function addApiOptions(cmd: commander.Command): commander.Command {
       new Option(
         '--ca-cert <path>',
         'Path to CA certificate bundle (PEM) for TLS verification (e.g. GHES with internal CA)',
-      ).env('NODE_EXTRA_CA_CERTS'),
+      )
+        .attributeName('caCertPath')
+        .env('NODE_EXTRA_CA_CERTS'),
     )
     .addOption(
       new Option(
