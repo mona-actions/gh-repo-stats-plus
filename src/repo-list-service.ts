@@ -12,15 +12,18 @@ import {
 } from './repo-list.js';
 import {
   buildProcessedRepoKeySet,
+  fetchRepositoryStatsByName,
   initializeCsvFile,
-  processRepositoryByName,
+  processFetchedRepositoryStats,
 } from './repo-stats-service.js';
+import { formatErrorMessage, isGitHubNotFoundError } from './errors.js';
 import type {
   Arguments,
   CommandContext,
   CommandResult,
   Logger,
   ProcessedPageState,
+  RepositoryStats,
 } from './types.js';
 import type { OctokitClient } from './service.js';
 import type { RetryConfig } from './retry.js';
@@ -92,6 +95,7 @@ export async function processRepoListSource(
     processedCount: 0,
   };
   const processedRepoKeys = buildProcessedRepoKeySet(processedState);
+  const skippedNotFoundRepoKeys = new Set<string>();
   const startTime = new Date();
 
   await withRetry(
@@ -109,6 +113,7 @@ export async function processRepoListSource(
           state: processingState,
           fileName,
           stateManager,
+          skippedNotFoundRepoKeys,
         });
       }
 
@@ -146,6 +151,7 @@ export async function processRepoListSource(
       retryConfig,
       fileName,
       stateManager,
+      skippedNotFoundRepoKeys,
     });
   }
 
@@ -209,6 +215,7 @@ export async function processMissingRepoListRepositories({
   retryConfig,
   fileName,
   stateManager,
+  skippedNotFoundRepoKeys,
 }: {
   opts: Arguments;
   normalizedRepoList: NormalizedRepoList;
@@ -219,12 +226,16 @@ export async function processMissingRepoListRepositories({
   retryConfig: RetryConfig;
   fileName: string;
   stateManager: StateManager;
+  skippedNotFoundRepoKeys: Set<string>;
 }): Promise<void> {
   logger.info('Checking for missing repositories from --repo-list output...');
   const missingEntries = findMissingRepoListEntries({
     normalizedRepoList,
     processedFile: fileName,
   });
+  const missingEntriesToProcess = missingEntries.filter(
+    (entry) => !skippedNotFoundRepoKeys.has(entry.key),
+  );
 
   if (missingEntries.length === 0) {
     logger.info(
@@ -233,13 +244,21 @@ export async function processMissingRepoListRepositories({
     return;
   }
 
+  if (missingEntriesToProcess.length === 0) {
+    logger.info(
+      `No retryable missing repo-list repositories found. Skipped ${missingEntries.length} ` +
+        'repositories that were not found or inaccessible earlier in this run.',
+    );
+    return;
+  }
+
   logger.info(
-    `Found ${missingEntries.length} missing repo-list repositories that need to be processed`,
+    `Found ${missingEntriesToProcess.length} missing repo-list repositories that need to be processed`,
   );
   processedState.completedSuccessfully = false;
   stateManager.update(processedState, {});
 
-  for (const entry of missingEntries) {
+  for (const entry of missingEntriesToProcess) {
     processedRepoKeys.delete(entry.key);
   }
 
@@ -253,7 +272,7 @@ export async function processMissingRepoListRepositories({
     async () => {
       let processedCount = 0;
       for (const ownerGroup of groupRepoListEntriesForProcessing(
-        missingEntries,
+        missingEntriesToProcess,
       )) {
         processedCount += await processRepoListOwnerGroup({
           ownerGroup,
@@ -265,6 +284,7 @@ export async function processMissingRepoListRepositories({
           state: missingProcessingState,
           fileName,
           stateManager,
+          skippedNotFoundRepoKeys,
         });
       }
 
@@ -298,6 +318,7 @@ export async function processRepoListOwnerGroup({
   state,
   fileName,
   stateManager,
+  skippedNotFoundRepoKeys,
 }: {
   ownerGroup: RepoListOwnerGroup;
   client: OctokitClient;
@@ -308,6 +329,7 @@ export async function processRepoListOwnerGroup({
   state: { successCount: number; retryCount: number; processedCount: number };
   fileName: string;
   stateManager: StateManager;
+  skippedNotFoundRepoKeys: Set<string>;
 }): Promise<number> {
   logger.info(
     `Processing ${ownerGroup.entries.length} repositories for owner ${ownerGroup.owner}`,
@@ -320,9 +342,46 @@ export async function processRepoListOwnerGroup({
       continue;
     }
 
+    if (skippedNotFoundRepoKeys.has(entry.key)) {
+      logger.debug(
+        `Skipping repository already marked not found or inaccessible: ${entry.key}`,
+      );
+      continue;
+    }
+
+    const processedCountForAttempt = state.processedCount + 1;
+    let repoStats: RepositoryStats;
     try {
-      await processRepositoryByName({
+      repoStats = await fetchRepositoryStatsByName({
         entry,
+        client,
+        opts,
+      });
+    } catch (error) {
+      if (isGitHubNotFoundError(error)) {
+        skippedNotFoundRepoKeys.add(entry.key);
+        logger.warn(
+          `Skipping repository ${entry.owner}/${entry.repo} because it was not found or is inaccessible: ${formatErrorMessage(error)}`,
+        );
+        continue;
+      }
+
+      state.successCount = 0;
+      logger.error(
+        `Failed processing repo ${entry.owner}/${entry.repo}: ${formatErrorMessage(
+          error,
+        )}`,
+      );
+      throw error;
+    }
+
+    // Only increment after successful fetch so skipped repos don't consume rate-limit check slots
+    state.processedCount = processedCountForAttempt;
+
+    try {
+      await processFetchedRepositoryStats({
+        entry,
+        repoStats,
         client,
         logger,
         opts,
@@ -331,15 +390,15 @@ export async function processRepoListOwnerGroup({
         state,
         fileName,
         stateManager,
-        processedCount: ++state.processedCount,
+        processedCount: processedCountForAttempt,
       });
       processedCount += 1;
     } catch (error) {
       state.successCount = 0;
       logger.error(
-        `Failed processing repo ${entry.owner}/${entry.repo}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        `Failed processing repo ${entry.owner}/${entry.repo}: ${formatErrorMessage(
+          error,
+        )}`,
       );
       throw error;
     }

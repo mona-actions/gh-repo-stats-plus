@@ -74,7 +74,7 @@ gh repo-stats-plus repo-stats --org-name my-org --auto-process-missing
 gh repo-stats-plus repo-stats --repo-list repos-to-process.txt --auto-process-missing
 ```
 
-For standalone repo-list mode, `--auto-process-missing` compares requested `owner/repo` keys to the combined CSV `Org_Name` and `Repo_Name` columns. Organization-based missing-repo behavior is unchanged.
+For standalone repo-list mode, `--auto-process-missing` compares requested `owner/repo` keys to the combined CSV `Org_Name` and `Repo_Name` columns.
 
 ### Count Project Associations
 
