@@ -58,7 +58,7 @@
     "tsx": "^4.22.1",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.2",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.9"
   },
   "dependencies": {
     "@octokit/graphql": "^9.0.3",
