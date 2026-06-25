@@ -1,19 +1,8 @@
-import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { parse } from 'csv-parse/sync';
+import { writeFileSync } from 'fs';
+import { readCsvMatrix } from './csv.js';
 import { createLogger } from './logger.js';
-import { Logger } from './types.js';
+import { CsvToMarkdownOptions, Logger } from './types.js';
 import { resolveOutputPath } from './utils.js';
-
-export type CsvToMarkdownFormat = 'table' | 'vertical';
-
-export interface CsvToMarkdownOptions {
-  input: string;
-  format?: CsvToMarkdownFormat;
-  title?: string;
-  outputFileName?: string;
-  outputDir?: string;
-  verbose?: boolean;
-}
 
 function generateTimestamp(): string {
   return new Date()
@@ -25,12 +14,6 @@ function generateTimestamp(): string {
 export function generateCsvToMarkdownFileName(): string {
   const timestamp = generateTimestamp();
   return `csv-to-markdown-${timestamp}_ts.md`;
-}
-
-export function parseCsvMatrix(fileContent: string): string[][] {
-  return parse(fileContent, {
-    skip_empty_lines: true,
-  }) as string[][];
 }
 
 function escapeMarkdownCell(value: string | undefined): string {
@@ -105,12 +88,7 @@ export async function runCsvToMarkdown(
     logger.info(`Markdown title: ${options.title}`);
   }
 
-  if (!existsSync(options.input)) {
-    throw new Error(`Input CSV file not found: ${options.input}`);
-  }
-
-  const fileContent = readFileSync(options.input, 'utf-8');
-  const csvRows = parseCsvMatrix(fileContent);
+  const csvRows = readCsvMatrix(options.input);
   logger.info(`Read CSV rows: ${csvRows.length}`);
 
   const markdownBody =

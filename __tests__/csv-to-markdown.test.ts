@@ -34,7 +34,6 @@ import {
   csvToMarkdownTable,
   csvToVerticalMarkdown,
   generateCsvToMarkdownFileName,
-  parseCsvMatrix,
   runCsvToMarkdown,
 } from '../src/csv-to-markdown.js';
 import { withMockedDate } from './test-utils.js';
@@ -42,17 +41,6 @@ import { withMockedDate } from './test-utils.js';
 describe('csv-to-markdown', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  describe('parseCsvMatrix', () => {
-    it('parses CSV content with quoted commas correctly', () => {
-      expect(parseCsvMatrix('Metric,Value\nDescription,"hello, world"')).toEqual(
-        [
-          ['Metric', 'Value'],
-          ['Description', 'hello, world'],
-        ],
-      );
-    });
   });
 
   describe('csvToMarkdownTable', () => {
@@ -183,7 +171,7 @@ describe('csv-to-markdown', () => {
         runCsvToMarkdown({
           input: '/tmp/missing.csv',
         }),
-      ).rejects.toThrow('Input CSV file not found: /tmp/missing.csv');
+      ).rejects.toThrow('CSV file not found: /tmp/missing.csv');
     });
   });
 });

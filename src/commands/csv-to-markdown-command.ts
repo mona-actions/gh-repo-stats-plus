@@ -1,10 +1,7 @@
 import * as commander from 'commander';
 import { existsSync } from 'fs';
-import {
-  CsvToMarkdownFormat,
-  CsvToMarkdownOptions,
-  runCsvToMarkdown,
-} from '../csv-to-markdown.js';
+import { runCsvToMarkdown } from '../csv-to-markdown.js';
+import { CsvToMarkdownFormat, CsvToMarkdownOptions } from '../types.js';
 import VERSION from '../version.js';
 
 const { Option } = commander;

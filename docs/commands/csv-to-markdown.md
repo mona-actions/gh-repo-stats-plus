@@ -63,11 +63,11 @@ mona-actions,gh-repo-stats-plus,25
 ```markdown
 ## 📊 Repository Statistics
 
-| Metric | Value |
-| --- | --- |
-| Org_Name | mona-actions |
-| Repo_Name | gh-repo-stats-plus |
-| Record_Count | 25 |
+| Metric       | Value              |
+| ------------ | ------------------ |
+| Org_Name     | mona-actions       |
+| Repo_Name    | gh-repo-stats-plus |
+| Record_Count | 25                 |
 ```
 
 ### Table Input CSV
@@ -83,8 +83,8 @@ git_lfs,Has 3 LFS objects
 ```markdown
 ## 🔍 Migration Audit Results
 
-| type | message |
-| --- | --- |
+| type        | message             |
+| ----------- | ------------------- |
 | large_files | Found 5 large files |
-| git_lfs | Has 3 LFS objects |
+| git_lfs     | Has 3 LFS objects   |
 ```

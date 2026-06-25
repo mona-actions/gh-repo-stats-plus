@@ -801,3 +801,14 @@ export interface PostProcessOptions {
   outputDir?: string;
   verbose?: boolean;
 }
+
+export type CsvToMarkdownFormat = 'table' | 'vertical';
+
+export interface CsvToMarkdownOptions {
+  input: string;
+  format?: CsvToMarkdownFormat;
+  title?: string;
+  outputFileName?: string;
+  outputDir?: string;
+  verbose?: boolean;
+}

@@ -22,6 +22,7 @@ import {
   initializeCsvFile,
   appendCsvRow,
   readCsvFile,
+  readCsvMatrix,
   writeCsvFile,
   REPO_STATS_COLUMNS,
   PROJECT_STATS_COLUMNS,
@@ -180,6 +181,37 @@ describe('csv', () => {
       expect(() => readCsvFile('/tmp/missing.csv')).toThrow(
         'CSV file not found: /tmp/missing.csv',
       );
+    });
+
+    describe('readCsvMatrix', () => {
+      it('should read and parse a CSV file into a raw matrix', () => {
+        vi.mocked(existsSync).mockReturnValue(true);
+        vi.mocked(readFileSync).mockReturnValue(
+          'Metric,Value\nDescription,"hello, world"\n',
+        );
+        vi.mocked(parse).mockReturnValue([
+          ['Metric', 'Value'],
+          ['Description', 'hello, world'],
+        ]);
+
+        const result = readCsvMatrix('/tmp/test.csv');
+
+        expect(result).toEqual([
+          ['Metric', 'Value'],
+          ['Description', 'hello, world'],
+        ]);
+        expect(parse).toHaveBeenCalledWith(expect.any(String), {
+          skip_empty_lines: true,
+        });
+      });
+
+      it('should throw if the matrix CSV file does not exist', () => {
+        vi.mocked(existsSync).mockReturnValue(false);
+
+        expect(() => readCsvMatrix('/tmp/missing.csv')).toThrow(
+          'CSV file not found: /tmp/missing.csv',
+        );
+      });
     });
   });
 

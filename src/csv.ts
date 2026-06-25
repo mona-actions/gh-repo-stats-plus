@@ -206,6 +206,26 @@ export function readCsvFile(filePath: string): Record<string, string>[] {
   }) as Record<string, string>[];
 }
 
+/**
+ * Reads and parses a CSV file into a raw matrix of rows and cells.
+ * Preserves the header row order for commands that need markdown-style
+ * presentation rather than object-key access.
+ *
+ * @param filePath - Full path to the CSV file to read
+ * @returns Array of CSV rows, including the header row
+ * @throws Error if the file does not exist or cannot be parsed
+ */
+export function readCsvMatrix(filePath: string): string[][] {
+  if (!existsSync(filePath)) {
+    throw new Error(`CSV file not found: ${filePath}`);
+  }
+
+  const fileContent = readFileSync(filePath, 'utf-8');
+  return parse(fileContent, {
+    skip_empty_lines: true,
+  }) as string[][];
+}
+
 // --- CSV file writing (complete file) ---
 
 /**
