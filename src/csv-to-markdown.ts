@@ -7,7 +7,7 @@ import { resolveOutputPath } from './utils.js';
 function generateTimestamp(): string {
   return new Date()
     .toISOString()
-    .replace(/[-:T\.Z]/g, '')
+    .replace(/[-:T.Z]/g, '')
     .slice(0, 12);
 }
 
@@ -17,7 +17,10 @@ export function generateCsvToMarkdownFileName(): string {
 }
 
 function escapeMarkdownCell(value: string | undefined): string {
-  return (value ?? '').replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
+  return (value ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/\|/g, '\\|')
+    .replace(/\r?\n/g, '<br>');
 }
 
 function renderMarkdownTable(headers: string[], rows: string[][]): string {

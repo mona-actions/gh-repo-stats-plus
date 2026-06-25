@@ -62,10 +62,10 @@ describe('csv-to-markdown', () => {
     it('escapes markdown-sensitive characters in cells', () => {
       const markdown = csvToMarkdownTable([
         ['type', 'message'],
-        ['check|warning', 'first line\nsecond line'],
+        ['check\\warning|alert', 'first line\nsecond line'],
       ]);
 
-      expect(markdown).toContain('check\\|warning');
+      expect(markdown).toContain('check\\\\warning\\|alert');
       expect(markdown).toContain('first line<br>second line');
     });
   });
