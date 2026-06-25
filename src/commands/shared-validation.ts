@@ -1,3 +1,4 @@
+import { hasRepoListInput } from '../repo-list.js';
 import type { Arguments } from '../types.js';
 
 /**
@@ -23,10 +24,7 @@ export function validateOrgSourceOptions(opts: Arguments): void {
  * batch-index is non-negative, and that batch mode is not combined
  * with incompatible source modes.
  */
-export function validateBatchOptions(
-  opts: Arguments,
-  options?: { allowRepoList?: boolean },
-): void {
+export function validateBatchOptions(opts: Arguments): void {
   if (opts.batchSize != null) {
     if (opts.batchSize < 1) {
       throw new Error('--batch-size must be at least 1');
@@ -36,13 +34,13 @@ export function validateBatchOptions(
       throw new Error('--batch-index must be 0 or greater');
     }
 
-    if (opts.orgList) {
+    if (Array.isArray(opts.orgList) && opts.orgList.length > 0) {
       throw new Error(
         'Batch mode (--batch-size) cannot be used with --org-list. Use with a single --org-name instead.',
       );
     }
 
-    if (!options?.allowRepoList && opts.repoList) {
+    if (hasRepoListInput(opts.repoList)) {
       throw new Error(
         'Batch mode (--batch-size) cannot be used with --repo-list. Batch mode generates its own repo list.',
       );

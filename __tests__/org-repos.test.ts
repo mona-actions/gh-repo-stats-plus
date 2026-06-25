@@ -2,7 +2,34 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { calculateBatchMatrix, fetchOrgRepos } from '../src/org-repos.js';
 import { createMockLogger } from './test-utils.js';
 
-vi.mock('fs');
+const streamEventHandlers = new Map<
+  string,
+  Set<(...args: unknown[]) => void>
+>();
+
+const mockOutputStream = {
+  write: vi.fn(() => true),
+  end: vi.fn(() => {
+    for (const handler of streamEventHandlers.get('finish') ?? []) {
+      handler();
+    }
+  }),
+  on: vi.fn(),
+  once: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+    const handlers = streamEventHandlers.get(event) ?? new Set();
+    handlers.add(handler);
+    streamEventHandlers.set(event, handlers);
+    return mockOutputStream;
+  }),
+  off: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+    streamEventHandlers.get(event)?.delete(handler);
+    return mockOutputStream;
+  }),
+};
+
+vi.mock('fs', () => ({
+  createWriteStream: vi.fn(() => mockOutputStream),
+}));
 vi.mock('../src/utils.js', async (importOriginal) => {
   const mod = await importOriginal<typeof import('../src/utils.js')>();
   return {
@@ -13,7 +40,7 @@ vi.mock('../src/utils.js', async (importOriginal) => {
   };
 });
 
-import { writeFileSync, appendFileSync } from 'fs';
+import { createWriteStream } from 'fs';
 
 function makeClient(repos: { name: string; owner: { login: string } }[]) {
   return {
@@ -76,6 +103,8 @@ describe('fetchOrgRepos', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    streamEventHandlers.clear();
+    mockOutputStream.write.mockReturnValue(true);
     logger = createMockLogger();
   });
 
@@ -109,16 +138,15 @@ describe('fetchOrgRepos', () => {
     });
 
     // File is initialized empty then repos appended incrementally
-    expect(writeFileSync).toHaveBeenCalledWith(
+    expect(createWriteStream).toHaveBeenCalledWith(
       expect.stringContaining('repos.txt'),
-      '',
-      'utf-8',
+      { encoding: 'utf-8', flags: 'w' },
     );
-    expect(appendFileSync).toHaveBeenCalledWith(
-      expect.stringContaining('repos.txt'),
+    expect(mockOutputStream.write).toHaveBeenCalledWith(
       'my-org/alpha\n',
       'utf-8',
     );
+    expect(mockOutputStream.end).toHaveBeenCalled();
     expect(result.outputFile).toBeDefined();
   });
 

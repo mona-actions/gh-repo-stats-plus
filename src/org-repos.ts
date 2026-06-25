@@ -1,9 +1,9 @@
 import { OctokitClient } from './service.js';
 import { Arguments, Logger } from './types.js';
 import { createClientFromOpts } from './init.js';
-import { appendFileSync, writeFileSync } from 'fs';
+import { createWriteStream, WriteStream } from 'fs';
 import { isAbsolute } from 'path';
-import { generateOrgReposFileName, resolveOutputPath } from './utils.js';
+import { resolveOutputPath } from './utils.js';
 
 export interface BatchMatrix {
   'batch-index': number[];
@@ -16,6 +16,54 @@ export interface OrgReposResult {
   batchSize?: number;
   totalBatches?: number;
   matrix?: BatchMatrix;
+}
+
+async function writeOutputLine(
+  outputStream: WriteStream,
+  line: string,
+): Promise<void> {
+  if (outputStream.write(line, 'utf-8')) {
+    return;
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    const onDrain = () => {
+      cleanup();
+      resolve();
+    };
+    const onError = (error: Error) => {
+      cleanup();
+      reject(error);
+    };
+    const cleanup = () => {
+      outputStream.off('drain', onDrain);
+      outputStream.off('error', onError);
+    };
+
+    outputStream.once('drain', onDrain);
+    outputStream.once('error', onError);
+  });
+}
+
+async function closeOutputStream(outputStream: WriteStream): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const onFinish = () => {
+      cleanup();
+      resolve();
+    };
+    const onError = (error: Error) => {
+      cleanup();
+      reject(error);
+    };
+    const cleanup = () => {
+      outputStream.off('finish', onFinish);
+      outputStream.off('error', onError);
+    };
+
+    outputStream.once('finish', onFinish);
+    outputStream.once('error', onError);
+    outputStream.end();
+  });
 }
 
 /**
@@ -93,26 +141,32 @@ export async function fetchOrgRepos({
 
   // Resolve file path up front if writing is requested
   let fileName: string | undefined;
+  let outputStream: WriteStream | undefined;
   if (opts.outputFileName) {
     fileName = isAbsolute(opts.outputFileName)
       ? opts.outputFileName
-      : await resolveOutputPath(
-          opts.outputDir,
-          opts.outputFileName || generateOrgReposFileName(orgName),
-        );
-    // Initialize empty file (truncate if exists)
-    writeFileSync(fileName, '', 'utf-8');
+      : await resolveOutputPath(opts.outputDir, opts.outputFileName);
+    outputStream = createWriteStream(fileName, {
+      encoding: 'utf-8',
+      flags: 'w',
+    });
   }
 
   // Stream repos: write to file incrementally and collect into array
   const repos: string[] = [];
-  for await (const repo of client.listOrgRepoNames(orgName, pageSize)) {
-    const fullName = `${repo.owner.login}/${repo.name}`;
-    repos.push(fullName);
-    if (fileName) {
-      appendFileSync(fileName, `${fullName}\n`, 'utf-8');
+  try {
+    for await (const repo of client.listOrgRepoNames(orgName, pageSize)) {
+      const fullName = `${repo.owner.login}/${repo.name}`;
+      repos.push(fullName);
+      if (outputStream) {
+        await writeOutputLine(outputStream, `${fullName}\n`);
+      }
+      logger.debug(`Found repo: ${fullName}`);
     }
-    logger.debug(`Found repo: ${fullName}`);
+  } finally {
+    if (outputStream) {
+      await closeOutputStream(outputStream);
+    }
   }
 
   logger.info(`Total repos found: ${repos.length}`);

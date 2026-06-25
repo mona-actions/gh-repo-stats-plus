@@ -23,7 +23,7 @@ import { run } from '../main.js';
 const { Option } = commander;
 
 export function validateRepoStatsOptions(opts: Arguments) {
-  const { hasRepoList, hasEmptyRepoList, sourceModeCount } =
+  const { hasEmptyRepoList, sourceModeCount } =
     getRepoStatsSourceModeStatus(opts);
 
   if (hasEmptyRepoList) {
@@ -44,14 +44,7 @@ export function validateRepoStatsOptions(opts: Arguments) {
     );
   }
 
-  // repo-stats disallows combining batch mode with --repo-list
-  if (opts.batchSize != null && hasRepoList) {
-    throw new Error(
-      'Batch mode (--batch-size) cannot be used with --repo-list. Batch mode generates its own repo list.',
-    );
-  }
-
-  validateBatchOptions(opts, { allowRepoList: true });
+  validateBatchOptions(opts);
 }
 
 const repoStatsCommand = new commander.Command();
