@@ -59,7 +59,7 @@ export async function initCommand(
 
   logInitialization.auth(logger);
 
-  const caCert = loadCaCertificate(opts.caCertPath, logger);
+  const caCert = loadCaCertificate(opts.caCert, logger);
 
   // Wrap createOctokit to bind the loaded CA cert for all callers
   const createOctokitWithCa: typeof createOctokit = (
@@ -528,7 +528,7 @@ export async function createClientFromOpts(
   logFileName: string,
 ): Promise<{ logger: Logger; client: OctokitClient }> {
   const logger = await createLogger(opts.verbose, logFileName);
-  const caCert = loadCaCertificate(opts.caCertPath, logger);
+  const caCert = loadCaCertificate(opts.caCert, logger);
   const authConfig = createAuthConfig({ ...opts, logger });
   const octokit = createOctokit(
     authConfig,
