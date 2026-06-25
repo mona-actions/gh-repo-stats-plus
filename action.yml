@@ -804,54 +804,34 @@ runs:
     - name: Convert CSV to Markdown
       if: ${{ success() && inputs.type == 'repository' }}
       shell: bash
+      env:
+        OUTPUT_DIR: ${{ steps.setup-paths.outputs.output_dir }}
       run: |
-        CSV_FILE=$(ls ${{ steps.setup-paths.outputs.output_dir }}/${{ inputs.organization }}-*_repos-*.csv | head -n 1)
+        CSV_FILE=$(ls "${OUTPUT_DIR}"/${{ inputs.organization }}-*_repos-*.csv | head -n 1)
 
-        # Create vertical markdown table
-        MARKDOWN="## 📊 Repository Statistics\n\n"
-        MARKDOWN+="| Metric | Value |\n"
-        MARKDOWN+="|--------|-------|\n"
-
-        # Read headers and values, create vertical table
-        HEADERS=$(head -n 1 "$CSV_FILE")
-        VALUES=$(tail -n 1 "$CSV_FILE")
-
-        IFS=',' read -ra HEADER_ARRAY <<< "$HEADERS"
-        IFS=',' read -ra VALUE_ARRAY <<< "$VALUES"
-
-        for i in "${!HEADER_ARRAY[@]}"; do
-          MARKDOWN+="| ${HEADER_ARRAY[$i]} | ${VALUE_ARRAY[$i]} |\n"
-        done
-
-        # Save to file for next step
-        echo -e "$MARKDOWN" > ${{ steps.setup-paths.outputs.output_dir }}/stats.md
+        gh repo-stats-plus csv-to-markdown \
+          --input "$CSV_FILE" \
+          --format vertical \
+          --title "📊 Repository Statistics" \
+          --output-dir "${OUTPUT_DIR}" \
+          --output-file-name stats.md
 
         echo "✓ CSV converted to markdown successfully"
 
     - name: Convert Migration Audit to Markdown
       if: inputs.run-migration-audit == 'true' && steps.migration-audit-repo.outcome == 'success' && inputs.type == 'repository'
       shell: bash
+      env:
+        OUTPUT_DIR: ${{ steps.setup-paths.outputs.output_dir }}
       run: |
-        AUDIT_FILE="${{ steps.setup-paths.outputs.output_dir }}/${{ inputs.repository }}-audit.csv"
+        AUDIT_FILE="${OUTPUT_DIR}/${{ inputs.repository }}-audit.csv"
 
-        MARKDOWN="\n\n## 🔍 Migration Audit Results\n\n"
-
-        # Read CSV and create horizontal table
-        while IFS=',' read -r col1 col2; do
-          if [ "$col1" != "" ]; then
-            # First row is headers
-            if [ ! -f /tmp/headers_written ]; then
-              MARKDOWN+="| $col1 | $col2 |\n"
-              MARKDOWN+="|-------|-------|\n"
-              touch /tmp/headers_written
-            else
-              MARKDOWN+="| $col1 | $col2 |\n"
-            fi
-          fi
-        done < "$AUDIT_FILE"
-
-        # Save to file
-        echo -e "$MARKDOWN" > ${{ steps.setup-paths.outputs.output_dir }}/audit.md
+        gh repo-stats-plus csv-to-markdown \
+          --input "$AUDIT_FILE" \
+          --format table \
+          --title "🔍 Migration Audit Results" \
+          --output-dir "${OUTPUT_DIR}" \
+          --output-file-name audit.md
 
         echo "✓ Migration audit CSV converted to markdown successfully"
 
