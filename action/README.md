@@ -23,7 +23,7 @@ In both cases, the `github-token` input (typically `${{ secrets.GITHUB_TOKEN }}`
 
 | Input | Description | Required | Default |
 | --- | --- | --- | --- |
-| `type` | Type of stats gathering: `repository`, `organization`, `project-stats`, `app-install-stats`, `package-stats`, `codespace-stats`, `migration-audit`, or `combine` | No | `repository` |
+| `type` | Type of stats gathering: `repository`, `organization`, `project-stats`, `app-install-stats`, `package-stats`, `codespace-stats`, `webhook-stats`, `migration-audit`, or `combine` | No | `repository` |
 | `github-token` | GitHub token for authentication (e.g., `github.token`) | Yes | |
 | `ghec-token` | GitHub Enterprise Cloud token (used to download dependencies from GHEC if not on github.com) | No | `""` |
 | `access-token` | Personal access token with repo access for gathering stats | No | `""` |
@@ -56,6 +56,9 @@ In both cases, the `github-token` input (typically `${{ secrets.GITHUB_TOKEN }}`
 | `rows-to-columns-additional-csv-columns` | Comma-separated column names in the additional CSV used for matching rows. | No | `owner,name` |
 | `rows-to-columns-output-file-name` | Name for the rows-to-columns output CSV file (default: auto-generated with timestamp). | No | `""` |
 | `package-type` | Package type for package-stats (`maven`, `npm`, `docker`, `nuget`, `rubygems`, `pypi`). | No | `maven` |
+| `webhook-scope` | Which webhooks to collect for webhook-stats: `repo`, `org`, or `both`. | No | `repo` |
+| `only-active-repos` | Skip archived repositories when collecting repository webhooks for webhook-stats (`true`/`false`). | No | `false` |
+| `only-active-webhooks` | Only include webhooks whose last delivery response status is `active` for webhook-stats (`true`/`false`). | No | `false` |
 
 ## Outputs
 
@@ -302,6 +305,25 @@ Collect codespace usage statistics for an organization.
     github-token: ${{ github.token }}
     access-token: ${{ secrets.ACCESS_TOKEN }}
     organization: my-org
+```
+
+### Webhook Stats
+
+Collect organization and/or repository webhook configuration statistics. Use
+`webhook-scope` to control which webhooks are collected (`repo`, `org`, or
+`both`). Provide a `repository` to scope collection to a single repository.
+
+```yaml
+- name: Gather Webhook Stats
+  uses: mona-actions/gh-repo-stats-plus@v1
+  with:
+    type: webhook-stats
+    github-token: ${{ github.token }}
+    access-token: ${{ secrets.ACCESS_TOKEN }}
+    organization: my-org
+    webhook-scope: both
+    only-active-repos: "true"
+    only-active-webhooks: "true"
 ```
 
 ### Post-Process

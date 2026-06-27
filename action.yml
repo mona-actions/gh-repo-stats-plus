@@ -8,7 +8,7 @@ branding:
 
 inputs:
   type:
-    description: "Type of stats gathering: 'repository', 'organization', 'project-stats', 'app-install-stats', 'package-stats', 'codespace-stats', 'migration-audit', 'org-repos', or 'combine'"
+    description: "Type of stats gathering: 'repository', 'organization', 'project-stats', 'app-install-stats', 'package-stats', 'codespace-stats', 'webhook-stats', 'migration-audit', 'org-repos', or 'combine'"
     required: false
     default: "repository"
   github-token:
@@ -141,6 +141,18 @@ inputs:
     description: "Package type for package-stats (maven, npm, docker, nuget, rubygems, pypi)"
     required: false
     default: "maven"
+  webhook-scope:
+    description: "Which webhooks to collect for webhook-stats: 'repo', 'org', or 'both'"
+    required: false
+    default: "repo"
+  only-active-repos:
+    description: "Skip archived repositories when collecting repository webhooks for webhook-stats (true/false)"
+    required: false
+    default: "false"
+  only-active-webhooks:
+    description: "Only include webhooks whose last delivery response status is 'active' for webhook-stats (true/false)"
+    required: false
+    default: "false"
 
 outputs:
   output-dir:
@@ -195,11 +207,11 @@ runs:
         INPUT_TYPE: ${{ inputs.type }}
       run: |
         case "${INPUT_TYPE}" in
-          repository|organization|project-stats|app-install-stats|package-stats|codespace-stats|migration-audit|org-repos|combine)
+          repository|organization|project-stats|app-install-stats|package-stats|codespace-stats|webhook-stats|migration-audit|org-repos|combine)
             echo "✓ Valid type: ${INPUT_TYPE}"
             ;;
           *)
-            echo "::error::Invalid type '${INPUT_TYPE}'. Must be one of: repository, organization, project-stats, app-install-stats, package-stats, codespace-stats, migration-audit, org-repos, combine."
+            echo "::error::Invalid type '${INPUT_TYPE}'. Must be one of: repository, organization, project-stats, app-install-stats, package-stats, codespace-stats, webhook-stats, migration-audit, org-repos, combine."
             exit 1
             ;;
         esac
@@ -344,7 +356,7 @@ runs:
         echo "✓ App install stats authentication validated"
 
     - name: Validate Organization Exists
-      if: ${{ inputs.type == 'organization' || inputs.type == 'project-stats' || inputs.type == 'app-install-stats' || inputs.type == 'package-stats' || inputs.type == 'codespace-stats' || inputs.type == 'migration-audit' || inputs.type == 'org-repos' }}
+      if: ${{ inputs.type == 'organization' || inputs.type == 'project-stats' || inputs.type == 'app-install-stats' || inputs.type == 'package-stats' || inputs.type == 'codespace-stats' || inputs.type == 'webhook-stats' || inputs.type == 'migration-audit' || inputs.type == 'org-repos' }}
       shell: bash
       env:
         GH_TOKEN: ${{ steps.app-install.outputs.token || inputs.access-token || inputs.github-token }}
@@ -746,6 +758,45 @@ runs:
 
         echo "✓ Codespace statistics gathered successfully"
 
+    - name: Gather Webhook Stats
+      if: ${{ inputs.type == 'webhook-stats' }}
+      shell: bash
+      env:
+        WEBHOOK_SCOPE: ${{ inputs.webhook-scope }}
+        ONLY_ACTIVE_REPOS: ${{ inputs.only-active-repos }}
+        ONLY_ACTIVE_WEBHOOKS: ${{ inputs.only-active-webhooks }}
+      run: |
+        WEBHOOK_ARGS=()
+
+        # When a single repository is supplied, process just that repo via a
+        # one-entry repo list (setup-paths writes owner/repo to a temp file).
+        REPO_LIST_FILE="${{ steps.setup-paths.outputs.file }}"
+        if [[ -n "${REPO_LIST_FILE}" ]]; then
+          WEBHOOK_ARGS+=(--repo-list "${REPO_LIST_FILE}")
+        fi
+
+        if [[ -n "${WEBHOOK_SCOPE}" ]]; then
+          WEBHOOK_ARGS+=(--webhook-scope "${WEBHOOK_SCOPE}")
+        fi
+        if [[ "${ONLY_ACTIVE_REPOS}" == "true" ]]; then
+          WEBHOOK_ARGS+=(--only-active-repos true)
+        fi
+        if [[ "${ONLY_ACTIVE_WEBHOOKS}" == "true" ]]; then
+          WEBHOOK_ARGS+=(--only-active-webhooks true)
+        fi
+
+        gh repo-stats-plus webhook-stats \
+          --org-name "${{ inputs.organization }}" \
+          --access-token "${{ inputs.access-token }}" \
+          --app-id "${{ inputs.github-app-id }}" \
+          --private-key "${{ inputs.github-app-private-key }}" \
+          --app-installation-id "${{ steps.app-install.outputs.installation-id }}" \
+          --base-url "${{ inputs.base-url }}" \
+          --output-dir "${{ steps.setup-paths.outputs.output_dir }}" \
+          "${WEBHOOK_ARGS[@]}"
+
+        echo "✓ Webhook statistics gathered successfully"
+
     - name: Run Migration Audit for Repository
       id: migration-audit-repo
       if: ${{ inputs.run-migration-audit == 'true' && inputs.type == 'repository' }}
@@ -1009,7 +1060,7 @@ runs:
         overwrite: true
 
     - name: Create Stats Placeholder
-      if: ${{ success() && (inputs.type == 'organization' || inputs.type == 'project-stats' || inputs.type == 'app-install-stats' || inputs.type == 'package-stats' || inputs.type == 'codespace-stats' || inputs.type == 'migration-audit' || inputs.type == 'combine') }}
+      if: ${{ success() && (inputs.type == 'organization' || inputs.type == 'project-stats' || inputs.type == 'app-install-stats' || inputs.type == 'package-stats' || inputs.type == 'codespace-stats' || inputs.type == 'webhook-stats' || inputs.type == 'migration-audit' || inputs.type == 'combine') }}
       shell: bash
       run: |
         case "${{ inputs.type }}" in
@@ -1027,6 +1078,9 @@ runs:
             ;;
           codespace-stats)
             MARKDOWN="## 📊 Codespace Statistics\n\nCodespace usage statistics have been collected for the organization.\n\n"
+            ;;
+          webhook-stats)
+            MARKDOWN="## 📊 Webhook Statistics\n\nWebhook configuration statistics have been collected.\n\n"
             ;;
           migration-audit)
             MARKDOWN="## 🔍 Migration Audit\n\nMigration audit has been completed for the organization.\n\n"
