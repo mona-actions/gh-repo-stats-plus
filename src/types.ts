@@ -83,6 +83,11 @@ export interface Arguments {
   // package-stats options
   packageType?: string;
 
+  // webhook-stats options
+  webhookScope?: WebhookScope;
+  onlyActiveRepos?: boolean;
+  onlyActiveWebhooks?: boolean;
+
   // GitHub API version
   apiVersion?: string;
 
@@ -689,6 +694,37 @@ export interface CodespaceStatsResult {
   Owner: string;
   Last_Used_At: string;
   Created_At: string;
+}
+
+// --- Webhook Stats types ---
+
+/**
+ * Determines which webhooks a webhook-stats run collects:
+ * - `repo`: repository-level webhooks only (default)
+ * - `org`: organization-level webhooks only
+ * - `both`: organization-level and repository-level webhooks
+ */
+export type WebhookScope = 'repo' | 'org' | 'both';
+
+export type WebhookType = 'Organization' | 'Repository';
+
+export interface WebhookStatsResult {
+  Org_Name: string;
+  Repo_Name: string;
+  Webhook_Type: WebhookType;
+  Webhook_Id: number;
+  Name: string;
+  Active: boolean;
+  Has_Secret: boolean;
+  Events: string;
+  Url: string;
+  Content_Type: string;
+  Insecure_SSL: string;
+  Created_At: string;
+  Updated_At: string;
+  Last_Response_Code: string;
+  Last_Response_Status: string;
+  Last_Response_Message: string;
 }
 
 // --- Shared command infrastructure types ---

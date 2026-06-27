@@ -10,6 +10,7 @@ import projectStatsCommand from './commands/project-stats-command.js';
 import appInstallStatsCommand from './commands/app-install-stats-command.js';
 import packageStatsCommand from './commands/package-stats-command.js';
 import codespaceStatsCommand from './commands/codespace-stats-command.js';
+import webhookStatsCommand from './commands/webhook-stats-command.js';
 import combineStatsCommand from './commands/combine-stats-command.js';
 import csvToMarkdownCommand from './commands/csv-to-markdown-command.js';
 import postProcessCommand from './commands/post-process-command.js';
@@ -29,6 +30,7 @@ program
   .addCommand(appInstallStatsCommand)
   .addCommand(packageStatsCommand)
   .addCommand(codespaceStatsCommand)
+  .addCommand(webhookStatsCommand)
   .addCommand(combineStatsCommand)
   .addCommand(csvToMarkdownCommand)
   .addCommand(postProcessCommand)

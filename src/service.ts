@@ -84,6 +84,56 @@ export class OctokitClient {
     }
   }
 
+  /**
+   * Yields organization-level webhooks via REST: GET /orgs/{org}/hooks.
+   * Used by webhook-stats when the webhook scope includes organization webhooks.
+   */
+  async *listOrgWebhooks(
+    org: string,
+    per_page: number,
+  ): AsyncGenerator<components['schemas']['org-hook'], void, unknown> {
+    const iterator = this.octokit.paginate.iterator(
+      this.octokit.rest.orgs.listWebhooks,
+      {
+        org,
+        per_page,
+        headers: this.octokit_headers,
+      },
+    );
+
+    for await (const { data: hooks } of iterator) {
+      for (const hook of hooks) {
+        yield hook;
+      }
+    }
+  }
+
+  /**
+   * Yields repository-level webhooks via REST: GET /repos/{owner}/{repo}/hooks.
+   * Used by webhook-stats when the webhook scope includes repository webhooks.
+   */
+  async *listRepoWebhooks(
+    owner: string,
+    repo: string,
+    per_page: number,
+  ): AsyncGenerator<components['schemas']['hook'], void, unknown> {
+    const iterator = this.octokit.paginate.iterator(
+      this.octokit.rest.repos.listWebhooks,
+      {
+        owner,
+        repo,
+        per_page,
+        headers: this.octokit_headers,
+      },
+    );
+
+    for await (const { data: hooks } of iterator) {
+      for (const hook of hooks) {
+        yield hook;
+      }
+    }
+  }
+
   // all repos in an org
   async *getOrgRepoStats(
     org: string,

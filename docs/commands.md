@@ -12,6 +12,7 @@ This page provides an overview of all available commands. See the individual com
 | [app-install-stats](commands/app-install-stats.md) | Retrieve GitHub App installation statistics for an organization (PAT only)     |
 | [package-stats](commands/package-stats.md)         | Retrieve package statistics (Maven, npm, etc.) for an organization             |
 | [codespace-stats](commands/codespace-stats.md)     | Retrieve codespace usage statistics for an organization                        |
+| [webhook-stats](commands/webhook-stats.md)         | Retrieve organization and/or repository webhook configuration statistics       |
 | [org-repos](commands/org-repos.md)                 | List all repositories in an organization and optionally build a batch matrix   |
 | [combine-stats](commands/combine-stats.md)         | Merge multiple CSV output files into a single combined report                  |
 | [csv-to-markdown](commands/csv-to-markdown.md)     | Convert CSV files into markdown tables or vertical metric/value summaries      |
@@ -44,6 +45,12 @@ gh repo-stats-plus package-stats --org-name my-org --package-type NPM
 
 # Collect codespace usage statistics
 gh repo-stats-plus codespace-stats --org-name my-org
+
+# Collect webhook configuration statistics (repository webhooks by default)
+gh repo-stats-plus webhook-stats --org-name my-org
+
+# Collect both organization and repository webhooks
+gh repo-stats-plus webhook-stats --org-name my-org --webhook-scope both
 
 # List all repos in an organization
 gh repo-stats-plus org-repos --org-name my-org

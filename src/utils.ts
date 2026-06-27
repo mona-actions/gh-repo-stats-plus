@@ -53,6 +53,11 @@ export function generatePackageStatsFileName(orgName: string): string {
   return `${orgName.toLowerCase()}-package-stats-${timestamp}_ts.csv`;
 }
 
+export function generateWebhookStatsFileName(orgName: string): string {
+  const timestamp = generateTimestamp();
+  return `${orgName.toLowerCase()}-webhook-stats-${timestamp}_ts.csv`;
+}
+
 export function generateOrgReposFileName(orgName: string): string {
   const timestamp = generateTimestamp();
   return `${orgName.toLowerCase()}-repos-${timestamp}.txt`;
