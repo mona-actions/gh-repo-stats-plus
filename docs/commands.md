@@ -14,6 +14,7 @@ This page provides an overview of all available commands. See the individual com
 | [codespace-stats](commands/codespace-stats.md)     | Retrieve codespace usage statistics for an organization                        |
 | [org-repos](commands/org-repos.md)                 | List all repositories in an organization and optionally build a batch matrix   |
 | [combine-stats](commands/combine-stats.md)         | Merge multiple CSV output files into a single combined report                  |
+| [csv-to-markdown](commands/csv-to-markdown.md)     | Convert CSV files into markdown tables or vertical metric/value summaries      |
 | [post-process](commands/post-process.md)           | Transform CSV data using configurable rules for pattern matching and cleanup   |
 | [rows-to-columns](commands/rows-to-columns.md)     | Pivot rows from an additional CSV into columns in a base CSV                   |
 
@@ -52,6 +53,9 @@ gh repo-stats-plus org-repos --org-name my-org --batch-size 50
 
 # Combine multiple CSV files
 gh repo-stats-plus combine-stats --files file1.csv file2.csv
+
+# Convert CSV output to markdown
+gh repo-stats-plus csv-to-markdown --input output/stats.csv --format vertical
 
 # Post-process CSV data with rules
 gh repo-stats-plus post-process --input combined.csv --rules-file rules.json
