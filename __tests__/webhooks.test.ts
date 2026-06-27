@@ -48,7 +48,12 @@ function makeOrgHook(overrides: Partial<OrgHook> = {}): OrgHook {
 describe('webhooks - data mapping', () => {
   describe('webhookToResult', () => {
     it('maps a repository webhook to a CSV row shape', () => {
-      const row = webhookToResult('my-org', 'my-repo', 'Repository', makeRepoHook());
+      const row = webhookToResult(
+        'my-org',
+        'my-repo',
+        'Repository',
+        makeRepoHook(),
+      );
 
       expect(row).toEqual({
         Org_Name: 'my-org',
@@ -71,7 +76,12 @@ describe('webhooks - data mapping', () => {
     });
 
     it('maps an organization webhook with empty repo name and no last response', () => {
-      const row = webhookToResult('my-org', undefined, 'Organization', makeOrgHook());
+      const row = webhookToResult(
+        'my-org',
+        undefined,
+        'Organization',
+        makeOrgHook(),
+      );
 
       expect(row.Org_Name).toBe('my-org');
       expect(row.Repo_Name).toBe('');
@@ -107,7 +117,11 @@ describe('webhooks - data mapping', () => {
       expect(
         isWebhookActive(
           makeRepoHook({
-            last_response: { code: 500, status: 'misconfigured', message: 'err' },
+            last_response: {
+              code: 500,
+              status: 'misconfigured',
+              message: 'err',
+            },
           }),
         ),
       ).toBe(false);
