@@ -110,6 +110,25 @@ export const CODESPACE_STATS_COLUMNS = [
   'Created_At',
 ];
 
+export const WEBHOOK_STATS_COLUMNS = [
+  'Org_Name',
+  'Repo_Name',
+  'Webhook_Type',
+  'Webhook_Id',
+  'Name',
+  'Active',
+  'Has_Secret',
+  'Events',
+  'Url',
+  'Content_Type',
+  'Insecure_SSL',
+  'Created_At',
+  'Updated_At',
+  'Last_Response_Code',
+  'Last_Response_Status',
+  'Last_Response_Message',
+];
+
 /** Default columns used for matching/joining CSV files */
 export const DEFAULT_MATCH_COLUMNS = ['Org_Name', 'Repo_Name'];
 
