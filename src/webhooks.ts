@@ -28,6 +28,7 @@ import { isStandaloneRepoListSourceMode } from './repo-stats-source-mode.js';
 import { parseRepoListInput } from './repo-list.js';
 import { validateRepoListAuthSupport } from './auth.js';
 import { StateManager } from './state.js';
+import type { OctokitClient } from './service.js';
 
 type OrgHook = components['schemas']['org-hook'];
 type RepoHook = components['schemas']['hook'];
@@ -194,14 +195,11 @@ function writeUniqueUrlFiles(
   baseUrls: Set<string>,
   urlsWithoutQuery: Set<string>,
   logger: Logger,
-): string[] {
-  const written: string[] = [];
-
+): void {
   if (baseUrls.size > 0) {
     const file = csvFileName.replace(/\.csv$/, '-unique-base-urls.txt');
     writeFileSync(file, Array.from(baseUrls).sort().join('\n') + '\n');
     logger.info(`Exported ${baseUrls.size} unique base URLs to ${file}`);
-    written.push(file);
   }
 
   if (urlsWithoutQuery.size > 0) {
@@ -210,10 +208,58 @@ function writeUniqueUrlFiles(
     logger.info(
       `Exported ${urlsWithoutQuery.size} unique URLs (without query strings) to ${file}`,
     );
-    written.push(file);
   }
+}
 
-  return written;
+// --- Shared webhook collection ---
+
+interface WebhookAccumulator {
+  fileName: string;
+  baseUrls: Set<string>;
+  urlsWithoutQuery: Set<string>;
+  onlyActiveWebhooks: boolean;
+  logger: Logger;
+}
+
+function recordWebhook(row: WebhookStatsResult, acc: WebhookAccumulator): void {
+  writeWebhookStatsCsv(row, acc.fileName, acc.logger);
+  collectWebhookUrl(row.Url, acc.baseUrls, acc.urlsWithoutQuery, acc.logger);
+}
+
+async function collectOrgWebhooks(
+  client: OctokitClient,
+  owner: string,
+  pageSize: number,
+  acc: WebhookAccumulator,
+): Promise<number> {
+  acc.logger.info(`Fetching organization webhooks for: ${owner}`);
+  let count = 0;
+  for await (const hook of client.listOrgWebhooks(owner, pageSize)) {
+    if (acc.onlyActiveWebhooks && !isWebhookActive(hook)) {
+      continue;
+    }
+    recordWebhook(webhookToResult(owner, undefined, 'Organization', hook), acc);
+    count++;
+  }
+  return count;
+}
+
+async function collectRepoWebhooks(
+  client: OctokitClient,
+  owner: string,
+  repo: string,
+  pageSize: number,
+  acc: WebhookAccumulator,
+): Promise<number> {
+  let count = 0;
+  for await (const hook of client.listRepoWebhooks(owner, repo, pageSize)) {
+    if (acc.onlyActiveWebhooks && !isWebhookActive(hook)) {
+      continue;
+    }
+    recordWebhook(webhookToResult(owner, repo, 'Repository', hook), acc);
+    count++;
+  }
+  return count;
 }
 
 // --- Per-org processing (called by shared executeForOrg via config.processOrg) ---
@@ -241,26 +287,24 @@ async function processOrgWebhookStats(context: OrgContext): Promise<void> {
       `(scope: ${scope})`,
   );
 
-  const processingState = { successCount: 0, retryCount: 0 };
-
   await withRetry(
     async () => {
-      const baseUrls = new Set<string>();
-      const urlsWithoutQuery = new Set<string>();
+      const acc: WebhookAccumulator = {
+        fileName,
+        baseUrls: new Set<string>(),
+        urlsWithoutQuery: new Set<string>(),
+        onlyActiveWebhooks,
+        logger,
+      };
       let totalWebhooks = 0;
 
       if (scopeIncludesOrg(scope)) {
-        logger.info(`Fetching organization webhooks for: ${orgName}`);
-        for await (const hook of client.listOrgWebhooks(orgName, pageSize)) {
-          if (onlyActiveWebhooks && !isWebhookActive(hook)) {
-            continue;
-          }
-          const row = webhookToResult(orgName, undefined, 'Organization', hook);
-          writeWebhookStatsCsv(row, fileName, logger);
-          collectWebhookUrl(row.Url, baseUrls, urlsWithoutQuery, logger);
-          totalWebhooks++;
-          processingState.successCount++;
-        }
+        totalWebhooks += await collectOrgWebhooks(
+          client,
+          orgName,
+          pageSize,
+          acc,
+        );
       }
 
       if (scopeIncludesRepo(scope)) {
@@ -272,20 +316,13 @@ async function processOrgWebhookStats(context: OrgContext): Promise<void> {
             continue;
           }
           repoCount++;
-          for await (const hook of client.listRepoWebhooks(
+          totalWebhooks += await collectRepoWebhooks(
+            client,
             orgName,
             repo.name,
             pageSize,
-          )) {
-            if (onlyActiveWebhooks && !isWebhookActive(hook)) {
-              continue;
-            }
-            const row = webhookToResult(orgName, repo.name, 'Repository', hook);
-            writeWebhookStatsCsv(row, fileName, logger);
-            collectWebhookUrl(row.Url, baseUrls, urlsWithoutQuery, logger);
-            totalWebhooks++;
-            processingState.successCount++;
-          }
+            acc,
+          );
 
           if (repoCount % 100 === 0) {
             logger.info(
@@ -295,7 +332,7 @@ async function processOrgWebhookStats(context: OrgContext): Promise<void> {
         }
       }
 
-      writeUniqueUrlFiles(fileName, baseUrls, urlsWithoutQuery, logger);
+      writeUniqueUrlFiles(fileName, acc.baseUrls, acc.urlsWithoutQuery, logger);
 
       const endTime = new Date();
       const elapsedTime = formatElapsedTime(startTime, endTime);
@@ -308,7 +345,7 @@ async function processOrgWebhookStats(context: OrgContext): Promise<void> {
           `End time: ${endTime.toISOString()}\n` +
           `Total elapsed time: ${elapsedTime}\n` +
           `Total webhooks found: ${totalWebhooks}\n` +
-          `Unique base URLs: ${baseUrls.size}\n` +
+          `Unique base URLs: ${acc.baseUrls.size}\n` +
           `Output saved to: ${fileName}`,
       );
 
@@ -320,8 +357,6 @@ async function processOrgWebhookStats(context: OrgContext): Promise<void> {
     },
     retryConfig,
     (state) => {
-      processingState.retryCount++;
-      processingState.successCount = 0;
       logger.warn(
         `Retry attempt ${state.attempt}: Failed while processing webhooks. ` +
           `Error: ${state.error?.message}\n` +
@@ -396,58 +431,48 @@ async function processWebhookListSource(
 
   await withRetry(
     async () => {
-      const baseUrls = new Set<string>();
-      const urlsWithoutQuery = new Set<string>();
+      const acc: WebhookAccumulator = {
+        fileName,
+        baseUrls: new Set<string>(),
+        urlsWithoutQuery: new Set<string>(),
+        onlyActiveWebhooks,
+        logger,
+      };
       let totalWebhooks = 0;
 
       for (const ownerGroup of normalizedRepoList.groupedByOwner.values()) {
         const owner = ownerGroup.owner;
 
         if (scopeIncludesOrg(scope)) {
-          logger.info(`Fetching organization webhooks for: ${owner}`);
-          for await (const hook of client.listOrgWebhooks(owner, pageSize)) {
-            if (onlyActiveWebhooks && !isWebhookActive(hook)) {
-              continue;
-            }
-            const row = webhookToResult(owner, undefined, 'Organization', hook);
-            writeWebhookStatsCsv(row, fileName, logger);
-            collectWebhookUrl(row.Url, baseUrls, urlsWithoutQuery, logger);
-            totalWebhooks++;
-          }
+          totalWebhooks += await collectOrgWebhooks(
+            client,
+            owner,
+            pageSize,
+            acc,
+          );
         }
 
         if (scopeIncludesRepo(scope)) {
           for (const entry of ownerGroup.entries) {
-            for await (const hook of client.listRepoWebhooks(
+            totalWebhooks += await collectRepoWebhooks(
+              client,
               entry.owner,
               entry.repo,
               pageSize,
-            )) {
-              if (onlyActiveWebhooks && !isWebhookActive(hook)) {
-                continue;
-              }
-              const row = webhookToResult(
-                entry.owner,
-                entry.repo,
-                'Repository',
-                hook,
-              );
-              writeWebhookStatsCsv(row, fileName, logger);
-              collectWebhookUrl(row.Url, baseUrls, urlsWithoutQuery, logger);
-              totalWebhooks++;
-            }
+              acc,
+            );
           }
         }
       }
 
-      writeUniqueUrlFiles(fileName, baseUrls, urlsWithoutQuery, logger);
+      writeUniqueUrlFiles(fileName, acc.baseUrls, acc.urlsWithoutQuery, logger);
 
       processedState.completedSuccessfully = true;
       stateManager.update(processedState, {});
       logger.info(
         `Completed repo-list webhook processing. ` +
           `Total webhooks: ${totalWebhooks}. ` +
-          `Unique base URLs: ${baseUrls.size}. ` +
+          `Unique base URLs: ${acc.baseUrls.size}. ` +
           `Elapsed time: ${formatElapsedTime(startTime, new Date())}. ` +
           `Output saved to: ${fileName}`,
       );
