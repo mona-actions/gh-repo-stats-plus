@@ -67,6 +67,8 @@ This TypeScript rewrite offers several advantages:
 
 17. **Org Repos Listing with Batch Matrix**: List all repositories in an organization, optionally write the list to a file, and calculate a batch matrix for parallel GitHub Actions matrix jobs. Supports `--max-batches` to cap the number of batches and automatically adjust batch size. See the [Org Repos Command Reference](docs/commands/org-repos.md).
 
+18. **Webhook Stats**: Retrieve organization and/or repository webhook configuration statistics, including events, target URLs, content types, SSL settings, secret presence, and last delivery responses. Supports single org, org list, single repo, or repo list inputs, plus a configurable scope (`repo`, `org`, or `both`). See the [Webhook Stats Command Reference](docs/commands/webhook-stats.md).
+
 ## Technical Implementation
 
 The extension is built using modern TypeScript patterns with:
@@ -112,6 +114,7 @@ See the [GitHub Action documentation](action/README.md) for full inputs/outputs 
 | [Rows-to-Columns](docs/commands/rows-to-columns.md) | Pivot additional CSV rows into columns        |
 | [Package Stats](docs/commands/package-stats.md)     | Retrieve package statistics for organizations |
 | [Codespace Stats](docs/commands/codespace-stats.md) | Retrieve codespace usage for organizations    |
+| [Webhook Stats](docs/commands/webhook-stats.md)     | Retrieve org/repo webhook configuration stats |
 | [Org Repos](docs/commands/org-repos.md)             | List org repos and generate a batch matrix    |
 
 ## Common Usage Examples
