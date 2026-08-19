@@ -7,6 +7,7 @@ import projectStatsCommand from '../src/commands/project-stats-command.js';
 import appInstallStatsCommand from '../src/commands/app-install-stats-command.js';
 import packageStatsCommand from '../src/commands/package-stats-command.js';
 import codespaceStatsCommand from '../src/commands/codespace-stats-command.js';
+import webhookStatsCommand from '../src/commands/webhook-stats-command.js';
 import { Arguments } from '../src/types.js';
 import { parseRepoListFileOption } from '../src/repo-list.js';
 import {
@@ -590,6 +591,7 @@ describe('Commands', () => {
       { name: 'app-install-stats', command: appInstallStatsCommand },
       { name: 'package-stats', command: packageStatsCommand },
       { name: 'codespace-stats', command: codespaceStatsCommand },
+      { name: 'webhook-stats', command: webhookStatsCommand },
     ];
 
     commandsToTest.forEach(({ name, command }) => {

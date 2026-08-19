@@ -4,24 +4,11 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "repo-stats Debug",
+      "name": "Debug Command",
       "skipFiles": ["<node_internals>/**"],
       "runtimeExecutable": "tsx",
       "program": "${workspaceFolder}/src/index.ts",
-      "args": ["repo-stats"],
-      "sourceMaps": true,
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen"
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "missing-repos Debug",
-      "skipFiles": ["<node_internals>/**"],
-      "runtimeExecutable": "tsx",
-      "program": "${workspaceFolder}/src/index.ts",
-      "args": ["missing-repos"],
+      "args": ["${input:command}"],
       "sourceMaps": true,
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
@@ -49,6 +36,28 @@
       "internalConsoleOptions": "neverOpen",
       "disableOptimisticBPs": true,
       "cwd": "${workspaceFolder}"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "command",
+      "type": "pickString",
+      "description": "Select the command to debug",
+      "default": "repo-stats",
+      "options": [
+        "repo-stats",
+        "missing-repos",
+        "project-stats",
+        "app-install-stats",
+        "package-stats",
+        "codespace-stats",
+        "webhook-stats",
+        "combine-stats",
+        "csv-to-markdown",
+        "post-process",
+        "rows-to-columns",
+        "org-repos"
+      ]
     }
   ]
 }

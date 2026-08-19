@@ -40,6 +40,7 @@ For the complete reference including all inputs, outputs, authentication options
 | `app-install-stats` | GitHub App installation statistics (PAT only) |
 | `package-stats`     | Package statistics (Maven, npm, Docker, etc.) |
 | `codespace-stats`   | Codespace usage statistics                    |
+| `webhook-stats`     | Org/repo webhook configuration statistics     |
 | `migration-audit`   | Migration audit for an organization           |
 | `combine`           | Merge CSV files from multiple batch runs      |
 

@@ -20,7 +20,7 @@
     "prepare-release": "./script/prepare-release.sh"
   },
   "name": "gh-repo-stats-plus",
-  "version": "4.0.0",
+  "version": "4.4.0",
   "main": "dist/index.js",
   "description": "GitHub CLI extension for gathering comprehensive repository statistics from GitHub organizations",
   "keywords": [
@@ -40,7 +40,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@octokit/openapi-types": "^27.0.0",
-    "@rollup/plugin-commonjs": "^29.0.2",
+    "@rollup/plugin-commonjs": "^29.0.3",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-typescript": "^12.3.0",
@@ -51,11 +51,11 @@
     "@vitest/coverage-v8": "^4.1.4",
     "eslint": "^10.3.0",
     "eslint-config-prettier": "^10.1.8",
-    "prettier": "^3.8.4",
-    "rollup": "^4.62.0",
+    "prettier": "^3.9.6",
+    "rollup": "^4.62.2",
     "ts-node": "^10.9.2",
     "tslib": "^2.8.1",
-    "tsx": "^4.22.1",
+    "tsx": "^4.22.4",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.2",
     "vitest": "^4.1.9"
@@ -64,7 +64,7 @@
     "@octokit/graphql": "^9.0.3",
     "@octokit/plugin-paginate-graphql": "^6.0.0",
     "@octokit/plugin-throttling": "^11.0.3",
-    "commander": "^14.0.2",
+    "commander": "^15.0.0",
     "csv-parse": "^7.0.0",
     "dotenv": "^17.4.2",
     "octokit": "^5.0.5",

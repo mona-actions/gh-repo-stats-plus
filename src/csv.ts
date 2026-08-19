@@ -110,6 +110,25 @@ export const CODESPACE_STATS_COLUMNS = [
   'Created_At',
 ];
 
+export const WEBHOOK_STATS_COLUMNS = [
+  'Org_Name',
+  'Repo_Name',
+  'Webhook_Type',
+  'Webhook_Id',
+  'Name',
+  'Active',
+  'Has_Secret',
+  'Events',
+  'Url',
+  'Content_Type',
+  'Insecure_SSL',
+  'Created_At',
+  'Updated_At',
+  'Last_Response_Code',
+  'Last_Response_Status',
+  'Last_Response_Message',
+];
+
 /** Default columns used for matching/joining CSV files */
 export const DEFAULT_MATCH_COLUMNS = ['Org_Name', 'Repo_Name'];
 
@@ -204,6 +223,26 @@ export function readCsvFile(filePath: string): Record<string, string>[] {
     columns: true,
     skip_empty_lines: true,
   }) as Record<string, string>[];
+}
+
+/**
+ * Reads and parses a CSV file into a raw matrix of rows and cells.
+ * Preserves the header row order for commands that need markdown-style
+ * presentation rather than object-key access.
+ *
+ * @param filePath - Full path to the CSV file to read
+ * @returns Array of CSV rows, including the header row
+ * @throws Error if the file does not exist or cannot be parsed
+ */
+export function readCsvMatrix(filePath: string): string[][] {
+  if (!existsSync(filePath)) {
+    throw new Error(`CSV file not found: ${filePath}`);
+  }
+
+  const fileContent = readFileSync(filePath, 'utf-8');
+  return parse(fileContent, {
+    skip_empty_lines: true,
+  }) as string[][];
 }
 
 // --- CSV file writing (complete file) ---
