@@ -15,6 +15,7 @@ This page provides an overview of all available commands. See the individual com
 | [webhook-stats](commands/webhook-stats.md)         | Retrieve organization and/or repository webhook configuration statistics       |
 | [org-repos](commands/org-repos.md)                 | List all repositories in an organization and optionally build a batch matrix   |
 | [combine-stats](commands/combine-stats.md)         | Merge multiple CSV output files into a single combined report                  |
+| [compare-stats](commands/compare-stats.md)         | Diff two repo-stats CSV files (source vs target) to verify a migration         |
 | [csv-to-markdown](commands/csv-to-markdown.md)     | Convert CSV files into markdown tables or vertical metric/value summaries      |
 | [post-process](commands/post-process.md)           | Transform CSV data using configurable rules for pattern matching and cleanup   |
 | [rows-to-columns](commands/rows-to-columns.md)     | Pivot rows from an additional CSV into columns in a base CSV                   |
@@ -60,6 +61,9 @@ gh repo-stats-plus org-repos --org-name my-org --batch-size 50
 
 # Combine multiple CSV files
 gh repo-stats-plus combine-stats --files file1.csv file2.csv
+
+# Compare source and target repo-stats CSVs after a migration
+gh repo-stats-plus compare-stats --source-file source-stats.csv --target-file target-stats.csv
 
 # Convert CSV output to markdown
 gh repo-stats-plus csv-to-markdown --input output/stats.csv --format vertical

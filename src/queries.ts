@@ -417,3 +417,46 @@ export const PACKAGE_VERSION_FILES_QUERY = `
     }
   }
 `;
+
+/**
+ * Paginated query for repository git refs (branches or tags) with their target
+ * commit SHAs. Used by compare-stats when verifying git-level parity between a
+ * source repository and its migrated target.
+ */
+export const REPO_REFS_QUERY = `
+  query repoRefs($owner: String!, $repo: String!, $refPrefix: String!, $pageSize: Int!, $cursor: String) {
+    repository(owner: $owner, name: $repo) {
+      refs(refPrefix: $refPrefix, first: $pageSize, after: $cursor) {
+        pageInfo {
+          endCursor
+          hasNextPage
+        }
+        nodes {
+          name
+          target {
+            oid
+          }
+        }
+      }
+    }
+  }
+`;
+
+/**
+ * Query for a repository's default branch name and tip commit SHA, along with
+ * the flags needed to skip empty repositories gracefully.
+ */
+export const REPO_DEFAULT_BRANCH_QUERY = `
+  query repoDefaultBranch($owner: String!, $repo: String!) {
+    repository(owner: $owner, name: $repo) {
+      isEmpty
+      isArchived
+      defaultBranchRef {
+        name
+        target {
+          oid
+        }
+      }
+    }
+  }
+`;
