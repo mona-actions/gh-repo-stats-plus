@@ -61,7 +61,7 @@
     "vitest": "^4.1.9"
   },
   "dependencies": {
-    "@octokit/graphql": "^9.0.3",
+    "@octokit/graphql": "^9.0.4",
     "@octokit/plugin-paginate-graphql": "^6.0.0",
     "@octokit/plugin-throttling": "^11.0.3",
     "commander": "^15.0.0",
