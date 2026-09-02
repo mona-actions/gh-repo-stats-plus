@@ -322,6 +322,29 @@ describe('compare-stats', () => {
         Delta: '',
       });
     });
+
+    it('treats non-boolean settings as case-sensitive', () => {
+      const repo = buildMatchedRepo(
+        buildRow({ Repo_Name: 'repo', Default_Branch: 'Main' }),
+        buildRow({ Repo_Name: 'repo', Default_Branch: 'main' }),
+      );
+
+      expect(compareSettingsColumn(repo, 'Default_Branch')).toMatchObject({
+        Column: 'Default_Branch',
+        Source_Value: 'Main',
+        Target_Value: 'main',
+        Severity: 'warning',
+      });
+    });
+
+    it('trims surrounding whitespace for non-boolean settings', () => {
+      const repo = buildMatchedRepo(
+        buildRow({ Repo_Name: 'repo', Description: ' description ' }),
+        buildRow({ Repo_Name: 'repo', Description: 'description' }),
+      );
+
+      expect(compareSettingsColumn(repo, 'Description')).toBeNull();
+    });
   });
 
   describe('compareMatchedRepo', () => {
@@ -332,12 +355,14 @@ describe('compare-stats', () => {
           Issue_Count: '10',
           Protected_Branch_Count: '3',
           Visibility: 'PRIVATE',
+          Languages: 'TypeScript:90,JavaScript:10',
         }),
         buildRow({
           Repo_Name: 'repo',
           Issue_Count: '9',
           Protected_Branch_Count: '0',
           Visibility: 'INTERNAL',
+          Languages: 'TypeScript:100',
         }),
       );
 
@@ -349,6 +374,7 @@ describe('compare-stats', () => {
       expect(bySeverity.Issue_Count).toBe('blocking');
       expect(bySeverity.Protected_Branch_Count).toBe('info');
       expect(bySeverity.Visibility).toBe('warning');
+      expect(bySeverity.Languages).toBe('warning');
     });
 
     it('excludes columns that always differ', () => {

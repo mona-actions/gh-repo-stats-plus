@@ -53,6 +53,7 @@ export const SETTINGS_COLUMNS = [
   'Topics',
   'License',
   'Primary_Language',
+  'Languages',
   'Auto_Merge_Allowed',
   'Delete_Branch_On_Merge',
   'Merge_Commit_Allowed',
@@ -222,9 +223,7 @@ export function compareSettingsColumn(
   const rawTarget = repo.target[column] ?? '';
 
   const normalize = (value: string): string =>
-    BOOLEAN_COLUMNS.has(column)
-      ? normalizeBooleanValue(value)
-      : value.trim().toLowerCase();
+    BOOLEAN_COLUMNS.has(column) ? normalizeBooleanValue(value) : value.trim();
 
   if (normalize(rawSource) === normalize(rawTarget)) {
     return null;

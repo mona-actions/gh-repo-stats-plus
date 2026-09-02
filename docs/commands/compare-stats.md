@@ -96,9 +96,9 @@ Positive deltas for these columns are reported as warnings because additional ta
 
 **Warning** (settings/boolean/string columns compared for equality):
 
-`Default_Branch`, `Visibility`, `Has_Wiki`, `Has_LFS`, `isArchived`, `isTemplate`, `isFork`, `Is_Empty`, `Description`, `Homepage_URL`, `Topics`, `License`, `Primary_Language`, `Auto_Merge_Allowed`, `Delete_Branch_On_Merge`, `Merge_Commit_Allowed`, `Squash_Merge_Allowed`, `Rebase_Merge_Allowed`
+`Default_Branch`, `Visibility`, `Has_Wiki`, `Has_LFS`, `isArchived`, `isTemplate`, `isFork`, `Is_Empty`, `Description`, `Homepage_URL`, `Topics`, `License`, `Primary_Language`, `Languages`, `Auto_Merge_Allowed`, `Delete_Branch_On_Merge`, `Merge_Commit_Allowed`, `Squash_Merge_Allowed`, `Rebase_Merge_Allowed`
 
-Boolean values are written as uppercase `TRUE`/`FALSE` by repo-stats and are normalized before comparison.
+Boolean values are written as uppercase `TRUE`/`FALSE` by repo-stats and are normalized before comparison. Other string values are trimmed but remain case-sensitive.
 
 **Excluded** columns (always expected to differ, no signal): `Org_Name`, `Full_URL`, `Created`, `Last_Push`, `Last_Update`, `Migration_Issue`
 

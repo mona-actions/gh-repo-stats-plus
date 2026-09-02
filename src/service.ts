@@ -276,8 +276,8 @@ export class OctokitClient {
 
   /**
    * Fetches the default branch name and tip commit SHA for a repository.
-   * Also returns the empty/archived flags so callers can skip repositories
-   * that cannot be compared at the git level.
+   * Also returns the empty and archived flags so callers can apply
+   * repository-state policies before comparing git data.
    */
   async getRepoDefaultBranchRef(
     owner: string,
