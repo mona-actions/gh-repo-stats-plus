@@ -327,6 +327,11 @@ export function generateCombinedStatsFileName(): string {
   return `combined-stats-${timestamp}_ts.csv`;
 }
 
+export function generateCompareStatsFileName(): string {
+  const timestamp = generateTimestamp();
+  return `compare-stats-${timestamp}_ts.csv`;
+}
+
 export async function applyBatchStaggerDelay(
   batchIndex: number,
   batchDelay: number,

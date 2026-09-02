@@ -660,6 +660,54 @@ describe('OctokitClient', () => {
       );
     });
   });
+
+  describe('git verification queries', () => {
+    it('passes the API version header when paginating repository refs', async () => {
+      mockOctokit.graphql.paginate.iterator.mockReturnValue({
+        async *[Symbol.asyncIterator]() {
+          yield { repository: { refs: { nodes: [] } } };
+        },
+      });
+
+      for await (const _ of client.getRepoRefs(
+        'owner',
+        'repo',
+        'refs/heads/',
+        100,
+      )) {
+        // consume
+      }
+
+      expect(mockOctokit.graphql.paginate.iterator).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: { 'X-GitHub-Api-Version': '2022-11-28' },
+        }),
+      );
+    });
+
+    it('passes the API version header when reading the default branch', async () => {
+      mockOctokit.graphql.mockResolvedValue({
+        repository: {
+          isEmpty: false,
+          isArchived: false,
+          defaultBranchRef: {
+            name: 'main',
+            target: { oid: 'abc123' },
+          },
+        },
+      });
+
+      await client.getRepoDefaultBranchRef('owner', 'repo');
+
+      expect(mockOctokit.graphql).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: { 'X-GitHub-Api-Version': '2022-11-28' },
+        }),
+      );
+    });
+  });
 });
 
 describe('getAppInstallationId', () => {

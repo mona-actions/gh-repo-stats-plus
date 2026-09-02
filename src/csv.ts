@@ -129,6 +129,22 @@ export const WEBHOOK_STATS_COLUMNS = [
   'Last_Response_Message',
 ];
 
+/**
+ * Columns for the compare-stats diff report. One row per repository per
+ * differing column (long/tidy format) so the report is easy to filter.
+ */
+export const COMPARE_STATS_COLUMNS = [
+  'Repo_Name',
+  'Source_Org',
+  'Target_Org',
+  'Column',
+  'Source_Value',
+  'Target_Value',
+  'Delta',
+  'Severity',
+  'Status',
+];
+
 /** Default columns used for matching/joining CSV files */
 export const DEFAULT_MATCH_COLUMNS = ['Org_Name', 'Repo_Name'];
 

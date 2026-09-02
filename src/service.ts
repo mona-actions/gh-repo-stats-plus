@@ -21,6 +21,10 @@ import {
   RateLimitResponse,
   RateLimitResult,
   RepoProjectCountsResponse,
+  RepoDefaultBranchRef,
+  RepoDefaultBranchResponse,
+  RepoRef,
+  RepoRefsResponse,
   RepositoryStats,
   RepoStatsGraphQLResponse,
 } from './types.js';
@@ -34,6 +38,8 @@ import {
   ORG_PACKAGE_DETAILS_QUERY,
   PACKAGE_VERSIONS_QUERY,
   PACKAGE_VERSION_FILES_QUERY,
+  REPO_REFS_QUERY,
+  REPO_DEFAULT_BRANCH_QUERY,
 } from './queries.js';
 
 type Repository = components['schemas']['repository'];
@@ -230,6 +236,65 @@ export class OctokitClient {
         yield pr;
       }
     }
+  }
+
+  /**
+   * Yields repository git refs (branches or tags) with their target commit SHA.
+   * Paginates via GraphQL so repositories with many refs are handled
+   * incrementally rather than buffered in memory.
+   *
+   * @param refPrefix - Ref prefix such as `refs/heads/` or `refs/tags/`
+   */
+  async *getRepoRefs(
+    owner: string,
+    repo: string,
+    refPrefix: string,
+    per_page: number,
+    cursor: string | null = null,
+  ): AsyncGenerator<RepoRef, void, unknown> {
+    const iterator = this.octokit.graphql.paginate.iterator<RepoRefsResponse>(
+      REPO_REFS_QUERY,
+      {
+        owner,
+        repo,
+        refPrefix,
+        pageSize: per_page,
+        cursor,
+        headers: this.octokit_headers,
+      },
+    );
+
+    for await (const response of iterator) {
+      for (const ref of response.repository.refs.nodes) {
+        if (!ref?.target?.oid) {
+          continue;
+        }
+        yield { name: ref.name, oid: ref.target.oid };
+      }
+    }
+  }
+
+  /**
+   * Fetches the default branch name and tip commit SHA for a repository.
+   * Also returns the empty and archived flags so callers can apply
+   * repository-state policies before comparing git data.
+   */
+  async getRepoDefaultBranchRef(
+    owner: string,
+    repo: string,
+  ): Promise<RepoDefaultBranchRef> {
+    const response = await this.octokit.graphql<RepoDefaultBranchResponse>(
+      REPO_DEFAULT_BRANCH_QUERY,
+      { owner, repo, headers: this.octokit_headers },
+    );
+
+    const repository = response.repository;
+    return {
+      isEmpty: repository.isEmpty,
+      isArchived: repository.isArchived,
+      name: repository.defaultBranchRef?.name ?? null,
+      oid: repository.defaultBranchRef?.target?.oid ?? null,
+    };
   }
 
   /**
