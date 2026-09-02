@@ -848,3 +848,43 @@ export interface CsvToMarkdownOptions {
   outputDir?: string;
   verbose?: boolean;
 }
+
+/** A single git ref (branch or tag) and the SHA it points at. */
+export interface RepoRef {
+  name: string;
+  oid: string;
+}
+
+export interface RepoRefsResponse {
+  repository: {
+    refs: {
+      pageInfo: {
+        endCursor: string | null;
+        hasNextPage: boolean;
+      };
+      nodes: Array<{
+        name: string;
+        target: { oid: string } | null;
+      }>;
+    };
+  };
+}
+
+/** Default branch details used for the highest-signal git parity check. */
+export interface RepoDefaultBranchRef {
+  isEmpty: boolean;
+  isArchived: boolean;
+  name: string | null;
+  oid: string | null;
+}
+
+export interface RepoDefaultBranchResponse {
+  repository: {
+    isEmpty: boolean;
+    isArchived: boolean;
+    defaultBranchRef: {
+      name: string;
+      target: { oid: string } | null;
+    } | null;
+  };
+}

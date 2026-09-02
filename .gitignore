@@ -35,3 +35,6 @@ input/
 # Ignore test coverage reports
 coverage/
 .DS_Store
+
+# pnpm 
+.pnpm-store/

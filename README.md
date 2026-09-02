@@ -101,21 +101,22 @@ See the [GitHub Action documentation](action/README.md) for full inputs/outputs 
 
 ## Documentation
 
-| Guide                                               | Description                                   |
-| --------------------------------------------------- | --------------------------------------------- |
-| [Installation](docs/installation.md)                | Prerequisites and installation methods        |
-| [Usage Guide](docs/usage.md)                        | Authentication and usage examples             |
-| [Commands](docs/commands.md)                        | Complete command reference                    |
-| [GitHub Action](docs/github-action.md)              | Using as a GitHub Action in workflows         |
-| [LFS Sizing](docs/lfs-sizing.md)                    | Git LFS storage analysis per repo             |
-| [Development](docs/development.md)                  | Setup and development workflow                |
-| [Batch Processing](docs/batch-processing.md)        | Parallel batch processing with GitHub Actions |
-| [Post-Processing](docs/commands/post-process.md)    | CSV transformation with configurable rules    |
-| [Rows-to-Columns](docs/commands/rows-to-columns.md) | Pivot additional CSV rows into columns        |
-| [Package Stats](docs/commands/package-stats.md)     | Retrieve package statistics for organizations |
-| [Codespace Stats](docs/commands/codespace-stats.md) | Retrieve codespace usage for organizations    |
-| [Webhook Stats](docs/commands/webhook-stats.md)     | Retrieve org/repo webhook configuration stats |
-| [Org Repos](docs/commands/org-repos.md)             | List org repos and generate a batch matrix    |
+| Guide                                               | Description                                       |
+| --------------------------------------------------- | ------------------------------------------------- |
+| [Installation](docs/installation.md)                | Prerequisites and installation methods            |
+| [Usage Guide](docs/usage.md)                        | Authentication and usage examples                 |
+| [Commands](docs/commands.md)                        | Complete command reference                        |
+| [GitHub Action](docs/github-action.md)              | Using as a GitHub Action in workflows             |
+| [LFS Sizing](docs/lfs-sizing.md)                    | Git LFS storage analysis per repo                 |
+| [Development](docs/development.md)                  | Setup and development workflow                    |
+| [Batch Processing](docs/batch-processing.md)        | Parallel batch processing with GitHub Actions     |
+| [Post-Processing](docs/commands/post-process.md)    | CSV transformation with configurable rules        |
+| [Rows-to-Columns](docs/commands/rows-to-columns.md) | Pivot additional CSV rows into columns            |
+| [Package Stats](docs/commands/package-stats.md)     | Retrieve package statistics for organizations     |
+| [Codespace Stats](docs/commands/codespace-stats.md) | Retrieve codespace usage for organizations        |
+| [Webhook Stats](docs/commands/webhook-stats.md)     | Retrieve org/repo webhook configuration stats     |
+| [Org Repos](docs/commands/org-repos.md)             | List org repos and generate a batch matrix        |
+| [Compare Stats](docs/commands/compare-stats.md)     | Diff source vs target stats to verify a migration |
 
 ## Common Usage Examples
 
@@ -342,6 +343,48 @@ gh repo-stats-plus rows-to-columns \
 ```
 
 See the [Rows-to-Columns Command Reference](docs/commands/rows-to-columns.md) for details on how values are parsed and examples.
+
+### Migration Verification (compare-stats)
+
+Verify that a migration to GitHub Enterprise Cloud (including data residency tenants on `*.ghe.com`) landed everything by collecting stats from both sides and diffing them:
+
+```bash
+# 1. Collect stats from the source organization
+gh repo-stats-plus repo-stats \
+  --org-name source-org \
+  --base-url https://api.github.com \
+  --output-dir output/source
+
+# 2. Collect stats from the target tenant
+gh repo-stats-plus repo-stats \
+  --org-name target-org \
+  --base-url https://api.<subdomain>.ghe.com \
+  --output-dir output/target
+
+# 3. Join on Repo_Name and diff the two CSVs
+gh repo-stats-plus compare-stats \
+  --source-file output/source/source-org-all_repos-<ts>_ts.csv \
+  --target-file output/target/target-org-all_repos-<ts>_ts.csv \
+  --output-file migration-diff.csv \
+  --fail-on-blocking
+
+# 4. Optionally add a live branch/tag SHA comparison
+gh repo-stats-plus compare-stats \
+  --source-file output/source/source-stats.csv \
+  --target-file output/target/target-stats.csv \
+  --verify-git \
+  --source-org source-org \
+  --target-org target-org \
+  --target-base-url https://api.<subdomain>.ghe.com \
+  --source-token "$SOURCE_TOKEN" \
+  --target-token "$TARGET_TOKEN"
+```
+
+The report is a long/tidy CSV with one row per repository per differing column (`Repo_Name`, `Source_Org`, `Target_Org`, `Column`, `Source_Value`, `Target_Value`, `Delta`, `Severity`, `Status`). Count differences that indicate data loss (issues, PRs, comments, reviews, branches, tags, releases, milestones, discussions, records) are **blocking**; things GEI does not migrate (branch protections, rulesets, collaborators, projects, stars/forks/watchers, repo size within `--size-tolerance-pct`) are **informational**; settings mismatches are **warnings**.
+
+> **Known gaps:** a clean report does not prove a complete migration. It does not cover mannequin/attribution status, Actions secrets/variables/environments, webhooks, deploy keys, Actions run history, packages, or code/Dependabot/secret-scanning alerts. Verify those separately.
+
+See the [Compare Stats Command Reference](docs/commands/compare-stats.md) for all options, severity classification details, and the git-level SHA check.
 
 #### Repo Stats Options
 
