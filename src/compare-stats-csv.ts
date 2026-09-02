@@ -7,6 +7,13 @@ import {
 import type { CompareFinding } from './compare-stats-types.js';
 import type { Logger } from './types.js';
 
+const GENERATED_COMPARE_COLUMNS = new Set([
+  'Column',
+  'Delta',
+  'Severity',
+  'Status',
+]);
+
 export interface StatsCsvFile {
   headers: string[];
   rows: Record<string, string>[];
@@ -55,9 +62,34 @@ export function writeCompareFinding(
 ): void {
   appendCsvRow(
     outputPath,
-    COMPARE_STATS_COLUMNS.map(
-      (column) => finding[column as keyof CompareFinding],
-    ),
+    COMPARE_STATS_COLUMNS.map((column) => {
+      const value = finding[column as keyof CompareFinding];
+      return GENERATED_COMPARE_COLUMNS.has(column)
+        ? value
+        : sanitizeSpreadsheetCell(value);
+    }),
     logger,
   );
+}
+
+export function sanitizeSpreadsheetCell(value: string): string {
+  const normalized = trimAsciiControlAndWhitespace(value);
+  const isFormula = /^[=+\-@]/.test(normalized);
+  const isSignedNumber = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(normalized);
+
+  return isFormula && !isSignedNumber ? `'${value}` : value;
+}
+
+function trimAsciiControlAndWhitespace(value: string): string {
+  let start = 0;
+  let end = value.length;
+
+  while (start < end && value.charCodeAt(start) <= 32) {
+    start++;
+  }
+  while (end > start && value.charCodeAt(end - 1) <= 32) {
+    end--;
+  }
+
+  return value.slice(start, end);
 }

@@ -24,7 +24,7 @@ vi.mock('../src/logger.js', () => ({
   }),
 }));
 
-import { existsSync, readFileSync } from 'fs';
+import { appendFileSync, existsSync, readFileSync } from 'fs';
 import { parse } from 'csv-parse/sync';
 import { REPO_STATS_COLUMNS } from '../src/csv.js';
 import {
@@ -40,7 +40,9 @@ import {
 } from '../src/compare-stats-core.js';
 import {
   readStatsCsv,
+  sanitizeSpreadsheetCell,
   validateStatsHeaders,
+  writeCompareFinding,
 } from '../src/compare-stats-csv.js';
 import { resolveComparisonToken } from '../src/compare-stats-git.js';
 import { rankWorstOffenders } from '../src/compare-stats-summary.js';
@@ -106,6 +108,31 @@ describe('compare-stats', () => {
       expect(parseNumericValue('12')).toBe(12);
       expect(parseNumericValue('')).toBe(0);
       expect(parseNumericValue('n/a')).toBe(0);
+    });
+
+    describe('sanitizeSpreadsheetCell', () => {
+      it.each([
+        [
+          '=WEBSERVICE("https://example.test")',
+          '\'=WEBSERVICE("https://example.test")',
+        ],
+        ['+cmd|payload', "'+cmd|payload"],
+        ['-cmd|payload', "'-cmd|payload"],
+        ['@SUM(A1:A2)', "'@SUM(A1:A2)"],
+        ['  =1+1', "'  =1+1"],
+        ['\t=1+1', "'\t=1+1"],
+        ['\r@SUM(A1:A2)', "'\r@SUM(A1:A2)"],
+        ['\u0000=1+1', "'\u0000=1+1"],
+      ])('neutralizes spreadsheet formula value %j', (value, expected) => {
+        expect(sanitizeSpreadsheetCell(value)).toBe(expected);
+      });
+
+      it.each(['-3', '+3', '  -3.5 ', '.25', 'plain text'])(
+        'preserves non-formula value %j',
+        (value) => {
+          expect(sanitizeSpreadsheetCell(value)).toBe(value);
+        },
+      );
     });
   });
 
@@ -466,6 +493,36 @@ describe('compare-stats', () => {
       expect(() => readStatsCsv('/tmp/source.csv', 'Source')).toThrow(
         'Source file is empty: /tmp/source.csv',
       );
+    });
+
+    describe('writeCompareFinding', () => {
+      it('neutralizes untrusted fields before appending the CSV row', () => {
+        writeCompareFinding(
+          '/tmp/report.csv',
+          {
+            Repo_Name: '=repo',
+            Source_Org: '@source',
+            Target_Org: 'target',
+            Column: 'Description',
+            Source_Value: ' =WEBSERVICE("https://example.test")',
+            Target_Value: '-cmd|payload',
+            Delta: '-3',
+            Severity: 'warning',
+            Status: 'matched',
+          },
+          {
+            debug: vi.fn(),
+            info: vi.fn(),
+            warn: vi.fn(),
+            error: vi.fn(),
+          },
+        );
+
+        expect(appendFileSync).toHaveBeenCalledWith(
+          '/tmp/report.csv',
+          '\'=repo,\'@source,target,Description,"\' =WEBSERVICE(""https://example.test"")",\'-cmd|payload,-3,warning,matched\n',
+        );
+      });
     });
 
     it('maps rows onto the header row', () => {

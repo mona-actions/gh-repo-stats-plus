@@ -144,6 +144,8 @@ The report is a long/tidy CSV â€” one row per repository per differing column â€
 
 A human-readable summary is also written to the console and log file: totals compared, repositories matched cleanly, repositories with blocking differences, missing/extra repositories, and the worst offenders by blocking finding count.
 
+Values originating from input CSVs are neutralized when they resemble spreadsheet formulas, so opening the report in formula-capable spreadsheet software does not evaluate repository metadata as a formula.
+
 ## Known Gaps
 
 A clean report does **not** mean the migration is complete. This command compares only what repo-stats collects, so the following still require separate verification:
