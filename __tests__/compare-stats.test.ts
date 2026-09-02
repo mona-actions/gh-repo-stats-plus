@@ -391,6 +391,23 @@ describe('compare-stats', () => {
         Severity: 'warning',
       });
     });
+
+    it('excludes blank repository names from summary counts', () => {
+      const source = [
+        buildRow({ Repo_Name: 'repo-a' }),
+        buildRow({ Repo_Name: ' ' }),
+      ];
+      const target = [
+        buildRow({ Repo_Name: 'repo-a' }),
+        buildRow({ Repo_Name: '' }),
+      ];
+
+      expect(compareRepoStats(source, target, config).summary).toMatchObject({
+        sourceRepoCount: 1,
+        targetRepoCount: 1,
+        matchedRepoCount: 1,
+      });
+    });
   });
 
   describe('rankWorstOffenders', () => {
@@ -516,8 +533,16 @@ describe('compare-stats', () => {
       );
       vi.mocked(readFileSync).mockReturnValue('csv' as never);
       vi.mocked(parse)
-        .mockReturnValueOnce([headerRow, buildCells('repo-a', '10')])
-        .mockReturnValueOnce([headerRow, buildCells('repo-a', '9')]);
+        .mockReturnValueOnce([
+          headerRow,
+          buildCells('repo-a', '10'),
+          buildCells('', '0'),
+        ])
+        .mockReturnValueOnce([
+          headerRow,
+          buildCells('repo-a', '9'),
+          buildCells(' ', '0'),
+        ]);
 
       const result = await runCompareStats({
         sourceFile: '/tmp/source.csv',
@@ -528,6 +553,8 @@ describe('compare-stats', () => {
 
       expect(result.outputPath).toContain('report.csv');
       expect(result.summary.matchedRepoCount).toBe(1);
+      expect(result.summary.sourceRepoCount).toBe(1);
+      expect(result.summary.targetRepoCount).toBe(1);
       expect(result.summary.blockingFindingCount).toBeGreaterThan(0);
     });
   });

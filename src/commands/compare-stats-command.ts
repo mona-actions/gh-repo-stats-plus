@@ -35,6 +35,14 @@ export function validate(options: CompareStatsOptions) {
       '--verify-git requires both --source-org and --target-org to be specified',
     );
   }
+
+  if (
+    options.rateLimitCheckInterval !== undefined &&
+    (!Number.isInteger(options.rateLimitCheckInterval) ||
+      options.rateLimitCheckInterval <= 0)
+  ) {
+    throw new Error('--rate-limit-check-interval must be a positive integer');
+  }
 }
 
 export function createCompareStatsCommand(): commander.Command {

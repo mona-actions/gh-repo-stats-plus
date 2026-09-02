@@ -254,6 +254,22 @@ describe('compare-stats-git', () => {
   });
 
   describe('verifyGitRefs', () => {
+    it('rejects a non-positive rate limit check interval', async () => {
+      const sourceClient = createClient({});
+      const targetClient = createClient({});
+
+      await expect(
+        collect(
+          verifyGitRefs(
+            [repo],
+            { sourceClient, targetClient },
+            { ...options, rateLimitCheckInterval: 0 },
+            logger,
+          ),
+        ),
+      ).rejects.toThrow('rateLimitCheckInterval must be a positive integer');
+    });
+
     it('logs and skips repositories that fail rather than crashing', async () => {
       const sourceClient = createClient({});
       vi.mocked(sourceClient.getRepoDefaultBranchRef).mockRejectedValue(

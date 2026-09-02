@@ -223,6 +223,13 @@ export async function* verifyGitRefs(
   options: GitVerificationOptions,
   logger: Logger,
 ): AsyncGenerator<CompareFinding, void, unknown> {
+  if (
+    !Number.isInteger(options.rateLimitCheckInterval) ||
+    options.rateLimitCheckInterval <= 0
+  ) {
+    throw new Error('rateLimitCheckInterval must be a positive integer');
+  }
+
   let processedCount = 0;
 
   for (const repo of repos) {

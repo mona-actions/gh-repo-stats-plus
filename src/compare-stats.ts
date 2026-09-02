@@ -2,6 +2,7 @@ import { COMPARE_STATS_COLUMNS, initializeCsvFile } from './csv.js';
 import { readStatsCsv, writeCompareFinding } from './compare-stats-csv.js';
 import {
   DEFAULT_SIZE_TOLERANCE_PCT,
+  deriveRepoCounts,
   generateRepoStatsFindings,
   joinRepoStats,
 } from './compare-stats-core.js';
@@ -45,11 +46,9 @@ export async function runCompareStats(
     sizeTolerancePct: options.sizeTolerancePct ?? DEFAULT_SIZE_TOLERANCE_PCT,
   };
   const joinResult = joinRepoStats(source.rows, target.rows);
-  const summaryAccumulator = createSummaryAccumulator({
-    sourceRepoCount: source.rows.length,
-    targetRepoCount: target.rows.length,
-    matchedRepoCount: joinResult.matched.length,
-  });
+  const summaryAccumulator = createSummaryAccumulator(
+    deriveRepoCounts(joinResult),
+  );
 
   const outputPath = await resolveOutputPath(
     options.outputDir,

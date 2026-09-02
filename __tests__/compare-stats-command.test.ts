@@ -120,6 +120,12 @@ describe('Commands - compare-stats-command', () => {
       );
     });
 
+    it('throws when the rate limit check interval is not positive', () => {
+      expect(() =>
+        validate({ ...baseOptions, rateLimitCheckInterval: 0 }),
+      ).toThrow('--rate-limit-check-interval must be a positive integer');
+    });
+
     it('accepts a valid set of options', () => {
       expect(() =>
         validate({

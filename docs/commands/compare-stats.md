@@ -68,7 +68,7 @@ gh repo-stats-plus compare-stats [options]
 - `--page-size <size>`: Number of git refs requested per API page (Default: `100`)
 - `--rate-limit-check-interval <count>`: Repositories processed between rate limit checks (Default: `10`)
 
-All options can also be supplied via environment variables (`SOURCE_FILE`, `TARGET_FILE`, `OUTPUT_DIR`, `OUTPUT_FILE`, `SIZE_TOLERANCE_PCT`, `FAIL_ON_BLOCKING`, `VERIFY_GIT`, `SOURCE_ORG`, `TARGET_ORG`, `SOURCE_BASE_URL`, `TARGET_BASE_URL`, `SOURCE_TOKEN`, `TARGET_TOKEN`).
+All options can also be supplied via environment variables (`SOURCE_FILE`, `TARGET_FILE`, `OUTPUT_DIR`, `OUTPUT_FILE`, `SIZE_TOLERANCE_PCT`, `FAIL_ON_BLOCKING`, `VERIFY_GIT`, `SOURCE_ORG`, `TARGET_ORG`, `SOURCE_BASE_URL`, `TARGET_BASE_URL`, `SOURCE_TOKEN`, `TARGET_TOKEN`, `PROXY_URL`, `CA_CERT_PATH`, `GITHUB_API_VERSION`, `PAGE_SIZE`, `RATE_LIMIT_CHECK_INTERVAL`, `VERBOSE`).
 
 ## How the Comparison Works
 

@@ -4,6 +4,7 @@ import type {
   CompareFinding,
   CompareResult,
   CompareSeverity,
+  CompareSummary,
   CompareStatus,
   JoinResult,
   MatchedRepo,
@@ -304,11 +305,22 @@ export function compareRepoStats(
   return {
     findings,
     matched: joinResult.matched,
-    summary: summarizeFindings(findings, {
-      sourceRepoCount: sourceRows.length,
-      targetRepoCount: targetRows.length,
-      matchedRepoCount: joinResult.matched.length,
-    }),
+    summary: summarizeFindings(findings, deriveRepoCounts(joinResult)),
+  };
+}
+
+export function deriveRepoCounts(
+  joinResult: JoinResult,
+): Pick<
+  CompareSummary,
+  'sourceRepoCount' | 'targetRepoCount' | 'matchedRepoCount'
+> {
+  return {
+    sourceRepoCount:
+      joinResult.matched.length + joinResult.missingInTarget.length,
+    targetRepoCount:
+      joinResult.matched.length + joinResult.extraInTarget.length,
+    matchedRepoCount: joinResult.matched.length,
   };
 }
 
