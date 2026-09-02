@@ -1,5 +1,4 @@
 {
-  "npm.packageManager": "npm",
   "vitest.enable": true,
   "vitest.commandLine": "npx vitest",
   "js/ts.validate.enable": true,
