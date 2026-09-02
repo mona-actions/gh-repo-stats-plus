@@ -42,6 +42,26 @@ export interface CompareSummary {
   infoFindingCount: number;
 }
 
+interface CompareSummaryAccumulator {
+  base: Pick<
+    CompareSummary,
+    'sourceRepoCount' | 'targetRepoCount' | 'matchedRepoCount'
+  >;
+  missingInTarget: Set<string>;
+  extraInTarget: Set<string>;
+  blockingRepos: Set<string>;
+  matchedReposWithFindings: Set<string>;
+  blockingFindingCounts: Map<string, number>;
+  blockingFindingCount: number;
+  warningFindingCount: number;
+  infoFindingCount: number;
+}
+
+interface WorstOffender {
+  repoName: string;
+  count: number;
+}
+
 export interface CompareResult {
   findings: CompareFinding[];
   summary: CompareSummary;
@@ -270,9 +290,15 @@ export function joinRepoStats(
   sourceRows: Record<string, string>[],
   targetRows: Record<string, string>[],
 ): JoinResult {
+  validateUniqueRepoNames(sourceRows, 'source');
+  validateUniqueRepoNames(targetRows, 'target');
+
   const targetIndex = new Map<string, Record<string, string>>();
   for (const row of targetRows) {
-    targetIndex.set(normalizeRepoKey(row.Repo_Name), row);
+    const key = normalizeRepoKey(row.Repo_Name);
+    if (key !== '') {
+      targetIndex.set(key, row);
+    }
   }
 
   const matched: MatchedRepo[] = [];
@@ -308,6 +334,26 @@ export function joinRepoStats(
   return { matched, missingInTarget, extraInTarget };
 }
 
+function validateUniqueRepoNames(
+  rows: Record<string, string>[],
+  label: string,
+): void {
+  const repoNames = new Set<string>();
+
+  for (const row of rows) {
+    const key = normalizeRepoKey(row.Repo_Name);
+    if (key === '') {
+      continue;
+    }
+    if (repoNames.has(key)) {
+      throw new Error(
+        `Duplicate normalized Repo_Name "${key}" found in ${label} rows.`,
+      );
+    }
+    repoNames.add(key);
+  }
+}
+
 // --- Column comparison ---
 
 /**
@@ -340,7 +386,7 @@ export function compareNumericColumn(
     sourceValue: repo.source[column] ?? '',
     targetValue: repo.target[column] ?? '',
     delta: formatDelta(delta),
-    severity,
+    severity: severity === 'blocking' && delta > 0 ? 'warning' : severity,
     status: 'matched',
   });
 }
@@ -447,39 +493,12 @@ export function compareRepoStats(
     targetRows,
   );
 
-  const findings: CompareFinding[] = [];
-
-  for (const repo of matched) {
-    findings.push(...compareMatchedRepo(repo, config));
-  }
-
-  for (const row of missingInTarget) {
-    findings.push({
-      Repo_Name: normalizeRepoKey(row.Repo_Name),
-      Source_Org: (row.Org_Name ?? '').trim(),
-      Target_Org: '',
-      Column: REPO_LEVEL_COLUMN,
-      Source_Value: 'present',
-      Target_Value: 'absent',
-      Delta: '',
-      Severity: 'blocking',
-      Status: 'missing_in_target',
-    });
-  }
-
-  for (const row of extraInTarget) {
-    findings.push({
-      Repo_Name: normalizeRepoKey(row.Repo_Name),
-      Source_Org: '',
-      Target_Org: (row.Org_Name ?? '').trim(),
-      Column: REPO_LEVEL_COLUMN,
-      Source_Value: 'absent',
-      Target_Value: 'present',
-      Delta: '',
-      Severity: 'warning',
-      Status: 'extra_in_target',
-    });
-  }
+  const findings = [
+    ...generateRepoStatsFindings(
+      { matched, missingInTarget, extraInTarget },
+      config,
+    ),
+  ];
 
   return {
     findings,
@@ -490,6 +509,43 @@ export function compareRepoStats(
       matchedRepoCount: matched.length,
     }),
   };
+}
+
+function* generateRepoStatsFindings(
+  joinResult: JoinResult,
+  config: CompareConfig,
+): Generator<CompareFinding, void, unknown> {
+  for (const repo of joinResult.matched) {
+    yield* compareMatchedRepo(repo, config);
+  }
+
+  for (const row of joinResult.missingInTarget) {
+    yield {
+      Repo_Name: normalizeRepoKey(row.Repo_Name),
+      Source_Org: (row.Org_Name ?? '').trim(),
+      Target_Org: '',
+      Column: REPO_LEVEL_COLUMN,
+      Source_Value: 'present',
+      Target_Value: 'absent',
+      Delta: '',
+      Severity: 'blocking',
+      Status: 'missing_in_target',
+    };
+  }
+
+  for (const row of joinResult.extraInTarget) {
+    yield {
+      Repo_Name: normalizeRepoKey(row.Repo_Name),
+      Source_Org: '',
+      Target_Org: (row.Org_Name ?? '').trim(),
+      Column: REPO_LEVEL_COLUMN,
+      Source_Value: 'absent',
+      Target_Value: 'present',
+      Delta: '',
+      Severity: 'warning',
+      Status: 'extra_in_target',
+    };
+  }
 }
 
 /**
@@ -503,41 +559,80 @@ export function summarizeFindings(
     'sourceRepoCount' | 'targetRepoCount' | 'matchedRepoCount'
   >,
 ): CompareSummary {
-  const missingInTarget = new Set<string>();
-  const extraInTarget = new Set<string>();
-  const blockingRepos = new Set<string>();
-  const matchedReposWithFindings = new Set<string>();
-
+  const accumulator = createSummaryAccumulator(base);
   for (const finding of findings) {
-    switch (finding.Status) {
-      case 'missing_in_target':
-        missingInTarget.add(finding.Repo_Name);
-        break;
-      case 'extra_in_target':
-        extraInTarget.add(finding.Repo_Name);
-        break;
-      default:
-        matchedReposWithFindings.add(finding.Repo_Name);
-        if (finding.Severity === 'blocking') {
-          blockingRepos.add(finding.Repo_Name);
-        }
-    }
+    accumulateFinding(accumulator, finding);
+  }
+  return finalizeSummary(accumulator);
+}
+
+function createSummaryAccumulator(
+  base: CompareSummaryAccumulator['base'],
+): CompareSummaryAccumulator {
+  return {
+    base,
+    missingInTarget: new Set<string>(),
+    extraInTarget: new Set<string>(),
+    blockingRepos: new Set<string>(),
+    matchedReposWithFindings: new Set<string>(),
+    blockingFindingCounts: new Map<string, number>(),
+    blockingFindingCount: 0,
+    warningFindingCount: 0,
+    infoFindingCount: 0,
+  };
+}
+
+function accumulateFinding(
+  accumulator: CompareSummaryAccumulator,
+  finding: CompareFinding,
+): void {
+  switch (finding.Status) {
+    case 'missing_in_target':
+      accumulator.missingInTarget.add(finding.Repo_Name);
+      break;
+    case 'extra_in_target':
+      accumulator.extraInTarget.add(finding.Repo_Name);
+      break;
+    default:
+      accumulator.matchedReposWithFindings.add(finding.Repo_Name);
+      if (finding.Severity === 'blocking') {
+        accumulator.blockingRepos.add(finding.Repo_Name);
+      }
   }
 
+  switch (finding.Severity) {
+    case 'blocking':
+      accumulator.blockingFindingCount += 1;
+      accumulator.blockingFindingCounts.set(
+        finding.Repo_Name,
+        (accumulator.blockingFindingCounts.get(finding.Repo_Name) ?? 0) + 1,
+      );
+      break;
+    case 'warning':
+      accumulator.warningFindingCount += 1;
+      break;
+    case 'info':
+      accumulator.infoFindingCount += 1;
+      break;
+  }
+}
+
+function finalizeSummary(
+  accumulator: CompareSummaryAccumulator,
+): CompareSummary {
   return {
-    ...base,
+    ...accumulator.base,
     cleanRepoCount: Math.max(
-      base.matchedRepoCount - matchedReposWithFindings.size,
+      accumulator.base.matchedRepoCount -
+        accumulator.matchedReposWithFindings.size,
       0,
     ),
-    reposWithBlockingDiffs: blockingRepos.size,
-    missingInTargetCount: missingInTarget.size,
-    extraInTargetCount: extraInTarget.size,
-    blockingFindingCount: findings.filter((f) => f.Severity === 'blocking')
-      .length,
-    warningFindingCount: findings.filter((f) => f.Severity === 'warning')
-      .length,
-    infoFindingCount: findings.filter((f) => f.Severity === 'info').length,
+    reposWithBlockingDiffs: accumulator.blockingRepos.size,
+    missingInTargetCount: accumulator.missingInTarget.size,
+    extraInTargetCount: accumulator.extraInTarget.size,
+    blockingFindingCount: accumulator.blockingFindingCount,
+    warningFindingCount: accumulator.warningFindingCount,
+    infoFindingCount: accumulator.infoFindingCount,
   };
 }
 
@@ -569,7 +664,6 @@ export interface CompareStatsOptions {
 export interface CompareStatsRunResult {
   outputPath: string;
   summary: CompareSummary;
-  findings: CompareFinding[];
 }
 
 /** Number of worst offenders included in the console summary. */
@@ -591,7 +685,7 @@ export function resolveComparisonToken(
 
   if (!token) {
     throw new Error(
-      `A ${label} token is required for --verify-git. Provide --${label}-token or set ACCESS_TOKEN / GH_TOKEN.`,
+      `A ${label} token is required for --verify-git. Provide --${label}-token or set ACCESS_TOKEN / GH_TOKEN / GITHUB_TOKEN.`,
     );
   }
 
@@ -627,11 +721,12 @@ export async function runCompareStats(
     sizeTolerancePct: options.sizeTolerancePct ?? DEFAULT_SIZE_TOLERANCE_PCT,
   };
 
-  const { findings, matched, summary } = compareRepoStats(
-    source.rows,
-    target.rows,
-    config,
-  );
+  const joinResult = joinRepoStats(source.rows, target.rows);
+  const summaryAccumulator = createSummaryAccumulator({
+    sourceRepoCount: source.rows.length,
+    targetRepoCount: target.rows.length,
+    matchedRepoCount: joinResult.matched.length,
+  });
 
   const outputPath = await resolveOutputPath(
     options.outputDir,
@@ -639,32 +734,32 @@ export async function runCompareStats(
   );
   initializeCsvFile(outputPath, COMPARE_STATS_COLUMNS, logger);
 
-  const allFindings: CompareFinding[] = [];
-  for (const finding of findings) {
+  for (const finding of generateRepoStatsFindings(joinResult, config)) {
     writeFinding(outputPath, finding, logger);
-    allFindings.push(finding);
+    accumulateFinding(summaryAccumulator, finding);
   }
-
-  let finalSummary = summary;
 
   if (options.verifyGit) {
-    for await (const finding of runGitVerification(matched, options, logger)) {
+    for await (const finding of runGitVerification(
+      joinResult.matched,
+      options,
+      logger,
+    )) {
       writeFinding(outputPath, finding, logger);
-      allFindings.push(finding);
+      accumulateFinding(summaryAccumulator, finding);
     }
-
-    finalSummary = summarizeFindings(allFindings, {
-      sourceRepoCount: summary.sourceRepoCount,
-      targetRepoCount: summary.targetRepoCount,
-      matchedRepoCount: summary.matchedRepoCount,
-    });
   }
 
+  const finalSummary = finalizeSummary(summaryAccumulator);
   logger.info(`Comparison report written to: ${outputPath}`);
-  logCompareSummary(finalSummary, allFindings, logger);
+  logCompareSummary(
+    finalSummary,
+    rankWorstOffenderCounts(summaryAccumulator.blockingFindingCounts),
+    logger,
+  );
   logger.info(`output_file=${outputPath}`);
 
-  return { outputPath, summary: finalSummary, findings: allFindings };
+  return { outputPath, summary: finalSummary };
 }
 
 function writeFinding(
@@ -746,7 +841,7 @@ async function* runGitVerification(
  */
 export function logCompareSummary(
   summary: CompareSummary,
-  findings: CompareFinding[],
+  worstOffenders: WorstOffender[],
   logger: Logger,
 ): void {
   logger.info('='.repeat(80));
@@ -764,7 +859,6 @@ export function logCompareSummary(
     `Findings - blocking: ${summary.blockingFindingCount}, warning: ${summary.warningFindingCount}, info: ${summary.infoFindingCount}`,
   );
 
-  const worstOffenders = rankWorstOffenders(findings);
   if (worstOffenders.length > 0) {
     logger.info('Worst offenders (most blocking findings):');
     for (const { repoName, count } of worstOffenders) {
@@ -780,7 +874,7 @@ export function logCompareSummary(
 export function rankWorstOffenders(
   findings: CompareFinding[],
   limit: number = WORST_OFFENDER_LIMIT,
-): Array<{ repoName: string; count: number }> {
+): WorstOffender[] {
   const counts = new Map<string, number>();
 
   for (const finding of findings) {
@@ -790,6 +884,13 @@ export function rankWorstOffenders(
     counts.set(finding.Repo_Name, (counts.get(finding.Repo_Name) ?? 0) + 1);
   }
 
+  return rankWorstOffenderCounts(counts, limit);
+}
+
+function rankWorstOffenderCounts(
+  counts: Map<string, number>,
+  limit: number = WORST_OFFENDER_LIMIT,
+): WorstOffender[] {
   return [...counts.entries()]
     .map(([repoName, count]) => ({ repoName, count }))
     .sort((a, b) => b.count - a.count || a.repoName.localeCompare(b.repoName))

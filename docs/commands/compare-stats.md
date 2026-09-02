@@ -60,8 +60,8 @@ gh repo-stats-plus compare-stats [options]
 - `--target-org <org>`: Target organization name (required with `--verify-git`)
 - `--source-base-url <url>`: GitHub API base URL for the source (Default: `https://api.github.com`)
 - `--target-base-url <url>`: GitHub API base URL for the target (e.g. `https://api.<subdomain>.ghe.com`)
-- `--source-token <token>`: Access token for the source host (falls back to `ACCESS_TOKEN` / `GH_TOKEN`)
-- `--target-token <token>`: Access token for the target host (falls back to `ACCESS_TOKEN` / `GH_TOKEN`)
+- `--source-token <token>`: Access token for the source host (falls back to `ACCESS_TOKEN` / `GH_TOKEN` / `GITHUB_TOKEN`)
+- `--target-token <token>`: Access token for the target host (falls back to `ACCESS_TOKEN` / `GH_TOKEN` / `GITHUB_TOKEN`)
 - `--proxy-url <url>`: Proxy URL if required
 - `--ca-cert-path <path>`: Path to a CA certificate bundle (PEM) for TLS verification
 - `--api-version <version>`: GitHub API version to use
@@ -75,6 +75,7 @@ All options can also be supplied via environment variables (`SOURCE_FILE`, `TARG
 ### Join
 
 - Rows are joined on `Repo_Name` only, lowercased and trimmed on both sides.
+- Blank repository names are skipped. Duplicate normalized repository names in either file cause the comparison to fail rather than producing an ambiguous report.
 - `Org_Name` is **not** part of the join key because the source and target organizations usually have different names. Both org names are included in the report for context.
 - Three categories are reported:
   - **matched** — the repository exists on both sides; each differing column becomes a row
@@ -83,9 +84,11 @@ All options can also be supplied via environment variables (`SOURCE_FILE`, `TARG
 
 ### Severity classification
 
-**Blocking** (any non-zero delta indicates data loss):
+**Blocking** (a negative delta indicates potential data loss):
 
 `Issue_Count`, `PR_Count`, `Record_Count`, `Branch_Count`, `Tag_Count`, `Release_Count`, `Issue_Comment_Count`, `Issue_Event_Count`, `PR_Review_Count`, `PR_Review_Comment_Count`, `Commit_Comment_Count`, `Milestone_Count`, `Discussion_Count`
+
+Positive deltas for these columns are reported as warnings because additional target-side activity is not data loss.
 
 **Informational** (GEI does not migrate these, so the target is commonly `0` until recreated):
 

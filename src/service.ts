@@ -260,6 +260,7 @@ export class OctokitClient {
         refPrefix,
         pageSize: per_page,
         cursor,
+        headers: this.octokit_headers,
       },
     );
 
@@ -284,7 +285,7 @@ export class OctokitClient {
   ): Promise<RepoDefaultBranchRef> {
     const response = await this.octokit.graphql<RepoDefaultBranchResponse>(
       REPO_DEFAULT_BRANCH_QUERY,
-      { owner, repo },
+      { owner, repo, headers: this.octokit_headers },
     );
 
     const repository = response.repository;
@@ -511,7 +512,8 @@ export class OctokitClient {
           id: installation.id,
           app_slug: installation.app_slug || String(installation.app_id),
           repository_selection: installation.repository_selection as
-            'all' | 'selected',
+            | 'all'
+            | 'selected',
         };
 
         if (installation.repository_selection === 'all') {

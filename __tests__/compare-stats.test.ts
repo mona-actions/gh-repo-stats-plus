@@ -156,6 +156,25 @@ describe('compare-stats', () => {
       expect(result.missingInTarget).toHaveLength(0);
       expect(result.extraInTarget).toHaveLength(0);
     });
+
+    it.each(['source', 'target'])(
+      'rejects duplicate normalized repo names in the %s rows',
+      (side) => {
+        const duplicateRows = [
+          buildRow({ Repo_Name: ' Repo-A ' }),
+          buildRow({ Repo_Name: 'repo-a' }),
+        ];
+
+        expect(() =>
+          joinRepoStats(
+            side === 'source' ? duplicateRows : [],
+            side === 'target' ? duplicateRows : [],
+          ),
+        ).toThrow(
+          `Duplicate normalized Repo_Name "repo-a" found in ${side} rows.`,
+        );
+      },
+    );
   });
 
   describe('compareNumericColumn', () => {
@@ -200,8 +219,11 @@ describe('compare-stats', () => {
       );
 
       expect(
-        compareNumericColumn(repo, 'PR_Count', 'blocking', config)?.Delta,
-      ).toBe('+3');
+        compareNumericColumn(repo, 'PR_Count', 'blocking', config),
+      ).toMatchObject({
+        Delta: '+3',
+        Severity: 'warning',
+      });
     });
 
     it('ignores Repo_Size_mb differences within the configured tolerance', () => {
@@ -456,12 +478,20 @@ describe('compare-stats', () => {
       vi.unstubAllEnvs();
     });
 
+    it('falls back to GITHUB_TOKEN', () => {
+      vi.stubEnv('ACCESS_TOKEN', '');
+      vi.stubEnv('GH_TOKEN', '');
+      vi.stubEnv('GITHUB_TOKEN', 'github-token');
+      expect(resolveComparisonToken(undefined, 'source')).toBe('github-token');
+      vi.unstubAllEnvs();
+    });
+
     it('throws when no token is available', () => {
       vi.stubEnv('ACCESS_TOKEN', '');
       vi.stubEnv('GH_TOKEN', '');
       vi.stubEnv('GITHUB_TOKEN', '');
       expect(() => resolveComparisonToken(undefined, 'source')).toThrow(
-        /A source token is required for --verify-git/,
+        'A source token is required for --verify-git. Provide --source-token or set ACCESS_TOKEN / GH_TOKEN / GITHUB_TOKEN.',
       );
       vi.unstubAllEnvs();
     });
@@ -497,11 +527,6 @@ describe('compare-stats', () => {
       expect(result.outputPath).toContain('report.csv');
       expect(result.summary.matchedRepoCount).toBe(1);
       expect(result.summary.blockingFindingCount).toBeGreaterThan(0);
-      expect(
-        result.findings.some(
-          (f) => f.Column === 'Issue_Count' && f.Severity === 'blocking',
-        ),
-      ).toBe(true);
     });
   });
 });

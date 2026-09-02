@@ -81,7 +81,8 @@ export async function initCommand(
 
   let resolvedOpts = opts;
   let createClientForOrg:
-    ((orgName: string) => Promise<OctokitClient>) | undefined;
+    | ((orgName: string) => Promise<OctokitClient>)
+    | undefined;
   // Resolved once so we never re-read the key file per org or per auth call
   let resolvedKey: string | undefined;
 
