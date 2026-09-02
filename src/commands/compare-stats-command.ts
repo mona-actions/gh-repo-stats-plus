@@ -1,10 +1,8 @@
 import * as commander from 'commander';
 import { existsSync } from 'fs';
-import {
-  CompareStatsOptions,
-  DEFAULT_SIZE_TOLERANCE_PCT,
-  runCompareStats,
-} from '../compare-stats.js';
+import { DEFAULT_SIZE_TOLERANCE_PCT } from '../compare-stats-core.js';
+import { runCompareStats } from '../compare-stats.js';
+import type { CompareStatsOptions } from '../compare-stats-types.js';
 import { formatErrorMessage } from '../errors.js';
 import {
   parseApiVersionOption,
@@ -128,13 +126,13 @@ export function createCompareStatsCommand(): commander.Command {
     .addOption(
       new Option(
         '--source-token <token>',
-        'Access token for the source host (falls back to ACCESS_TOKEN / GH_TOKEN)',
+        'Access token for the source host (falls back to ACCESS_TOKEN / GH_TOKEN / GITHUB_TOKEN)',
       ).env('SOURCE_TOKEN'),
     )
     .addOption(
       new Option(
         '--target-token <token>',
-        'Access token for the target host (falls back to ACCESS_TOKEN / GH_TOKEN)',
+        'Access token for the target host (falls back to ACCESS_TOKEN / GH_TOKEN / GITHUB_TOKEN)',
       ).env('TARGET_TOKEN'),
     )
     .addOption(

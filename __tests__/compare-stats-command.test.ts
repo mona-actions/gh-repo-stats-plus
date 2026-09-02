@@ -23,7 +23,7 @@ import compareStatsCommand, {
   createCompareStatsCommand,
   validate,
 } from '../src/commands/compare-stats-command.js';
-import { CompareStatsOptions } from '../src/compare-stats.js';
+import type { CompareStatsOptions } from '../src/compare-stats-types.js';
 
 const baseOptions: CompareStatsOptions = {
   sourceFile: 'source.csv',

@@ -3,7 +3,12 @@ import { createOctokit } from './octokit.js';
 import { Logger } from './types.js';
 import { formatErrorMessage } from './errors.js';
 import { checkAndHandleRateLimits } from './repo-stats-service.js';
-import type { CompareFinding, MatchedRepo } from './compare-stats.js';
+import { loadCaCertificate } from './tls.js';
+import type {
+  CompareFinding,
+  CompareStatsOptions,
+  MatchedRepo,
+} from './compare-stats-types.js';
 
 /** Prefix used in the `Column` field for git ref findings. */
 export const GIT_REF_COLUMN_PREFIX = 'git_ref:';
@@ -276,4 +281,78 @@ export function createComparisonClient(
     caCert,
   });
   return new OctokitClient(octokit, apiVersion ?? DEFAULT_API_VERSION);
+}
+
+export function resolveComparisonToken(
+  explicitToken: string | undefined,
+  label: string,
+): string {
+  const token =
+    explicitToken ||
+    process.env.ACCESS_TOKEN ||
+    process.env.GH_TOKEN ||
+    process.env.GITHUB_TOKEN;
+
+  if (!token) {
+    throw new Error(
+      `A ${label} token is required for --verify-git. Provide --${label}-token or set ACCESS_TOKEN / GH_TOKEN / GITHUB_TOKEN.`,
+    );
+  }
+
+  return token;
+}
+
+export async function* runGitVerification(
+  matched: MatchedRepo[],
+  options: CompareStatsOptions,
+  logger: Logger,
+): AsyncGenerator<CompareFinding, void, unknown> {
+  const sourceOrg = options.sourceOrg?.trim();
+  const targetOrg = options.targetOrg?.trim();
+
+  if (!sourceOrg || !targetOrg) {
+    throw new Error(
+      '--verify-git requires both --source-org and --target-org so repositories can be addressed on each host.',
+    );
+  }
+
+  const caCert = loadCaCertificate(options.caCertPath, logger);
+  const clients = {
+    sourceClient: createComparisonClient(
+      {
+        token: resolveComparisonToken(options.sourceToken, 'source'),
+        baseUrl: options.sourceBaseUrl ?? 'https://api.github.com',
+        proxyUrl: options.proxyUrl,
+        apiVersion: options.apiVersion,
+        caCert,
+      },
+      logger,
+    ),
+    targetClient: createComparisonClient(
+      {
+        token: resolveComparisonToken(options.targetToken, 'target'),
+        baseUrl: options.targetBaseUrl ?? 'https://api.github.com',
+        proxyUrl: options.proxyUrl,
+        apiVersion: options.apiVersion,
+        caCert,
+      },
+      logger,
+    ),
+  };
+
+  logger.info(
+    `Verifying git refs for ${matched.length} matched repositories (${sourceOrg} -> ${targetOrg})`,
+  );
+
+  yield* verifyGitRefs(
+    matched,
+    clients,
+    {
+      sourceOrg,
+      targetOrg,
+      pageSize: options.pageSize ?? 100,
+      rateLimitCheckInterval: options.rateLimitCheckInterval ?? 10,
+    },
+    logger,
+  );
 }

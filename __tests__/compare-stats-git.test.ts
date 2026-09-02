@@ -17,7 +17,10 @@ import {
   verifyGitRefs,
   verifyRepoGitRefs,
 } from '../src/compare-stats-git.js';
-import type { CompareFinding, MatchedRepo } from '../src/compare-stats.js';
+import type {
+  CompareFinding,
+  MatchedRepo,
+} from '../src/compare-stats-types.js';
 import type { OctokitClient } from '../src/service.js';
 
 const logger = {

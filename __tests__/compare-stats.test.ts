@@ -34,16 +34,18 @@ import {
   compareSettingsColumn,
   DEFAULT_SIZE_TOLERANCE_PCT,
   joinRepoStats,
-  MatchedRepo,
   normalizeBooleanValue,
   normalizeRepoKey,
   parseNumericValue,
-  rankWorstOffenders,
+} from '../src/compare-stats-core.js';
+import {
   readStatsCsv,
-  resolveComparisonToken,
-  runCompareStats,
   validateStatsHeaders,
-} from '../src/compare-stats.js';
+} from '../src/compare-stats-csv.js';
+import { resolveComparisonToken } from '../src/compare-stats-git.js';
+import { rankWorstOffenders } from '../src/compare-stats-summary.js';
+import { runCompareStats } from '../src/compare-stats.js';
+import type { MatchedRepo } from '../src/compare-stats-types.js';
 
 const config = { sizeTolerancePct: DEFAULT_SIZE_TOLERANCE_PCT };
 
