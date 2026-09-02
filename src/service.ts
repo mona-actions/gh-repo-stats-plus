@@ -512,8 +512,7 @@ export class OctokitClient {
           id: installation.id,
           app_slug: installation.app_slug || String(installation.app_id),
           repository_selection: installation.repository_selection as
-            | 'all'
-            | 'selected',
+            'all' | 'selected',
         };
 
         if (installation.repository_selection === 'all') {
