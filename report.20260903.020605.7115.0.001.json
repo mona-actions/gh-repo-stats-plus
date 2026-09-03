@@ -1,0 +1,762 @@
+
+{
+  "header": {
+    "reportVersion": 5,
+    "event": "Allocation failed - JavaScript heap out of memory",
+    "trigger": "OOMError",
+    "filename": "report.20260903.020605.7115.0.001.json",
+    "dumpEventTime": "2026-09-03T02:06:05Z",
+    "dumpEventTimeStamp": "1788401165249",
+    "processId": 7115,
+    "threadId": 0,
+    "cwd": "/workspaces/gh-repo-stats-plus",
+    "commandLine": [
+      "/usr/local/share/npm-global/lib/node_modules/@github/copilot/node_modules/@github/copilot-linux-x64/copilot",
+      "--no-warnings",
+      "--report-on-fatalerror",
+      "--optimize-for-size",
+      "--expose-gc",
+      "/usr/local/share/npm-global/lib/node_modules/@github/copilot/node_modules/@github/copilot-linux-x64/copilot",
+      "--yolo"
+    ],
+    "nodejsVersion": "v24.18.1",
+    "glibcVersionRuntime": "2.41",
+    "glibcVersionCompiler": "2.28",
+    "wordSize": 64,
+    "arch": "x64",
+    "platform": "linux",
+    "componentVersions": {
+      "acorn": "8.16.0",
+      "ada": "3.4.4",
+      "amaro": "1.1.9",
+      "ares": "1.34.6",
+      "brotli": "1.2.0",
+      "cldr": "48.0",
+      "icu": "78.3",
+      "llhttp": "9.4.3",
+      "merve": "1.2.2",
+      "modules": "137",
+      "napi": "10",
+      "nbytes": "0.1.4",
+      "ncrypto": "0.0.1",
+      "nghttp2": "1.69.0",
+      "nghttp3": "",
+      "ngtcp2": "",
+      "node": "24.18.1",
+      "openssl": "3.5.7",
+      "simdjson": "4.6.4",
+      "simdutf": "6.4.0",
+      "sqlite": "3.53.1",
+      "tz": "2026b",
+      "undici": "7.29.0",
+      "unicode": "17.0",
+      "uv": "1.52.1",
+      "uvwasi": "0.0.23",
+      "v8": "13.6.233.17-node.50",
+      "zlib": "1.3.1-e00f703",
+      "zstd": "1.5.7"
+    },
+    "release": {
+      "name": "node",
+      "lts": "Krypton",
+      "headersUrl": "https://nodejs.org/download/release/v24.18.1/node-v24.18.1-headers.tar.gz",
+      "sourceUrl": "https://nodejs.org/download/release/v24.18.1/node-v24.18.1.tar.gz"
+    },
+    "osName": "Linux",
+    "osRelease": "6.17.0-1022-azure",
+    "osVersion": "#22-Ubuntu SMP Mon Jul 27 17:24:03 UTC 2026",
+    "osMachine": "x86_64",
+    "cpus": [
+      {
+        "model": "AMD EPYC 9V74 80-Core Processor",
+        "speed": 0,
+        "user": 3504870,
+        "nice": 0,
+        "sys": 1736220,
+        "idle": 3264350,
+        "irq": 0
+      },
+      {
+        "model": "AMD EPYC 9V74 80-Core Processor",
+        "speed": 0,
+        "user": 3498190,
+        "nice": 10,
+        "sys": 1735080,
+        "idle": 3266870,
+        "irq": 0
+      }
+    ],
+    "networkInterfaces": [
+      {
+        "name": "lo",
+        "internal": true,
+        "mac": "00:00:00:00:00:00",
+        "address": "127.0.0.1",
+        "netmask": "255.0.0.0",
+        "family": "IPv4"
+      },
+      {
+        "name": "eth0",
+        "internal": false,
+        "mac": "ee:b7:33:c8:76:d4",
+        "address": "172.17.0.2",
+        "netmask": "255.255.0.0",
+        "family": "IPv4"
+      },
+      {
+        "name": "lo",
+        "internal": true,
+        "mac": "00:00:00:00:00:00",
+        "address": "::1",
+        "netmask": "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
+        "family": "IPv6",
+        "scopeid": 0
+      }
+    ],
+    "host": "28fcf4e61202"
+  },
+  "javascriptStack": {
+    "message": "No stack.",
+    "stack": [
+      "Unavailable."
+    ],
+    "errorProperties": {
+    }
+  },
+  "javascriptHeap": {
+    "totalMemory": 2148704256,
+    "executableMemory": 10915840,
+    "totalCommittedMemory": 2148446208,
+    "availableMemory": 4231600,
+    "totalGlobalHandlesMemory": 143432,
+    "usedGlobalHandlesMemory": 88128,
+    "usedMemory": 2124336808,
+    "memoryLimit": 2150629376,
+    "mallocedMemory": 1073224,
+    "externalMemory": 36171669,
+    "peakMallocedMemory": 72161592,
+    "nativeContextCount": 2,
+    "detachedContextCount": 0,
+    "doesZapGarbage": 0,
+    "heapSpaces": {
+      "read_only_space": {
+        "memorySize": 0,
+        "committedMemory": 0,
+        "capacity": 0,
+        "used": 0,
+        "available": 0
+      },
+      "new_space": {
+        "memorySize": 2097152,
+        "committedMemory": 2097152,
+        "capacity": 1048512,
+        "used": 0,
+        "available": 1048512
+      },
+      "old_space": {
+        "memorySize": 2126118912,
+        "committedMemory": 2126118912,
+        "capacity": 2106287928,
+        "used": 2106078536,
+        "available": 209392
+      },
+      "code_space": {
+        "memorySize": 9437184,
+        "committedMemory": 9179136,
+        "capacity": 8311616,
+        "used": 8311616,
+        "available": 0
+      },
+      "shared_space": {
+        "memorySize": 0,
+        "committedMemory": 0,
+        "capacity": 0,
+        "used": 0,
+        "available": 0
+      },
+      "trusted_space": {
+        "memorySize": 7970816,
+        "committedMemory": 7970816,
+        "capacity": 6891584,
+        "used": 6891584,
+        "available": 0
+      },
+      "shared_trusted_space": {
+        "memorySize": 0,
+        "committedMemory": 0,
+        "capacity": 0,
+        "used": 0,
+        "available": 0
+      },
+      "new_large_object_space": {
+        "memorySize": 0,
+        "committedMemory": 0,
+        "capacity": 1048576,
+        "used": 0,
+        "available": 1048576
+      },
+      "large_object_space": {
+        "memorySize": 1208320,
+        "committedMemory": 1208320,
+        "capacity": 1194120,
+        "used": 1194120,
+        "available": 0
+      },
+      "code_large_object_space": {
+        "memorySize": 1478656,
+        "committedMemory": 1478656,
+        "capacity": 1471424,
+        "used": 1471424,
+        "available": 0
+      },
+      "shared_large_object_space": {
+        "memorySize": 0,
+        "committedMemory": 0,
+        "capacity": 0,
+        "used": 0,
+        "available": 0
+      },
+      "shared_trusted_large_object_space": {
+        "memorySize": 0,
+        "committedMemory": 0,
+        "capacity": 0,
+        "used": 0,
+        "available": 0
+      },
+      "trusted_large_object_space": {
+        "memorySize": 393216,
+        "committedMemory": 393216,
+        "capacity": 389528,
+        "used": 389528,
+        "available": 0
+      }
+    }
+  },
+  "nativeStack": [
+    {
+      "pc": "0x00000000009ed504",
+      "symbol": "node::TriggerNodeReport(v8::Isolate*, node::Environment*, char const*, char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, v8::Local<v8::Value>) [/usr/local/share/npm-global/lib/node_modules/@github/copilot/node_modules/@github/copilot-linux-x64/copilot]"
+    },
+    {
+      "pc": "0x00000000009edaa7",
+      "symbol": "node::TriggerNodeReport(v8::Isolate*, char const*, char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, v8::Local<v8::Value>) [/usr/local/share/npm-global/lib/node_modules/@github/copilot/node_modules/@github/copilot-linux-x64/copilot]"
+    },
+    {
+      "pc": "0x000000000074ea9c",
+      "symbol": "node::OOMErrorHandler(char const*, v8::OOMDetails const&) [/usr/local/share/npm-global/lib/node_modules/@github/copilot/node_modules/@github/copilot-linux-x64/copilot]"
+    },
+    {
+      "pc": "0x0000000000c43660",
+      "symbol": " [/usr/local/share/npm-global/lib/node_modules/@github/copilot/node_modules/@github/copilot-linux-x64/copilot]"
+    },
+    {
+      "pc": "0x0000000000c4374f",
+      "symbol": " [/usr/local/share/npm-global/lib/node_modules/@github/copilot/node_modules/@github/copilot-linux-x64/copilot]"
+    },
+    {
+      "pc": "0x0000000000ee6fa5",
+      "symbol": " [/usr/local/share/npm-global/lib/node_modules/@github/copilot/node_modules/@github/copilot-linux-x64/copilot]"
+    },
+    {
+      "pc": "0x0000000000ee6fd2",
+      "symbol": " [/usr/local/share/npm-global/lib/node_modules/@github/copilot/node_modules/@github/copilot-linux-x64/copilot]"
+    },
+    {
+      "pc": "0x0000000000ee72ca",
+      "symbol": " [/usr/local/share/npm-global/lib/node_modules/@github/copilot/node_modules/@github/copilot-linux-x64/copilot]"
+    },
+    {
+      "pc": "0x0000000000ef7fca",
+      "symbol": " [/usr/local/share/npm-global/lib/node_modules/@github/copilot/node_modules/@github/copilot-linux-x64/copilot]"
+    },
+    {
+      "pc": "0x0000000000efc370",
+      "symbol": " [/usr/local/share/npm-global/lib/node_modules/@github/copilot/node_modules/@github/copilot-linux-x64/copilot]"
+    },
+    {
+      "pc": "0x000000000198e911",
+      "symbol": " [/usr/local/share/npm-global/lib/node_modules/@github/copilot/node_modules/@github/copilot-linux-x64/copilot]"
+    }
+  ],
+  "resourceUsage": {
+    "free_memory": 3623014400,
+    "total_memory": 8323964928,
+    "rss": 2647969792,
+    "constrained_memory": 18446744073709551615,
+    "available_memory": 3623014400,
+    "userCpuSeconds": 6687.7,
+    "kernelCpuSeconds": 3222.54,
+    "cpuConsumptionPercent": 156.486,
+    "userCpuConsumptionPercent": 105.601,
+    "kernelCpuConsumptionPercent": 50.8849,
+    "maxRss": 2647969792,
+    "pageFaults": {
+      "IORequired": 0,
+      "IONotRequired": 27939790
+    },
+    "fsActivity": {
+      "reads": 96,
+      "writes": 38048
+    }
+  },
+  "uvthreadResourceUsage": {
+    "userCpuSeconds": 2873.31,
+    "kernelCpuSeconds": 621.067,
+    "cpuConsumptionPercent": 55.1773,
+    "userCpuConsumptionPercent": 45.3704,
+    "kernelCpuConsumptionPercent": 9.80684,
+    "fsActivity": {
+      "reads": 0,
+      "writes": 24
+    }
+  },
+  "libuv": [
+    {
+      "type": "async",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x000000003f8755d0"
+    },
+    {
+      "type": "async",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x00000000068c7a60"
+    },
+    {
+      "type": "timer",
+      "is_active": true,
+      "is_referenced": true,
+      "address": "0x000000003f956468",
+      "repeat": 0,
+      "firesInMsFromNow": 6,
+      "expired": false
+    },
+    {
+      "type": "check",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x000000003f956500"
+    },
+    {
+      "type": "idle",
+      "is_active": false,
+      "is_referenced": true,
+      "address": "0x000000003f956578"
+    },
+    {
+      "type": "prepare",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x000000003f9565f0"
+    },
+    {
+      "type": "check",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x000000003f956668"
+    },
+    {
+      "type": "async",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x000000003f9566e0"
+    },
+    {
+      "type": "tty",
+      "is_active": false,
+      "is_referenced": true,
+      "address": "0x000000003f8ede80",
+      "width": 183,
+      "height": 45,
+      "fd": 17,
+      "writeQueueSize": 0,
+      "readable": true,
+      "writable": true
+    },
+    {
+      "type": "signal",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x000000003f92b058",
+      "signum": 28,
+      "signal": "SIGWINCH"
+    },
+    {
+      "type": "tty",
+      "is_active": true,
+      "is_referenced": true,
+      "address": "0x000000003fa53c10",
+      "width": 183,
+      "height": 45,
+      "fd": 19,
+      "writeQueueSize": 0,
+      "readable": true,
+      "writable": true
+    },
+    {
+      "type": "tty",
+      "is_active": false,
+      "is_referenced": true,
+      "address": "0x000000003fa6bd80",
+      "width": 183,
+      "height": 45,
+      "fd": 20,
+      "writeQueueSize": 0,
+      "readable": true,
+      "writable": true
+    },
+    {
+      "type": "async",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x000000003f91fc78"
+    },
+    {
+      "type": "signal",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x000000003fd02728",
+      "signum": 15,
+      "signal": "SIGTERM"
+    },
+    {
+      "type": "signal",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x000000003fd15bd8",
+      "signum": 2,
+      "signal": "SIGINT"
+    },
+    {
+      "type": "signal",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x000000003fd019f8",
+      "signum": 1,
+      "signal": "SIGHUP"
+    },
+    {
+      "type": "signal",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x000000003fd01b08",
+      "signum": 3,
+      "signal": "SIGQUIT"
+    },
+    {
+      "type": "async",
+      "is_active": true,
+      "is_referenced": true,
+      "address": "0x000000003fe503e8"
+    },
+    {
+      "type": "signal",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x000000003fdcac98",
+      "signum": 18,
+      "signal": "SIGCONT"
+    },
+    {
+      "type": "signal",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x000000003fdc3028",
+      "signum": 14,
+      "signal": "SIGALRM"
+    },
+    {
+      "type": "signal",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x000000003fd90d78",
+      "signum": 6,
+      "signal": "SIGABRT"
+    },
+    {
+      "type": "signal",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x000000003fdc5a68",
+      "signum": 26,
+      "signal": "SIGVTALRM"
+    },
+    {
+      "type": "signal",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x000000003fd14c98",
+      "signum": 24,
+      "signal": "SIGXCPU"
+    },
+    {
+      "type": "signal",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x000000003fd01c18",
+      "signum": 25,
+      "signal": "SIGXFSZ"
+    },
+    {
+      "type": "signal",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x000000003fd20f28",
+      "signum": 12,
+      "signal": "SIGUSR2"
+    },
+    {
+      "type": "signal",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x000000003fd2eda8",
+      "signum": 5,
+      "signal": "SIGTRAP"
+    },
+    {
+      "type": "signal",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x000000003fd31078",
+      "signum": 31,
+      "signal": "SIGSYS"
+    },
+    {
+      "type": "signal",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x000000003feba868",
+      "signum": 6,
+      "signal": "SIGABRT"
+    },
+    {
+      "type": "signal",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x000000003feba978",
+      "signum": 29,
+      "signal": "SIGIO"
+    },
+    {
+      "type": "signal",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x000000003febaac8",
+      "signum": 29,
+      "signal": "SIGIO"
+    },
+    {
+      "type": "signal",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x000000003febabd8",
+      "signum": 30,
+      "signal": "SIGPWR"
+    },
+    {
+      "type": "signal",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x000000003febad28",
+      "signum": 16,
+      "signal": "SIGSTKFLT"
+    },
+    {
+      "type": "async",
+      "is_active": true,
+      "is_referenced": true,
+      "address": "0x0000000042c2a6b8"
+    },
+    {
+      "type": "async",
+      "is_active": true,
+      "is_referenced": true,
+      "address": "0x0000000042c276f8"
+    },
+    {
+      "type": "async",
+      "is_active": true,
+      "is_referenced": false,
+      "address": "0x000000003fe99548"
+    },
+    {
+      "type": "async",
+      "is_active": true,
+      "is_referenced": true,
+      "address": "0x000000003fdbb8c8"
+    },
+    {
+      "type": "async",
+      "is_active": true,
+      "is_referenced": true,
+      "address": "0x000000003fe70188"
+    },
+    {
+      "type": "async",
+      "is_active": true,
+      "is_referenced": true,
+      "address": "0x000000003fec7748"
+    },
+    {
+      "type": "async",
+      "is_active": true,
+      "is_referenced": true,
+      "address": "0x0000000042c31f48"
+    },
+    {
+      "type": "pipe",
+      "is_active": true,
+      "is_referenced": true,
+      "address": "0x000000003fc18dd0",
+      "localEndpoint": null,
+      "remoteEndpoint": "/tmp/mcp-yMloDq/mcp.sock",
+      "sendBufferSize": 212992,
+      "recvBufferSize": 1048576,
+      "fd": 54,
+      "writeQueueSize": 0,
+      "readable": true,
+      "writable": true
+    },
+    {
+      "type": "async",
+      "is_active": true,
+      "is_referenced": true,
+      "address": "0x0000000042c67638"
+    },
+    {
+      "type": "async",
+      "is_active": true,
+      "is_referenced": true,
+      "address": "0x0000000042c8ce68"
+    },
+    {
+      "type": "async",
+      "is_active": true,
+      "is_referenced": true,
+      "address": "0x000000003fe80258"
+    },
+    {
+      "type": "async",
+      "is_active": true,
+      "is_referenced": true,
+      "address": "0x000000003f8d47f8"
+    },
+    {
+      "type": "async",
+      "is_active": true,
+      "is_referenced": true,
+      "address": "0x000000003fe4bf78"
+    },
+    {
+      "type": "async",
+      "is_active": true,
+      "is_referenced": true,
+      "address": "0x0000000042c664a8"
+    },
+    {
+      "type": "async",
+      "is_active": true,
+      "is_referenced": true,
+      "address": "0x000000003fe984f8"
+    },
+    {
+      "type": "async",
+      "is_active": true,
+      "is_referenced": true,
+      "address": "0x0000000042706cc8"
+    },
+    {
+      "type": "async",
+      "is_active": true,
+      "is_referenced": true,
+      "address": "0x000000004113b348"
+    },
+    {
+      "type": "async",
+      "is_active": true,
+      "is_referenced": true,
+      "address": "0x0000000041102d98"
+    },
+    {
+      "type": "async",
+      "is_active": true,
+      "is_referenced": true,
+      "address": "0x0000000040fa7898"
+    },
+    {
+      "type": "async",
+      "is_active": true,
+      "is_referenced": true,
+      "address": "0x000000004102a098"
+    },
+    {
+      "type": "async",
+      "is_active": true,
+      "is_referenced": true,
+      "address": "0x0000000040ffd508"
+    },
+    {
+      "type": "loop",
+      "is_active": true,
+      "address": "0x00000000068daaa0",
+      "loopIdleTimeSeconds": 2041.73
+    }
+  ],
+  "workers": [
+  ],
+  "userLimits": {
+    "core_file_size_blocks": {
+      "soft": "unlimited",
+      "hard": "unlimited"
+    },
+    "data_seg_size_bytes": {
+      "soft": "unlimited",
+      "hard": "unlimited"
+    },
+    "file_size_blocks": {
+      "soft": "unlimited",
+      "hard": "unlimited"
+    },
+    "max_locked_memory_bytes": {
+      "soft": 8388608,
+      "hard": 8388608
+    },
+    "max_memory_size_bytes": {
+      "soft": "unlimited",
+      "hard": "unlimited"
+    },
+    "open_files": {
+      "soft": 524288,
+      "hard": 524288
+    },
+    "stack_size_bytes": {
+      "soft": 8388608,
+      "hard": "unlimited"
+    },
+    "cpu_time_seconds": {
+      "soft": "unlimited",
+      "hard": "unlimited"
+    },
+    "max_user_processes": {
+      "soft": "unlimited",
+      "hard": "unlimited"
+    },
+    "virtual_memory_bytes": {
+      "soft": "unlimited",
+      "hard": "unlimited"
+    }
+  },
+  "sharedObjects": [
+    "linux-vdso.so.1",
+    "/lib/x86_64-linux-gnu/libdl.so.2",
+    "/lib/x86_64-linux-gnu/libstdc++.so.6",
+    "/lib/x86_64-linux-gnu/libm.so.6",
+    "/lib/x86_64-linux-gnu/libgcc_s.so.1",
+    "/lib/x86_64-linux-gnu/libpthread.so.0",
+    "/lib/x86_64-linux-gnu/libc.so.6",
+    "/lib64/ld-linux-x86-64.so.2",
+    "/home/node/.cache/copilot/pkg/linux-x64/1.0.82/prebuilds/linux-x64/runtime.node",
+    "/home/node/.cache/copilot/pkg/linux-x64/1.0.82/prebuilds/linux-x64/cli-native.node"
+  ]
+}

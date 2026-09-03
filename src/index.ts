@@ -1,5 +1,5 @@
 import { config } from 'dotenv';
-config();
+config({ path: process.env.DOTENV_CONFIG_PATH });
 
 import * as commander from 'commander';
 
