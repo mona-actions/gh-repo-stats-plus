@@ -146,6 +146,23 @@ A human-readable summary is also written to the console and log file: totals com
 
 Values originating from input CSVs are neutralized when they resemble spreadsheet formulas, so opening the report in formula-capable spreadsheet software does not evaluate repository metadata as a formula.
 
+## Migration Recommendations
+
+The resumable `analysis/compare-repos.sh` workflow also writes `reports/migration-recommendations.csv` after aggregation. It evaluates migration content separately from broader fidelity:
+
+- `operational_recommendation=move-on` means no migration-relevant source count is lower in the target. Git ref differences and target-side growth remain documented context, not a reason to keep the source migration open.
+- `operational_recommendation=investigate-content-loss` means at least one migration-relevant source count is lower, or the comparison could not establish a source/target baseline.
+- `operational_recommendation=not-migrated` means the source repository has no usable target mapping.
+- `content_recommendation=migrated` means the target contains at least the source value for every migration-relevant count. Positive target deltas are acceptable because work may continue after migration.
+- `content_recommendation=review` means one or more migration-relevant counts are lower in the target than in the source.
+- `content_recommendation=missing` means the source repository had no usable target mapping.
+- `content_recommendation=unable-to-assess` means collection or validation did not complete, or the target repository has no source baseline in the run.
+- `fidelity_recommendation=full-fidelity` means there are no findings beyond an exact comparison.
+- `fidelity_recommendation=review` means content counts pass but settings or informational differences remain.
+- `fidelity_recommendation=blocked` means Git verification found a missing or changed source ref, or content counts are lower.
+
+This recommendation is limited to the fields collected by `repo-stats`; it does not prove migration of secrets, webhooks, packages, alerts, mannequins, or other known gaps listed below.
+
 ## Known Gaps
 
 A clean report does **not** mean the migration is complete. This command compares only what repo-stats collects, so the following still require separate verification:

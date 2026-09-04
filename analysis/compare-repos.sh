@@ -439,6 +439,8 @@ if ! run_helper aggregate --run-dir "${RUN_DIR}" | tee -a "${LOG_FILE}"; then
 fi
 
 log "Reports written to ${RUN_DIR}/reports"
+log "Generating migration recommendations"
+run_helper recommend --run-dir "${RUN_DIR}" | tee -a "${LOG_FILE}"
 if [[ "${HAD_OPERATIONAL_FAILURE}" == true ]]; then
   log "Completed with operational failures; rerun to resume incomplete chunks"
   exit 1

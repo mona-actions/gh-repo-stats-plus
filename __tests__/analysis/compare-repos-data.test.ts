@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   aggregateReports,
+  generateRecommendations,
   prepareAudit,
   reconcileChunk,
 } from '../../analysis/compare-repos-data.js';
@@ -196,6 +197,122 @@ describe('compare-repos data helper', () => {
 
     expect(() => prepareAudit({ ...baseOptions, chunkSize: 2 })).toThrow(
       /configuration changed/,
+    );
+  });
+
+  it('recommends content migration when target counts have grown', () => {
+    const root = tempDirectory();
+    const runDir = join(root, 'run');
+    const reportsDir = join(runDir, 'reports');
+    mkdirSync(reportsDir, { recursive: true });
+    const outcomeHeader =
+      'repo_name,source_org,target_org,locked_in_source,created_at_in_target,outcome,highest_severity,finding_count,blocking_count,warning_count,info_count,raw_diff_file,reason\n';
+    const emptyOutcome = outcomeHeader;
+    for (const report of [
+      'clean',
+      'blocking',
+      'missing-in-target',
+      'extra-in-target',
+      'failed-or-skipped',
+    ]) {
+      writeFileSync(join(reportsDir, `${report}.csv`), emptyOutcome);
+    }
+    writeFileSync(
+      join(reportsDir, 'warning-only.csv'),
+      outcomeHeader +
+        'repo-a,source,target,true,2026-01-01,warning-only,warning,1,0,1,0,diff.csv,\n',
+    );
+    writeFileSync(
+      join(reportsDir, 'diff-all.csv'),
+      'Repo_Name,Source_Org,Target_Org,Column,Source_Value,Target_Value,Delta,Severity,Status\n' +
+        'repo-a,source,target,Issue_Count,2,4,+2,warning,matched\n',
+    );
+
+    const counts = generateRecommendations(runDir);
+
+    expect(counts).toEqual({ 'move-on': 1 });
+    expect(
+      readFileSync(join(reportsDir, 'migration-recommendations.csv'), 'utf8'),
+    ).toContain('repo-a,source,target,warning-only,migrated,move-on,review');
+  });
+
+  it('separates content loss from Git fidelity loss', () => {
+    const root = tempDirectory();
+    const runDir = join(root, 'run');
+    const reportsDir = join(runDir, 'reports');
+    mkdirSync(reportsDir, { recursive: true });
+    const outcomeHeader =
+      'repo_name,source_org,target_org,locked_in_source,created_at_in_target,outcome,highest_severity,finding_count,blocking_count,warning_count,info_count,raw_diff_file,reason\n';
+    for (const report of [
+      'clean',
+      'warning-only',
+      'missing-in-target',
+      'extra-in-target',
+      'failed-or-skipped',
+    ]) {
+      writeFileSync(join(reportsDir, `${report}.csv`), outcomeHeader);
+    }
+    writeFileSync(
+      join(reportsDir, 'blocking.csv'),
+      outcomeHeader +
+        'repo-b,source,target,false,2026-01-01,blocking,blocking,1,1,0,0,diff.csv,\n' +
+        'repo-c,source,target,false,2026-01-01,blocking,blocking,1,1,0,0,diff.csv,\n',
+    );
+    writeFileSync(
+      join(reportsDir, 'diff-all.csv'),
+      'Repo_Name,Source_Org,Target_Org,Column,Source_Value,Target_Value,Delta,Severity,Status\n' +
+        'repo-b,source,target,Issue_Count,10,4,-6,blocking,matched\n' +
+        'repo-c,source,target,git_default_branch_sha,old,new,,blocking,matched\n',
+    );
+
+    generateRecommendations(runDir);
+
+    const recommendations = readFileSync(
+      join(reportsDir, 'migration-recommendations.csv'),
+      'utf8',
+    );
+    expect(recommendations).toContain(
+      'repo-b,source,target,blocking,review,investigate-content-loss,blocked',
+    );
+    expect(recommendations).toContain(
+      'repo-c,source,target,blocking,migrated,move-on,blocked',
+    );
+  });
+
+  it('marks repositories without target mappings as missing', () => {
+    const root = tempDirectory();
+    const runDir = join(root, 'run');
+    const reportsDir = join(runDir, 'reports');
+    mkdirSync(reportsDir, { recursive: true });
+    const outcomeHeader =
+      'repo_name,source_org,target_org,locked_in_source,created_at_in_target,outcome,highest_severity,finding_count,blocking_count,warning_count,info_count,raw_diff_file,reason\n';
+    for (const report of [
+      'clean',
+      'blocking',
+      'warning-only',
+      'missing-in-target',
+      'extra-in-target',
+      'failed-or-skipped',
+    ]) {
+      writeFileSync(join(reportsDir, `${report}.csv`), outcomeHeader);
+    }
+    writeFileSync(
+      join(reportsDir, 'diff-all.csv'),
+      'Repo_Name,Source_Org,Target_Org,Column,Source_Value,Target_Value,Delta,Severity,Status\n',
+    );
+    writeFileSync(
+      join(runDir, 'skipped-missing-target.csv'),
+      'repo_name,source_org,target_org,source_url,target_url,migration_issue,locked_in_source,created_at_in_target,reason\n' +
+        'repo-d,source,none,https://github.com/source/repo-d,,1,false,,No usable target mapping\n',
+    );
+
+    const counts = generateRecommendations(runDir);
+
+    expect(counts).toEqual({ 'not-migrated': 1 });
+    expect(
+      readFileSync(join(reportsDir, 'migration-recommendations.csv'), 'utf8'),
+    ).toContain(
+      'repo-d,source,none,missing-in-target,missing,not-migrated,missing',
     );
   });
 });

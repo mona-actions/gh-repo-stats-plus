@@ -55,6 +55,42 @@ const OUTCOME_HEADERS = [
   'reason',
 ] as const;
 
+const RECOMMENDATION_HEADERS = [
+  'repo_name',
+  'source_org',
+  'target_org',
+  'original_outcome',
+  'content_recommendation',
+  'operational_recommendation',
+  'fidelity_recommendation',
+  'locked_in_source',
+  'created_at_in_target',
+  'finding_count',
+  'blocking_count',
+  'warning_count',
+  'info_count',
+  'negative_content_columns',
+  'git_blocking_columns',
+  'warning_columns',
+  'recommendation_reason',
+] as const;
+
+const MIGRATION_COUNT_COLUMNS = new Set([
+  'Issue_Count',
+  'PR_Count',
+  'Record_Count',
+  'Branch_Count',
+  'Tag_Count',
+  'Release_Count',
+  'Issue_Comment_Count',
+  'Issue_Event_Count',
+  'PR_Review_Count',
+  'PR_Review_Comment_Count',
+  'Commit_Comment_Count',
+  'Milestone_Count',
+  'Discussion_Count',
+]);
+
 type CsvRow = Record<string, string>;
 
 export interface MappingRow extends CsvRow {
@@ -106,6 +142,26 @@ interface OutcomeRow extends CsvRow {
   info_count: string;
   raw_diff_file: string;
   reason: string;
+}
+
+interface RecommendationRow extends CsvRow {
+  repo_name: string;
+  source_org: string;
+  target_org: string;
+  original_outcome: string;
+  content_recommendation: string;
+  operational_recommendation: string;
+  fidelity_recommendation: string;
+  locked_in_source: string;
+  created_at_in_target: string;
+  finding_count: string;
+  blocking_count: string;
+  warning_count: string;
+  info_count: string;
+  negative_content_columns: string;
+  git_blocking_columns: string;
+  warning_columns: string;
+  recommendation_reason: string;
 }
 
 function parseArgs(args: string[]): Map<string, string | boolean> {
@@ -602,6 +658,168 @@ function readOptionalRows(path: string): CsvRow[] {
   return existsSync(path) ? readCsv(path).rows : [];
 }
 
+function parseDelta(value: string): number | undefined {
+  const parsed = Number(value.trim().replace(/^[+]/, ''));
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function recommendationFromOutcome(
+  outcome: OutcomeRow,
+  findings: CsvRow[],
+): RecommendationRow {
+  const negativeContentColumns = findings
+    .filter((finding) => {
+      const delta = parseDelta(finding.Delta ?? '');
+      return (
+        MIGRATION_COUNT_COLUMNS.has(finding.Column ?? '') &&
+        delta !== undefined &&
+        delta < 0
+      );
+    })
+    .map((finding) => finding.Column);
+  const gitBlockingColumns = findings
+    .filter(
+      (finding) =>
+        finding.Severity === 'blocking' &&
+        ((finding.Column ?? '').startsWith('git_') ||
+          (finding.Column ?? '').startsWith('git_ref:')),
+    )
+    .map((finding) => finding.Column);
+  const warningColumns = findings
+    .filter((finding) => finding.Severity === 'warning')
+    .map((finding) => finding.Column);
+
+  let contentRecommendation = 'migrated';
+  let operationalRecommendation = 'move-on';
+  let fidelityRecommendation = 'full-fidelity';
+  let recommendationReason = 'Target counts meet or exceed source counts.';
+
+  if (outcome.outcome === 'missing-in-target') {
+    contentRecommendation = 'missing';
+    operationalRecommendation = 'not-migrated';
+    fidelityRecommendation = 'missing';
+    recommendationReason =
+      'Repository is present in the source but absent in the target.';
+  } else if (outcome.outcome === 'failed-or-skipped') {
+    contentRecommendation = 'unable-to-assess';
+    operationalRecommendation = 'investigate-content-loss';
+    fidelityRecommendation = 'unable-to-assess';
+    recommendationReason =
+      outcome.reason || 'Collection or comparison did not complete.';
+  } else if (negativeContentColumns.length > 0) {
+    contentRecommendation = 'review';
+    operationalRecommendation = 'investigate-content-loss';
+    fidelityRecommendation = 'blocked';
+    recommendationReason = `Target is lower than source for: ${negativeContentColumns.join(', ')}.`;
+  } else if (gitBlockingColumns.length > 0) {
+    fidelityRecommendation = 'blocked';
+    recommendationReason = `Content counts pass, but Git verification reported: ${gitBlockingColumns.join(', ')}.`;
+  } else if (findings.length > 0) {
+    fidelityRecommendation = 'review';
+    recommendationReason =
+      'Content counts pass; remaining differences are warnings or informational.';
+  }
+
+  if (outcome.outcome === 'extra-in-target') {
+    contentRecommendation = 'unable-to-assess';
+    operationalRecommendation = 'investigate-content-loss';
+    fidelityRecommendation = 'unable-to-assess';
+    recommendationReason =
+      'Target repository has no source baseline in this run.';
+  }
+
+  return {
+    repo_name: outcome.repo_name,
+    source_org: outcome.source_org,
+    target_org: outcome.target_org,
+    original_outcome: outcome.outcome,
+    content_recommendation: contentRecommendation,
+    operational_recommendation: operationalRecommendation,
+    fidelity_recommendation: fidelityRecommendation,
+    locked_in_source: outcome.locked_in_source,
+    created_at_in_target: outcome.created_at_in_target,
+    finding_count: outcome.finding_count,
+    blocking_count: outcome.blocking_count,
+    warning_count: outcome.warning_count,
+    info_count: outcome.info_count,
+    negative_content_columns: [...new Set(negativeContentColumns)].join(';'),
+    git_blocking_columns: [...new Set(gitBlockingColumns)].join(';'),
+    warning_columns: [...new Set(warningColumns)].join(';'),
+    recommendation_reason: recommendationReason,
+  };
+}
+
+export function generateRecommendations(
+  runDir: string,
+): Record<string, number> {
+  const reportsDir = join(runDir, 'reports');
+  const outcomes = [
+    'clean',
+    'blocking',
+    'warning-only',
+    'missing-in-target',
+    'extra-in-target',
+    'failed-or-skipped',
+  ].flatMap((name) =>
+    readOptionalRows(join(reportsDir, `${name}.csv`)),
+  ) as OutcomeRow[];
+  const diffs = readOptionalRows(join(reportsDir, 'diff-all.csv'));
+  const findingsByRepo = new Map<string, CsvRow[]>();
+  for (const finding of diffs) {
+    const key = normalizeRepoKey(finding.Repo_Name ?? '');
+    const existing = findingsByRepo.get(key) ?? [];
+    existing.push(finding);
+    findingsByRepo.set(key, existing);
+  }
+
+  const skipped = [
+    ...readOptionalRows(join(runDir, 'skipped-missing-target.csv')),
+    ...readOptionalRows(join(runDir, 'audit-validation-failures.csv')),
+  ];
+  const recommendationRows = [
+    ...outcomes.map((outcome) =>
+      recommendationFromOutcome(
+        outcome,
+        findingsByRepo.get(normalizeRepoKey(outcome.repo_name)) ?? [],
+      ),
+    ),
+    ...skipped.map((row) =>
+      recommendationFromOutcome(
+        {
+          ...row,
+          outcome:
+            row.reason === 'No usable target mapping'
+              ? 'missing-in-target'
+              : 'failed-or-skipped',
+          finding_count: '0',
+          blocking_count: row.reason === 'No usable target mapping' ? '0' : '0',
+          warning_count: '0',
+          info_count: '0',
+          highest_severity: '',
+          raw_diff_file: '',
+        } as OutcomeRow,
+        [],
+      ),
+    ),
+  ].sort((left, right) =>
+    normalizeRepoKey(left.repo_name).localeCompare(
+      normalizeRepoKey(right.repo_name),
+    ),
+  );
+
+  writeCsv(
+    join(reportsDir, 'migration-recommendations.csv'),
+    RECOMMENDATION_HEADERS,
+    recommendationRows,
+  );
+
+  return recommendationRows.reduce<Record<string, number>>((counts, row) => {
+    counts[row.operational_recommendation] =
+      (counts[row.operational_recommendation] ?? 0) + 1;
+    return counts;
+  }, {});
+}
+
 export function aggregateReports(runDir: string): Record<string, number> {
   const preparation = JSON.parse(
     readFileSync(join(runDir, 'preparation-summary.json'), 'utf8'),
@@ -817,6 +1035,13 @@ function main(argv: string[]): void {
       const counts = aggregateReports(requiredArg(args, '--run-dir'));
       for (const [outcome, count] of Object.entries(counts)) {
         console.log(`${outcome}=${count}`);
+      }
+      break;
+    }
+    case 'recommend': {
+      const counts = generateRecommendations(requiredArg(args, '--run-dir'));
+      for (const [recommendation, count] of Object.entries(counts)) {
+        console.log(`${recommendation}=${count}`);
       }
       break;
     }

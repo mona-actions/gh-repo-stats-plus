@@ -34,3 +34,12 @@ Thumbs.db
 *.pem
 *.local
 *.queue.txt
+
+
+# # Keep compare-repos reports readable
+# !analysis/
+# !analysis/output/
+# !analysis/output/compare-repos/
+# !analysis/output/compare-repos/run/
+# !analysis/output/compare-repos/run/reports/
+# !analysis/output/compare-repos/run/reports/*.csv

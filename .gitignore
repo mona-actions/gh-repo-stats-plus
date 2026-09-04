@@ -25,6 +25,7 @@ logs/
 *.csv
 *.queue.txt
 *-retry-queue.txt
+*.zip
 
 # Ignore keys and output directories
 keys/
@@ -38,3 +39,11 @@ coverage/
 
 # pnpm 
 .pnpm-store/
+
+# # Keep compare-repos reports readable
+# !analysis/
+# !analysis/output/
+# !analysis/output/compare-repos/
+# !analysis/output/compare-repos/run/
+# !analysis/output/compare-repos/run/reports/
+# !analysis/output/compare-repos/run/reports/*.csv
