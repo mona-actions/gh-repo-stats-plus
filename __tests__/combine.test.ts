@@ -12,6 +12,15 @@ vi.mock('fs', async () => {
   };
 });
 
+vi.mock('fs/promises', async () => {
+  const actual =
+    await vi.importActual<typeof import('fs/promises')>('fs/promises');
+  return {
+    ...actual,
+    mkdir: vi.fn().mockResolvedValue(undefined),
+  };
+});
+
 vi.mock('csv-parse/sync', () => ({
   parse: vi.fn(),
 }));
@@ -377,16 +386,6 @@ describe('combine', () => {
       vi.mocked(parse)
         .mockReturnValueOnce(file1Data)
         .mockReturnValueOnce(file2Data);
-
-      // Mock mkdir
-      vi.mock('fs/promises', async () => {
-        const actual =
-          await vi.importActual<typeof import('fs/promises')>('fs/promises');
-        return {
-          ...actual,
-          mkdir: vi.fn().mockResolvedValue(undefined),
-        };
-      });
 
       const options: CombineStatsOptions = {
         files: ['file1.csv', 'file2.csv'],
