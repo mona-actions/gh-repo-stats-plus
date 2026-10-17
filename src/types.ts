@@ -69,7 +69,7 @@ export interface Arguments {
   batchRepoListFile?: string;
 
   // TLS
-  caCertPath?: string;
+  caCert?: string;
 
   // multi-org options
   delayBetweenOrgs?: number;
