@@ -782,17 +782,6 @@ describe('lookupInstallationId', () => {
 
     const mockCreateOctokitFn = vi.fn().mockReturnValue(mockTempOctokit);
 
-    vi.mock('../src/auth.js', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('../src/auth.js')>();
-      return {
-        ...actual,
-        createAppLevelAuthConfig: vi.fn().mockReturnValue({
-          authStrategy: vi.fn(),
-          auth: { type: 'app', appId: 12345, privateKey: 'test-key' },
-        }),
-      };
-    });
-
     const mockLogger = {
       debug: vi.fn(),
       info: vi.fn(),
