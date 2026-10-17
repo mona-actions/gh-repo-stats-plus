@@ -20,7 +20,7 @@
     "prepare-release": "./script/prepare-release.sh"
   },
   "name": "gh-repo-stats-plus",
-  "version": "4.6.0",
+  "version": "4.7.0",
   "main": "dist/index.js",
   "description": "GitHub CLI extension for gathering comprehensive repository statistics from GitHub organizations",
   "keywords": [
@@ -39,16 +39,16 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@octokit/openapi-types": "^27.0.0",
+    "@octokit/openapi-types": "^29.0.1",
     "@rollup/plugin-commonjs": "^29.0.3",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-typescript": "^12.3.0",
-    "@types/node": "^25.9.3",
+    "@types/node": "^26.5.1",
     "@types/shell-quote": "^1.7.5",
-    "@typescript-eslint/eslint-plugin": "^8.68.0",
-    "@typescript-eslint/parser": "^8.68.0",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@typescript-eslint/eslint-plugin": "^8.70.0",
+    "@typescript-eslint/parser": "^8.70.0",
+    "@vitest/coverage-v8": "^5.0.0",
     "eslint": "^10.3.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.9.6",
@@ -57,8 +57,8 @@
     "tslib": "^2.8.1",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.68.0",
-    "vitest": "^4.1.9"
+    "typescript-eslint": "^8.70.0",
+    "vitest": "^5.0.0"
   },
   "dependencies": {
     "@octokit/graphql": "^9.0.4",
@@ -68,8 +68,10 @@
     "csv-parse": "^7.0.0",
     "dotenv": "^17.4.2",
     "octokit": "^5.0.5",
-    "undici": "^8.9.0",
+    "undici": "^8.12.2",
     "winston": "^3.19.0"
   },
-  "packageManager": "pnpm@11.25.0+sha512.5cde925b4f075f725eb71fbae18a42ffe784524789f19b61c731cb8721ec28aaee160e01a8d5af4fedb2a42cdbf300efe23db356b0d4a17b4d63e11f8ab7c956"
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
 }
