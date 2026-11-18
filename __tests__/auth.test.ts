@@ -26,6 +26,7 @@ describe('auth', () => {
 
   beforeEach(() => {
     originalEnv = { ...process.env };
+    delete process.env.GITHUB_TOKEN;
     vi.resetAllMocks();
   });
 
