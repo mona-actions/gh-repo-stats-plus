@@ -152,6 +152,7 @@ describe('standalone repo-list execution', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env = { ...originalEnv };
+    delete process.env.GITHUB_TOKEN;
     mockWithRetry.mockImplementation(async (fn) => await fn());
     mockStateInitialize.mockReturnValue({
       processedState: createProcessedState(),
